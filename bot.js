@@ -64,9 +64,14 @@ bot.on('message', async (msg) => {
         const helpMessage = 
         `Comandos disponibles:
 
-        /help - Acabas de usarlo subnormal
-        /status - Comprueba si el bot está funcionando y recuerdas a Yitan lo que es
-        /hambre <URL_FRENTE> <MENSAJE> - Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar (Muchos pings, no seais imbeciles spameandolo)`;
+        /help
+        Acabas de usarlo subnormal
+
+        /status
+        Comprueba si el bot está funcionando y recuerda a Yitan lo que es
+
+        /hambre <URL> <MENSAJE>
+        Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)`;
         bot.sendMessage(chatId, helpMessage);
         return;
     }
