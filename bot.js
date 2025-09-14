@@ -35,7 +35,7 @@ const usuarios = [
     { userId: "684aba6474cdd09ff4bdb1c9", mention: "@kesta_pasando" },
     { userId: "686be039fb337713b29e172d", mention: "@Brayanorsini" },
     { userId: "686d0bf95841fc53d8fe3e69", mention: "@Flopero" },
-    { userId: "686eb3bab7dc5cb1d7e3085", mention: "@Dopillo" },
+    { userId: "686eb3bab7dc5cb1d7e3085b", mention: "@Dopillo" },
     { userId: "686eca28c6f1851a706a304d", mention: "@bt0mas" },
     { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     { userId: "6876632469f52d5b9c1271d7", mention: "@noSeQuienEsYandro" },
@@ -55,16 +55,19 @@ const usuarios = [
 const comandos = {
     help: (chatId) => {
         const helpMessage = 
-`Comandos disponibles:
+        `Comandos disponibles:
 
-/help
-Acabas de usarlo subnormal
+        /help
+        Acabas de usarlo subnormal
 
-/status
-Comprueba si el bot está funcionando y recuerda a Yitan lo que es
+        /status
+        Comprueba si el bot está funcionando y recuerda a Yitan lo que es
 
-/hambre <URL> <MENSAJE>
-Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)`;
+        /hambre <URL> <MENSAJE>
+        Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
+
+        /paisesPastilla <ID/ENLACE> <ACTIVAS/DEBUFF/DISPONIBLES/TODAS>
+        Muestra usuarios de un país y estado de la pastilla`; 
         bot.sendMessage(chatId, helpMessage);
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
@@ -97,6 +100,80 @@ Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin 
 
         const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
         bot.sendMessage(chatId, mensajeFinal);
+    },
+    paisesPastilla: async (chatId, args) => {
+        if (args.length < 2) {
+            bot.sendMessage(chatId, "Formato: /paisesPastilla <ID/ENLACE> <ACTIVAS/DEBUFF/DISPONIBLES/TODAS>");
+            return;
+        }
+
+        const countryInput = args[0];
+        const filter = args[1].toUpperCase();
+
+        bot.sendMessage(chatId, "Procesando usuarios del país… puede tardar unos segundos.");
+
+        const countryIdMatch = countryInput.match(/([a-f0-9]{24})/);
+        if (!countryIdMatch) {
+            bot.sendMessage(chatId, "No se ha podido extraer un ID válido del país.");
+            return;
+        }
+        const countryId = countryIdMatch[1];
+
+        try {
+            const usersUrl = `https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({ countryId, limit: 100 }))}`;
+            const usersResp = await axios.get(usersUrl, { headers: { 'Accept': 'application/json' } });
+            const userIds = usersResp.data?.result?.data?.items?.map(u => u._id) || [];
+
+            if (userIds.length === 0) {
+                bot.sendMessage(chatId, "No se encontraron usuarios en ese país.");
+                return;
+            }
+
+            const mensajes = [];
+
+            for (const userId of userIds) {
+                try {
+                    const userUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({ userId }))}`;
+                    const userResp = await axios.get(userUrl, { headers: { 'Accept': 'application/json' } });
+                    const data = userResp.data?.result?.data;
+                    const username = data?.username;
+                    const userLink = `https://app.warera.io/user/${userId}`;
+
+                    const buffs = data?.buffs || {};
+                    let estado = "disponible";
+                    let fecha = null;
+
+                    if (buffs.buffCodes?.length) {
+                        estado = "activa";
+                        fecha = buffs.buffEndAt;
+                    } else if (buffs.debuffCodes?.length) {
+                        estado = "debuff";
+                        fecha = buffs.debuffEndAt;
+                    }
+
+                    if (filter === "ACTIVAS" && estado !== "activa") continue;
+                    if (filter === "DEBUFF" && estado !== "debuff") continue;
+                    if (filter === "DISPONIBLES" && estado !== "disponible") continue;
+
+                    let mensaje = `${username} - ${userLink} - Pastilla: ${estado}`;
+                    if (fecha) {
+                        const dateSpain = new Date(fecha);
+                        const options = { timeZone: 'Europe/Madrid', hour12: false, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' };
+                        mensaje += ` hasta ${dateSpain.toLocaleString('es-ES', options)}`;
+                    }
+
+                    mensajes.push(mensaje);
+                } catch (err) {
+                    console.error(`Error userLite ${userId}:`, err.message);
+                }
+            }
+
+            if (mensajes.length === 0) mensajes.push("No hay usuarios que cumplan el filtro.");
+            bot.sendMessage(chatId, mensajes.join('\n'));
+        } catch (err) {
+            console.error("Error getUsersByCountry:", err.message);
+            bot.sendMessage(chatId, "Error al obtener usuarios del país.");
+        }
     }
 };
 
