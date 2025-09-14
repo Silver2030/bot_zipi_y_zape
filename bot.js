@@ -210,7 +210,9 @@ bot.on('message', async (msg) => {
     const text = msg.text;
     if (!text || !text.startsWith('/')) return;
 
-    const [cmd, ...args] = text.slice(1).split(' ');
+    const [cmdRaw, ...args] = text.slice(1).split(' ');
+    const cmd = cmdRaw.split('@')[0];
+
 
     if (comandos[cmd]) {
         await comandos[cmd](chatId, args);
