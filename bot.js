@@ -118,8 +118,6 @@ FILTROS:
 
         const filtro = args[1].toUpperCase();
 
-        bot.sendMessage(chatId, "Procesando usuarios, esto puede tardar unos segundos...");
-
         try {
             // Obtener usuarios del país
             const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
