@@ -86,7 +86,7 @@ FILTROS:
 - TODAS: Muestra todas las opciones
 EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS
 
-/paisesDaño <ID_PAIS/ENLACE_PAIS> <FILTRO>
+/paisesDanyo <ID_PAIS/ENLACE_PAIS> <FILTRO>
 Muestra el daño disponible de un pais
 FILTROS:
 - PAN: Se supone un caso en el que todos usaran pan para recuperar hp
