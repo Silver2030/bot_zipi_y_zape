@@ -343,17 +343,17 @@ FILTROS:
                 const data = userRes.data?.result?.data;
                 if (!data) continue;
 
-                const atk = data.skills.attack?.value || 0;
-                const critChance = (data.skills.criticalChance?.value || 0) / 100;
-                const critDmg = (data.skills.criticalDamages?.value || 0) / 100;
-                const precision = (data.skills.precision?.value || 0) / 100;
-                const armor = (data.skills.armor?.value || 0) / 100;
-                const dodge = (data.skills.dodge?.value || 0) / 100;
+                const atk = data.skills.attack?.total || 0;
+                const critChance = (data.skills.criticalChance?.total || 0) / 100;
+                const critDmg = (data.skills.criticalDamages?.total || 0) / 100;
+                const precision = (data.skills.precision?.total || 0) / 100;
+                const armor = (data.skills.armor?.total || 0) / 100;
+                const dodge = (data.skills.dodge?.total || 0) / 100;
 
                 const hpNow = (data.skills.health?.currentBarValue || 0)
                     + Math.floor(data.skills.hunger?.currentBarValue || 0) * healFood;
-                const hp24h = (data.skills.health?.value || 0) * 2.4
-                    + Math.floor((data.skills.hunger?.value || 0) * 2.4) * healFood;
+                const hp24h = (data.skills.health?.total || 0) * 2.4
+                    + Math.floor((data.skills.hunger?.total || 0) * 2.4) * healFood;
 
                 // función simulación Montecarlo
                 function simular(hpTotal) {
