@@ -310,7 +310,7 @@ FILTROS:
 },
     paisesDanyo: async (chatId, args) => {
     if (args.length < 2) {
-        bot.sendMessage(chatId, "Ejemplo: /paisesDanyo https://app.warera.io/user/686f9befee16d37c418cd087 PESCADO");
+        bot.sendMessage(chatId, "Ejemplo: /paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO");
         return;
     }
 
@@ -336,7 +336,7 @@ FILTROS:
         let total24h = 0;
         let resultados = [];
 
-        // Procesar cada usuario secuencialmente (más seguro para Railway)
+        // Procesar cada usuario secuencialmente
         for (const item of items) {
             try {
                 const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({ userId: item._id }))}`);
@@ -350,14 +350,18 @@ FILTROS:
                 const armor = (data.skills.armor?.total || 0) / 100;
                 const dodge = (data.skills.dodge?.total || 0) / 100;
 
+                // DAÑO ACTUAL
                 const hpNow = (data.skills.health?.currentBarValue || 0)
                     + Math.floor(data.skills.hunger?.currentBarValue || 0) * healFood;
-                const hp24h = (data.skills.health?.total || 0) * 2.4
-                    + Math.floor((data.skills.hunger?.total || 0) * 2.4) * healFood;
 
-                // función simulación Montecarlo
+                // DAÑO 24H (solo regeneración)
+                const hpRegen24h = data.skills.health?.total * 0.1 * 24; // regen de HP
+                const hungerRegen24h = Math.floor(data.skills.hunger?.total * 0.1 * 24) * healFood; // regen de comida
+                const hp24h = hpRegen24h + hungerRegen24h;
+
+                // Función Montecarlo
                 function simular(hpTotal) {
-                    let simulaciones = 10000;
+                    const simulaciones = 10000;
                     let totalDanyo = 0;
 
                     for (let i = 0; i < simulaciones; i++) {
@@ -366,21 +370,22 @@ FILTROS:
 
                         while (hp >= 10) {
                             // coste de golpe
-                            let esquiva = Math.random() < dodge;
-                            let coste = esquiva ? 0 : 10 * (1 - armor);
+                            const esquiva = Math.random() < dodge;
+                            const coste = esquiva ? 0 : 10 * (1 - armor);
                             if (hp < coste) break;
                             hp -= coste;
 
                             // daño por golpe
                             let base = atk;
-                            let critico = Math.random() < critChance;
+                            const critico = Math.random() < critChance;
                             if (critico) base *= (1 + critDmg);
 
-                            let acierto = Math.random() < precision;
+                            const acierto = Math.random() < precision;
                             if (!acierto) base *= 0.5;
 
                             dmg += base;
                         }
+
                         totalDanyo += dmg;
                     }
 
@@ -394,7 +399,7 @@ FILTROS:
                 total24h += Danyo24h;
 
                 resultados.push(
-                    `👤 ${data.username} - https://app.warera.io/user/${data._id}\n` +
+                    `- ${data.username} - https://app.warera.io/user/${data._id}\n` +
                     `Daño actual: ${Math.round(DanyoActual).toLocaleString('es-ES')}\n` +
                     `Daño 24h: ${Math.round(Danyo24h).toLocaleString('es-ES')}`
                 );
@@ -405,7 +410,7 @@ FILTROS:
         }
 
         // Mandar resultados
-        let mensajeFinal =
+        const mensajeFinal =
             `- País: https://app.warera.io/country/${countryId}\n` +
             `- Comida usada: ${comida}\n\n` +
             `- Total de daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}\n` +
@@ -419,6 +424,7 @@ FILTROS:
         bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
     }
 }
+
 };
 
 // --- Listener principal ---
