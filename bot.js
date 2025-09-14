@@ -7,7 +7,7 @@ const bot = new TelegramBot(token, { polling: true });
 
 // GROUP ID: -1002840225634 CHAT ID: 696082291
 const GROUP_ID = -1002840225634;
-const GROUP_PRUEBAS_ID = -1002840225634;
+const GROUP_PRUEBAS_ID = -4981907547;
 const CHAT_ID = 696082291;
 
 // Lista de usuarios
