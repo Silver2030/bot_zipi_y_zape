@@ -55,3 +55,15 @@ bot.on('message', async (msg) => {
     const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join(' ')}`;
     bot.sendMessage(chatId, mensajeFinal);
 });
+
+const express = require('express');
+const app = express();
+
+// Endpoint simple para que UptimeRobot haga ping
+app.get('/', (req, res) => {
+    res.send('Bot alive!');
+});
+
+// Puerto 3000 (Replit automáticamente lo redirige a un puerto accesible)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
