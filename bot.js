@@ -308,9 +308,9 @@ FILTROS:
         bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
     }
 },
-    paisesDaño: async (chatId, args) => {
+    paisesDanyo: async (chatId, args) => {
     if (args.length < 2) {
-        bot.sendMessage(chatId, "Ejemplo: /paisesDaño https://app.warera.io/user/686f9befee16d37c418cd087 PESCADO");
+        bot.sendMessage(chatId, "Ejemplo: /paisesDanyo https://app.warera.io/user/686f9befee16d37c418cd087 PESCADO");
         return;
     }
 
@@ -358,7 +358,7 @@ FILTROS:
                 // función simulación Montecarlo
                 function simular(hpTotal) {
                     let simulaciones = 10000;
-                    let totalDaño = 0;
+                    let totalDanyo = 0;
 
                     for (let i = 0; i < simulaciones; i++) {
                         let hp = hpTotal;
@@ -381,22 +381,22 @@ FILTROS:
 
                             dmg += base;
                         }
-                        totalDaño += dmg;
+                        totalDanyo += dmg;
                     }
 
-                    return totalDaño / simulaciones;
+                    return totalDanyo / simulaciones;
                 }
 
-                const dañoActual = simular(hpNow);
-                const daño24h = simular(hp24h);
+                const DanyoActual = simular(hpNow);
+                const Danyo24h = simular(hp24h);
 
-                totalActual += dañoActual;
-                total24h += daño24h;
+                totalActual += DanyoActual;
+                total24h += Danyo24h;
 
                 resultados.push(
                     `👤 ${data.username} - https://app.warera.io/user/${data._id}\n` +
-                    `Daño actual: ${Math.round(dañoActual).toLocaleString('es-ES')}\n` +
-                    `Daño 24h: ${Math.round(daño24h).toLocaleString('es-ES')}`
+                    `Daño actual: ${Math.round(DanyoActual).toLocaleString('es-ES')}\n` +
+                    `Daño 24h: ${Math.round(Danyo24h).toLocaleString('es-ES')}`
                 );
 
             } catch (e) {
