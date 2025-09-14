@@ -267,7 +267,7 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
         const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
         bot.sendMessage(chatId, mensajeFinal);
     },
-    paisesPastilla: async (chatId, args) => {
+    paisespastilla: async (chatId, args) => {
         if (args.length < 2) {
             bot.sendMessage(chatId, "Ejemplo: /paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
             return;
@@ -356,7 +356,7 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
             bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
         }
     },
-    muPastilla: async (chatId, args) => {
+    mupastilla: async (chatId, args) => {
     if (args.length < 2) {
         bot.sendMessage(chatId, "Ejemplo: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS");
         return;
@@ -450,10 +450,10 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
         bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
     }
 },
-    paisesDanyo: async (chatId, args) => {
+    paisesdanyo: async (chatId, args) => {
     calcularDanyoGrupo(chatId, args, 'pais');
 },
-    muDanyo: async (chatId, args) => {
+    mudanyo: async (chatId, args) => {
     calcularDanyoGrupo(chatId, args, 'mu');
 }
 
@@ -472,7 +472,7 @@ bot.on('message', async (msg) => {
     if (!text || !text.startsWith('/')) return;
 
     const [cmdRaw, ...args] = text.slice(1).split(' ');
-    const cmd = cmdRaw.split('@')[0];
+    const cmd = cmdRaw.split('@')[0].toLowerCase();
 
 
     if (comandos[cmd]) {
