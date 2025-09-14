@@ -55,19 +55,24 @@ const usuarios = [
 const comandos = {
     help: (chatId) => {
         const helpMessage = 
-        `Comandos disponibles:
+`Comandos disponibles:
 
-        /help
-        Acabas de usarlo subnormal
+/help
+Acabas de usarlo subnormal
 
-        /status
-        Comprueba si el bot está funcionando y recuerda a Yitan lo que es
+/status
+Comprueba si el bot está funcionando y recuerda a Yitan lo que es
 
-        /hambre <URL> <MENSAJE>
-        Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
+/hambre <URL> <MENSAJE>
+Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
 
-        /paisesPastilla <ID/ENLACE> <ACTIVAS/DEBUFF/DISPONIBLES/TODAS>
-        Muestra usuarios de un país y estado de la pastilla`; 
+/paisesPastilla <ID/ENLACE> <FILTRO>
+Muestra usuarios de un país y estado de la pastilla
+FILTROS:
+- ACTIVAS: Muestra aquellos con la pastilla en activo
+- DEBUFF: Muestra aquellos con la pastilla en debuff
+- DISPONIBLES: Muestra aquellos con la pastilla disponible para usar
+- TODAS: Muestra todas las opciones`;
         bot.sendMessage(chatId, helpMessage);
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
