@@ -6,7 +6,8 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // GROUP ID: -1002840225634 CHAT ID: 696082291
-const GROUP_ID = 696082291;
+const GROUP_ID = -1002840225634;
+const CHAT_ID = 696082291;
 
 // Lista de usuarios
 const usuarios = [
@@ -103,7 +104,8 @@ Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
 
-    if (GROUP_ID && chatId !== GROUP_ID) return; // Filtro por grupo
+    // Filtrar por grupo o chat permitido
+    if (GROUP_ID && chatId !== GROUP_ID && chatId !== CHAT_ID) return;
 
     const text = msg.text;
     if (!text || !text.startsWith('/')) return;
