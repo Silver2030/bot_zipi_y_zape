@@ -202,7 +202,7 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
 
     // Filtrar por grupo o chat permitido
-    if (GROUP_ID && chatId !== GROUP_ID && chatId !== CHAT_ID) return;
+    if (GROUP_ID && chatId !== GROUP_ID || chatId !== CHAT_ID) return;
 
     const text = msg.text;
     if (!text || !text.startsWith('/')) return;
