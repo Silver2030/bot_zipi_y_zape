@@ -200,9 +200,9 @@ FILTROS:
 
 // --- Listener principal ---
 bot.on('message', async (msg) => {
-    console.log(`Mensaje recibido en chatId: ${chatId} | Texto: ${msg.text}`);
-
     const chatId = msg.chat.id;
+
+    console.log(`Mensaje recibido en chatId: ${chatId} | Texto: ${msg.text}`);
 
     // Filtrar por grupo o chat permitido
     if (GROUP_ID && chatId !== GROUP_ID && chatId !== GROUP_PRUEBAS_ID && chatId !== CHAT_ID) return;
