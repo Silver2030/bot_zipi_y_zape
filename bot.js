@@ -277,7 +277,7 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
             ? args[0].split('/').pop() 
             : args[0];
 
-        const filtro = args[1].toUpperCase();
+        const filtro = args[1] ? args[1].trim().toUpperCase() : "TODAS";
 
         try {
             // Obtener usuarios del país
@@ -366,7 +366,7 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
         ? args[0].split('/').pop()
         : args[0];
 
-    const filtro = args[1] ? args[1].toUpperCase() : "TODAS";
+    const filtro = args[1] ? args[1].trim().toUpperCase() : "TODAS";
 
     try {
         // Obtener datos del MU
