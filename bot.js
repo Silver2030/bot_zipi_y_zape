@@ -90,7 +90,7 @@ EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODA
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
     hambre: async (chatId, args) => {
         if (!args[0] || !args[1]) {
-            bot.sendMessage(chatId, "Formato: /hambre <URL> <MENSAJE>");
+            bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
             return;
         }
 
@@ -120,7 +120,7 @@ EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODA
     },
     paisesPastilla: async (chatId, args) => {
         if (args.length < 2) {
-            bot.sendMessage(chatId, "Formato: /paisesPastilla <ID_PAIS/ENLACE_PAIS> <ACTIVAS/DEBUFF/DISPONIBLES/TODAS>");
+            bot.sendMessage(chatId, "/paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
             return;
         }
 
@@ -209,7 +209,7 @@ EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODA
     },
     muPastilla: async (chatId, args) => {
     if (args.length < 1) {
-        bot.sendMessage(chatId, "Formato: /muPastilla <ID/ENLACE> <ACTIVAS/DEBUFF/DISPONIBLES/TODAS>");
+        bot.sendMessage(chatId, "/muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS");
         return;
     }
 
