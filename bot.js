@@ -238,35 +238,58 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
     hambre: async (chatId, args) => {
-        if (!args[0] || !args[1]) {
-            bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
-            return;
-        }
+    if (!args[0] || !args[1]) {
+        bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
+        return;
+    }
 
-        const urlBattle = args[0];
-        const mensajeExtra = args.slice(1).join(' ');
-        const menciones = [];
+    const urlBattle = args[0];
+    const mensajeExtra = args.slice(1).join(' ');
 
-        for (const usuario of usuarios) {
-            try {
-                const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
-                const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
-                const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
-                const data = response.data?.result?.data;
-                const hunger = data?.skills?.hunger;
-                const username = data?.username;
+    const menciones = [];
 
-                if (hunger && hunger.currentBarValue >= 0.6 * hunger.total) {
-                    menciones.push(`${usuario.mention} (${username})`);
-                }
-            } catch (error) {
-                console.error(`Error con usuario ${usuario.userId}:`, error.message);
+    for (const usuario of usuarios) {
+        try {
+            // Obtenemos los datos del usuario
+            const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
+            const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
+            const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
+            const data = response.data?.result?.data;
+            if (!data) continue;
+
+            const hunger = data.skills?.hunger;
+            if (hunger && hunger.currentBarValue >= 0.6 * hunger.total) {
+                // Telegram interpreta esto como ping real
+                menciones.push(`@${usuario.mention.replace('@','')}`);
             }
+        } catch (error) {
+            console.error(`Error con usuario ${usuario.userId}:`, error.message);
         }
+    }
 
-        const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
-        bot.sendMessage(chatId, mensajeFinal);
-    },
+    if (menciones.length === 0) {
+        bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}\nNo hay usuarios con hambre suficiente.`);
+        return;
+    }
+
+    // Telegram permite hasta 4096 caracteres por mensaje
+    const chunks = [];
+    let chunk = '';
+    for (const mention of menciones) {
+        if ((chunk + ' ' + mention).length > 4000) {
+            chunks.push(chunk.trim());
+            chunk = '';
+        }
+        chunk += ' ' + mention;
+    }
+    if (chunk) chunks.push(chunk.trim());
+
+    // Enviar mensaje con URL y mensaje extra, luego las menciones
+    bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}`);
+    for (const c of chunks) {
+        bot.sendMessage(chatId, c);
+    }
+},
     paisespastilla: async (chatId, args) => {
     if (args.length < 2) {
         bot.sendMessage(chatId, "Ejemplo: /paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
