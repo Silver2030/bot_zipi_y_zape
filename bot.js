@@ -406,10 +406,10 @@ FILTROS:
 
         // Mandar resultados
         let mensajeFinal =
-            `🌍 País ${countryId}\n` +
-            `🍞 Comida usada: ${comida}\n\n` +
-            `📊 Total daño actual: ${Math.round(totalActual).toLocaleString('es-ES')}\n` +
-            `📊 Total daño 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n\n` +
+            `- País: https://app.warera.io/country/${countryId}\n` +
+            `- Comida usada: ${comida}\n\n` +
+            `- Total de daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}\n` +
+            `- Total de daño en 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n\n` +
             resultados.join('\n\n');
 
         bot.sendMessage(chatId, mensajeFinal);
