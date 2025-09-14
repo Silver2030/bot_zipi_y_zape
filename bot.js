@@ -5,6 +5,139 @@ const express = require('express');
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
+// --- Función para calcular daño Montecarlo ---
+async function calcularDanyo(userData, healFood) {
+    const atk = userData.skills.attack?.total || 0;
+    const critChance = (userData.skills.criticalChance?.total || 0) / 100;
+    const critDmg = (userData.skills.criticalDamages?.total || 0) / 100;
+    const precision = (userData.skills.precision?.total || 0) / 100;
+    const armor = (userData.skills.armor?.total || 0) / 100;
+    const dodge = (userData.skills.dodge?.total || 0) / 100;
+
+    const hpNow = (userData.skills.health?.currentBarValue || 0)
+        + Math.floor(userData.skills.hunger?.currentBarValue || 0) * healFood;
+
+    const hpRegen24h = userData.skills.health?.total * 0.1 * 24;
+    const hungerRegen24h = Math.floor(userData.skills.hunger?.total * 0.1 * 24) * healFood;
+    const hp24h = hpRegen24h + hungerRegen24h;
+
+    function simular(hpTotal) {
+        const simulaciones = 10000;
+        let totalDanyo = 0;
+
+        for (let i = 0; i < simulaciones; i++) {
+            let hp = hpTotal;
+            let dmg = 0;
+
+            while (hp >= 10) {
+                const esquiva = Math.random() < dodge;
+                const coste = esquiva ? 0 : 10 * (1 - armor);
+                if (hp < coste) break;
+                hp -= coste;
+
+                let base = atk;
+                if (Math.random() < critChance) base *= (1 + critDmg);
+                if (Math.random() >= precision) base *= 0.5;
+
+                dmg += base;
+            }
+            totalDanyo += dmg;
+        }
+
+        return totalDanyo / simulaciones;
+    }
+
+    return {
+        danyoActual: simular(hpNow),
+        danyo24h: simular(hp24h)
+    };
+}
+
+// --- Función unificada para país o MU ---
+async function calcularDanyoGrupo(chatId, args, tipo = 'pais') {
+    if (args.length < 2) {
+        bot.sendMessage(chatId, tipo === 'pais' 
+            ? "Ejemplo: /paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO"
+            : "Ejemplo: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PESCADO");
+        return;
+    }
+
+    const id = args[0].includes('warera.io') ? args[0].split('/').pop() : args[0];
+    const comida = args[1].toUpperCase();
+    const healMap = { PAN: 10, FILETE: 20, PESCADO: 30 };
+    const healFood = healMap[comida];
+
+    if (!healFood) {
+        bot.sendMessage(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
+        return;
+    }
+
+    try {
+        let items = [];
+
+        if (tipo === 'pais') {
+            const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({ countryId: id, limit: 100 }))}`);
+            items = usersRes.data?.result?.data?.items || [];
+        } else {
+            const muRes = await axios.get(`https://api2.warera.io/trpc/mu.getById?input=${encodeURIComponent(JSON.stringify({ muId: id }))}`);
+            const muData = muRes.data?.result?.data;
+            if (!muData?.members?.length) {
+                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+                return;
+            }
+            items = muData.members.map(userId => ({ _id: userId }));
+        }
+
+        let totalActual = 0;
+        let total24h = 0;
+        const resultados = [];
+
+        for (const item of items) {
+            try {
+                const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({ userId: item._id }))}`);
+                const data = userRes.data?.result?.data;
+                if (!data) continue;
+
+                const { danyoActual, danyo24h } = await calcularDanyo(data, healFood);
+
+                totalActual += danyoActual;
+                total24h += danyo24h;
+
+                resultados.push({
+                    username: data.username,
+                    userId: data._id,
+                    danyoActual,
+                    danyo24h
+                });
+
+            } catch (e) {
+                console.error(`Error obteniendo usuario ${item._id}:`, e.message);
+            }
+        }
+
+        resultados.sort((a, b) => b.danyoActual - a.danyoActual);
+
+        const mensajeUsuarios = resultados.map(u => 
+            `- ${u.username} - https://app.warera.io/user/${u.userId}\n` +
+            `Daño actual: ${Math.round(u.danyoActual).toLocaleString('es-ES')}\n` +
+            `Daño 24h: ${Math.round(u.danyo24h).toLocaleString('es-ES')}`
+        ).join('\n\n');
+
+        const mensajeFinal =
+            `- ${tipo === 'pais' ? 'País' : 'MU'}: https://app.warera.io/${tipo}/${id}\n` +
+            `- Comida usada: ${comida}\n\n` +
+            `- Total de daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}\n` +
+            `- Total de daño en 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n\n` +
+            mensajeUsuarios;
+
+        bot.sendMessage(chatId, mensajeFinal);
+
+    } catch (error) {
+        console.error(error);
+        bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
+    }
+}
+
 // GROUP ID: -1002840225634 CHAT ID: 696082291
 const GROUP_ID = -1002840225634;
 const GROUP_PRUEBAS_ID = -4981907547;
@@ -87,7 +220,7 @@ FILTROS:
 EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS
 
 /paisesDanyo <ID_PAIS/ENLACE_PAIS> <FILTRO>
-Muestra el daño disponible de un pais
+Muestra el daño disponible de un pais y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
 FILTROS:
 - PAN: Se supone un caso en el que todos usaran pan para recuperar hp
 - FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
@@ -309,120 +442,10 @@ FILTROS:
     }
 },
     paisesDanyo: async (chatId, args) => {
-    if (args.length < 2) {
-        bot.sendMessage(chatId, "Ejemplo: /paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO");
-        return;
-    }
-
-    let countryId = args[0].includes('warera.io')
-        ? args[0].split('/').pop()
-        : args[0];
-
-    const comida = args[1].toUpperCase();
-    const healMap = { PAN: 10, FILETE: 20, PESCADO: 30 };
-    const healFood = healMap[comida];
-
-    if (!healFood) {
-        bot.sendMessage(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
-        return;
-    }
-
-    try {
-        // Obtener usuarios del país
-        const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({ countryId, limit: 100 }))}`);
-        const items = usersRes.data?.result?.data?.items || [];
-
-        let totalActual = 0;
-        let total24h = 0;
-        let resultados = [];
-
-        // Procesar cada usuario secuencialmente
-        for (const item of items) {
-            try {
-                const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({ userId: item._id }))}`);
-                const data = userRes.data?.result?.data;
-                if (!data) continue;
-
-                const atk = data.skills.attack?.total || 0;
-                const critChance = (data.skills.criticalChance?.total || 0) / 100;
-                const critDmg = (data.skills.criticalDamages?.total || 0) / 100;
-                const precision = (data.skills.precision?.total || 0) / 100;
-                const armor = (data.skills.armor?.total || 0) / 100;
-                const dodge = (data.skills.dodge?.total || 0) / 100;
-
-                // DAÑO ACTUAL
-                const hpNow = (data.skills.health?.currentBarValue || 0)
-                    + Math.floor(data.skills.hunger?.currentBarValue || 0) * healFood;
-
-                // DAÑO 24H (solo regeneración)
-                const hpRegen24h = data.skills.health?.total * 0.1 * 24; // regen de HP
-                const hungerRegen24h = Math.floor(data.skills.hunger?.total * 0.1 * 24) * healFood; // regen de comida
-                const hp24h = hpRegen24h + hungerRegen24h;
-
-                // Función Montecarlo
-                function simular(hpTotal) {
-                    const simulaciones = 10000;
-                    let totalDanyo = 0;
-
-                    for (let i = 0; i < simulaciones; i++) {
-                        let hp = hpTotal;
-                        let dmg = 0;
-
-                        while (hp >= 10) {
-                            // coste de golpe
-                            const esquiva = Math.random() < dodge;
-                            const coste = esquiva ? 0 : 10 * (1 - armor);
-                            if (hp < coste) break;
-                            hp -= coste;
-
-                            // daño por golpe
-                            let base = atk;
-                            const critico = Math.random() < critChance;
-                            if (critico) base *= (1 + critDmg);
-
-                            const acierto = Math.random() < precision;
-                            if (!acierto) base *= 0.5;
-
-                            dmg += base;
-                        }
-
-                        totalDanyo += dmg;
-                    }
-
-                    return totalDanyo / simulaciones;
-                }
-
-                const DanyoActual = simular(hpNow);
-                const Danyo24h = simular(hp24h);
-
-                totalActual += DanyoActual;
-                total24h += Danyo24h;
-
-                resultados.push(
-                    `- ${data.username} - https://app.warera.io/user/${data._id}\n` +
-                    `Daño actual: ${Math.round(DanyoActual).toLocaleString('es-ES')}\n` +
-                    `Daño 24h: ${Math.round(Danyo24h).toLocaleString('es-ES')}`
-                );
-
-            } catch (e) {
-                console.error(`Error obteniendo usuario ${item._id}:`, e.message);
-            }
-        }
-
-        // Mandar resultados
-        const mensajeFinal =
-            `- País: https://app.warera.io/country/${countryId}\n` +
-            `- Comida usada: ${comida}\n\n` +
-            `- Total de daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}\n` +
-            `- Total de daño en 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n\n` +
-            resultados.join('\n\n');
-
-        bot.sendMessage(chatId, mensajeFinal);
-
-    } catch (error) {
-        console.error(error);
-        bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
-    }
+    calcularDanyoGrupo(chatId, args, 'pais');
+},
+    muDanyo: async (chatId, args) => {
+    calcularDanyoGrupo(chatId, args, 'mu');
 }
 
 };
