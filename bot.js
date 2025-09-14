@@ -64,7 +64,7 @@ Acabas de usarlo subnormal
 /status
 Comprueba si el bot está funcionando y recuerda a Yitan lo que es
 
-/hambre <URL> <MENSAJE>
+/hambre <ENLACE_GUERRA> <MENSAJE>
 Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
 EJEMPLO: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO
 
