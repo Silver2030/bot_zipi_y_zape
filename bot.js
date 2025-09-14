@@ -269,7 +269,7 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
     },
     paisesPastilla: async (chatId, args) => {
         if (args.length < 2) {
-            bot.sendMessage(chatId, "/paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
+            bot.sendMessage(chatId, "Ejemplo: /paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
             return;
         }
 
@@ -357,8 +357,8 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
         }
     },
     muPastilla: async (chatId, args) => {
-    if (args.length < 1) {
-        bot.sendMessage(chatId, "/muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS");
+    if (args.length < 2) {
+        bot.sendMessage(chatId, "Ejemplo: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS");
         return;
     }
 
