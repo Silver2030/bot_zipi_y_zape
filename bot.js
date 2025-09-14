@@ -61,13 +61,12 @@ bot.on('message', async (msg) => {
 
     // Comando /help
     if (text.startsWith('/help')) {
-        const helpMessage = `
-    Comandos disponibles:
+        const helpMessage = 
+        `Comandos disponibles:
 
-    /status - Comprueba si el bot está funcionando y recuerdas a Yitan lo que es
-    /hambre <URL> <MENSAJE> - Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar (Muchos pings, no seais imbeciles spameandolo)
-    /help - Acabas de usarlo subnormal
-        `;
+        /help - Acabas de usarlo subnormal
+        /status - Comprueba si el bot está funcionando y recuerdas a Yitan lo que es
+        /hambre <URL> <MENSAJE> - Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar (Muchos pings, no seais imbeciles spameandolo)`;
         bot.sendMessage(chatId, helpMessage);
         return;
     }
