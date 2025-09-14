@@ -59,6 +59,19 @@ bot.on('message', async (msg) => {
     const text = msg.text;
     if (!text) return;
 
+    // Comando /help
+    if (text.startsWith('/help')) {
+        const helpMessage = `
+    Comandos disponibles:
+
+    /status - Comprueba si el bot está funcionando y recuerdas a Yitan lo que es
+    /hambre <URL> <MENSAJE> - Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar (Muchos pings, no seais imbeciles spameandolo)
+    /help - Acabas de usarlo subnormal
+        `;
+        bot.sendMessage(chatId, helpMessage);
+        return;
+    }
+    
     // Comando /status
     if (text.startsWith('/status')) {
         bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón');
@@ -91,7 +104,7 @@ bot.on('message', async (msg) => {
             const hunger = data?.skills?.hunger;
             const username = data?.username;
 
-            if (hunger && hunger.currentBarValue >= 0.7 * hunger.total) {
+            if (hunger && hunger.currentBarValue >= 0.6 * hunger.total) {
                 menciones.push(`${usuario.mention} (${username})`);
             }
         } catch (error) {
