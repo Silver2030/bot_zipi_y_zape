@@ -84,7 +84,14 @@ FILTROS:
 - DEBUFF: Muestra aquellos con la pastilla en debuff
 - DISPONIBLES: Muestra aquellos con la pastilla disponible para usar
 - TODAS: Muestra todas las opciones
-EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS`;
+EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS
+
+/paisesDaño <ID_PAIS/ENLACE_PAIS> <FILTRO>
+Muestra el daño disponible de un pais
+FILTROS:
+- PAN: Se supone un caso en el que todos usaran pan para recuperar hp
+- FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
+- PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp`;
         bot.sendMessage(chatId, helpMessage);
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
@@ -293,6 +300,117 @@ EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODA
         } else {
             mensajeFinal = "Filtro no válido. Usa ACTIVAS, DEBUFF, DISPONIBLES o TODAS.";
         }
+
+        bot.sendMessage(chatId, mensajeFinal);
+
+    } catch (error) {
+        console.error(error);
+        bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
+    }
+},
+    paisesDaño: async (chatId, args) => {
+    if (args.length < 2) {
+        bot.sendMessage(chatId, "Ejemplo: /paisesDaño https://app.warera.io/user/686f9befee16d37c418cd087 PESCADO");
+        return;
+    }
+
+    let countryId = args[0].includes('warera.io')
+        ? args[0].split('/').pop()
+        : args[0];
+
+    const comida = args[1].toUpperCase();
+    const healMap = { PAN: 10, FILETE: 20, PESCADO: 30 };
+    const healFood = healMap[comida];
+
+    if (!healFood) {
+        bot.sendMessage(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
+        return;
+    }
+
+    try {
+        // Obtener usuarios del país
+        const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({ countryId, limit: 100 }))}`);
+        const items = usersRes.data?.result?.data?.items || [];
+
+        let totalActual = 0;
+        let total24h = 0;
+        let resultados = [];
+
+        // Procesar cada usuario secuencialmente (más seguro para Railway)
+        for (const item of items) {
+            try {
+                const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({ userId: item._id }))}`);
+                const data = userRes.data?.result?.data;
+                if (!data) continue;
+
+                const atk = data.skills.attack?.value || 0;
+                const critChance = (data.skills.criticalChance?.value || 0) / 100;
+                const critDmg = (data.skills.criticalDamages?.value || 0) / 100;
+                const precision = (data.skills.precision?.value || 0) / 100;
+                const armor = (data.skills.armor?.value || 0) / 100;
+                const dodge = (data.skills.dodge?.value || 0) / 100;
+
+                const hpNow = (data.skills.health?.currentBarValue || 0)
+                    + Math.floor(data.skills.hunger?.currentBarValue || 0) * healFood;
+                const hp24h = (data.skills.health?.value || 0) * 2.4
+                    + Math.floor((data.skills.hunger?.value || 0) * 2.4) * healFood;
+
+                // función simulación Montecarlo
+                function simular(hpTotal) {
+                    let simulaciones = 10000;
+                    let totalDaño = 0;
+
+                    for (let i = 0; i < simulaciones; i++) {
+                        let hp = hpTotal;
+                        let dmg = 0;
+
+                        while (hp >= 10) {
+                            // coste de golpe
+                            let esquiva = Math.random() < dodge;
+                            let coste = esquiva ? 0 : 10 * (1 - armor);
+                            if (hp < coste) break;
+                            hp -= coste;
+
+                            // daño por golpe
+                            let base = atk;
+                            let critico = Math.random() < critChance;
+                            if (critico) base *= (1 + critDmg);
+
+                            let acierto = Math.random() < precision;
+                            if (!acierto) base *= 0.5;
+
+                            dmg += base;
+                        }
+                        totalDaño += dmg;
+                    }
+
+                    return totalDaño / simulaciones;
+                }
+
+                const dañoActual = simular(hpNow);
+                const daño24h = simular(hp24h);
+
+                totalActual += dañoActual;
+                total24h += daño24h;
+
+                resultados.push(
+                    `👤 ${data.username} - https://app.warera.io/user/${data._id}\n` +
+                    `Daño actual: ${Math.round(dañoActual).toLocaleString('es-ES')}\n` +
+                    `Daño 24h: ${Math.round(daño24h).toLocaleString('es-ES')}`
+                );
+
+            } catch (e) {
+                console.error(`Error obteniendo usuario ${item._id}:`, e.message);
+            }
+        }
+
+        // Mandar resultados
+        let mensajeFinal =
+            `🌍 País ${countryId}\n` +
+            `🍞 Comida usada: ${comida}\n\n` +
+            `📊 Total daño actual: ${Math.round(totalActual).toLocaleString('es-ES')}\n` +
+            `📊 Total daño 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n\n` +
+            resultados.join('\n\n');
 
         bot.sendMessage(chatId, mensajeFinal);
 
