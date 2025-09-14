@@ -72,13 +72,13 @@ const comandos = {
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
     hambre: async (chatId, args) => {
-        if (args.length < 3) {
+        if (!args[0] || !args[1]) {
             bot.sendMessage(chatId, "Formato: /hambre <URL> <MENSAJE>");
             return;
         }
 
-        const urlBattle = args[1];
-        const mensajeExtra = args.slice(2).join(' ');
+        const urlBattle = args[0];
+        const mensajeExtra = args.slice(1).join(' ');
         const menciones = [];
 
         for (const usuario of usuarios) {
