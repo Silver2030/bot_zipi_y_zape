@@ -7,6 +7,7 @@ const bot = new TelegramBot(token, { polling: true });
 
 // GROUP ID: -1002840225634 CHAT ID: 696082291
 const GROUP_ID = -1002840225634;
+const GROUP_PRUEBAS_ID = -1002840225634;
 const CHAT_ID = 696082291;
 
 // Lista de usuarios
@@ -199,10 +200,12 @@ FILTROS:
 
 // --- Listener principal ---
 bot.on('message', async (msg) => {
+    console.log(`Mensaje recibido en chatId: ${chatId} | Texto: ${msg.text}`);
+
     const chatId = msg.chat.id;
 
     // Filtrar por grupo o chat permitido
-    if (GROUP_ID && chatId !== GROUP_ID || chatId !== CHAT_ID) return;
+    if (GROUP_ID && chatId !== GROUP_ID && chatId !== GROUP_PRUEBAS_ID && chatId !== CHAT_ID) return;
 
     const text = msg.text;
     if (!text || !text.startsWith('/')) return;
