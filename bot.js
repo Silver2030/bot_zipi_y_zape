@@ -85,7 +85,7 @@ bot.on('message', async (msg) => {
         }
     }
 
-    const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join(' ')}`;
+    const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
     bot.sendMessage(chatId, mensajeFinal);
 });
 
