@@ -127,7 +127,7 @@ async function calcularDanyoGrupo(chatId, args, tipo = 'pais') {
             `- ${tipo === 'pais' ? 'País' : 'MU'}: https://app.warera.io/${tipo}/${id}\n` +
             `- Comida usada: ${comida}\n\n` +
             `- Total de daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}\n` +
-            `- Total de daño en 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n\n` +
+            `- Total de daño a lo largo de 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n\n` +
             mensajeUsuarios;
 
         bot.sendMessage(chatId, mensajeFinal);
@@ -221,6 +221,13 @@ EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODA
 
 /paisesDanyo <ID_PAIS/ENLACE_PAIS> <FILTRO>
 Muestra el daño disponible de un pais y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
+FILTROS:
+- PAN: Se supone un caso en el que todos usaran pan para recuperar hp
+- FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
+- PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp
+
+/muDanyo <ID_MU/MU> <FILTRO>
+Muestra el daño disponible de una mu y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
 FILTROS:
 - PAN: Se supone un caso en el que todos usaran pan para recuperar hp
 - FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
