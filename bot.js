@@ -6,7 +6,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // ID del grupo donde quieres que funcione el bot
-const GROUP_ID = null; // <-- reemplaza con el chatId real cuando lo tengas
+const GROUP_ID = -1002840225634; // <-- reemplaza con el chatId real cuando lo tengas
 
 // Lista de usuarios
 const usuarios = [
@@ -54,10 +54,19 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
 
     // Solo responder si viene del grupo permitido
-    if (GROUP_ID && chatId !== GROUP_ID) return; // mientras GROUP_ID sea undefined no filtra
+    if (GROUP_ID && chatId !== GROUP_ID) return; // mientras GROUP_ID sea null no filtra
 
     const text = msg.text;
-    if (!text || !text.startsWith('/hambre')) return;
+    if (!text) return;
+
+    // Comando /status
+    if (text.startsWith('/status')) {
+        bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón');
+        return;
+    }
+
+    // Comando /hambre
+    if (!text.startsWith('/hambre')) return;
 
     // Separar argumentos
     const args = text.split(' ');
@@ -99,8 +108,3 @@ const app = express();
 app.get('/', (req, res) => res.send('Bot alive!'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-// Opcional: imprime todos los chatIds para ayudarte a encontrar tu grupo
-bot.on('message', (msg) => {
-    console.log("Mensaje recibido en chatId:", msg.chat.id);
-});
