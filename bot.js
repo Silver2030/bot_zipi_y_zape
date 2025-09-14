@@ -6,7 +6,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // ID del grupo donde quieres que funcione el bot
-const GROUP_ID = YOUR_GROUP_ID_HERE; // <-- reemplaza con el chatId real cuando lo tengas
+const GROUP_ID = null; // <-- reemplaza con el chatId real cuando lo tengas
 
 // Lista de usuarios
 const usuarios = [
