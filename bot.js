@@ -267,96 +267,97 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
         const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
         bot.sendMessage(chatId, mensajeFinal);
     },
-    paisespastilla: async (chatId, args) => {
-        if (args.length < 2) {
-            bot.sendMessage(chatId, "Ejemplo: /paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
-            return;
+    paisesPastilla: async (chatId, args) => {
+    if (args.length < 2) {
+        bot.sendMessage(chatId, "Ejemplo: /paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
+        return;
+    }
+
+    let countryId = args[0].includes('warera.io') 
+        ? args[0].split('/').pop() 
+        : args[0];
+
+    const filtro = args[1].toUpperCase();
+
+    try {
+        // Obtener usuarios del país
+        const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
+        const items = usersRes.data?.result?.data?.items || [];
+
+        const usuariosFiltrados = [];
+
+        for (const item of items) {
+            try {
+                const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
+                const data = userRes.data?.result?.data;
+                if (!data) continue;
+
+                let estado = 'disponible';
+                let fecha = null;
+
+                if (data.buffs?.buffCodes?.length) {
+                    estado = 'activa';
+                    fecha = new Date(data.buffs.buffEndAt);
+                } else if (data.buffs?.debuffCodes?.length) {
+                    estado = 'debuff';
+                    fecha = new Date(data.buffs.debuffEndAt);
+                }
+
+                usuariosFiltrados.push({
+                    username: data.username,
+                    _id: data._id,
+                    estado,
+                    fecha
+                });
+            } catch (e) {
+                console.error(`Error obteniendo usuario ${item._id}:`, e.message);
+            }
         }
 
-        let countryId = args[0].includes('warera.io') 
-            ? args[0].split('/').pop() 
-            : args[0];
+        // Separar por estado
+        const disponibles = usuariosFiltrados.filter(u => u.estado === 'disponible');
+        const activos = usuariosFiltrados.filter(u => u.estado === 'activa').sort((a,b) => a.fecha - b.fecha);
+        const debuffs = usuariosFiltrados.filter(u => u.estado === 'debuff').sort((a,b) => a.fecha - b.fecha);
 
-        const filtro = args[1] ? args[1].trim().toUpperCase() : "TODAS";
-
-        try {
-            // Obtener usuarios del país
-            const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
-            const items = usersRes.data?.result?.data?.items || [];
-
-            const usuariosFiltrados = [];
-
-            for (const item of items) {
-                try {
-                    const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
-                    const data = userRes.data?.result?.data;
-                    if (!data) continue;
-
-                    let estado = 'disponible';
-                    let fecha = null;
-
-                    if (data.buffs?.buffCodes?.length) {
-                        estado = 'activa';
-                        fecha = new Date(data.buffs.buffEndAt);
-                    } else if (data.buffs?.debuffCodes?.length) {
-                        estado = 'debuff';
-                        fecha = new Date(data.buffs.debuffEndAt);
-                    }
-
-                    usuariosFiltrados.push({
-                        username: data.username,
-                        _id: data._id,
-                        estado,
-                        fecha
-                    });
-                } catch (e) {
-                    console.error(`Error obteniendo usuario ${item._id}:`, e.message);
-                }
-            }
-
-            // Separar por estado
-            const disponibles = usuariosFiltrados.filter(u => u.estado === 'disponible');
-            const activos = usuariosFiltrados.filter(u => u.estado === 'activa');
-            const debuffs = usuariosFiltrados.filter(u => u.estado === 'debuff');
-
-            // Función para formatear
-            const formatear = (u) => {
-                const base = `${u.username} - https://app.warera.io/user/${u._id}`;
-                if (u.estado === 'activa') {
-                    return `${base}\nPastilla: activa hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
-                } else if (u.estado === 'debuff') {
-                    return `${base}\nPastilla: debuff hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
-                } else {
-                    return `${base}\nPastilla: disponible`;
-                }
-            };
-
-            let mensajeFinal = '';
-
-            if (filtro === 'TODAS') {
-                mensajeFinal += `Disponibles: ${disponibles.length}, Activas: ${activos.length}, Debuff: ${debuffs.length}\n\n`;
-                mensajeFinal += [...disponibles, ...activos, ...debuffs].map(formatear).join('\n\n');
-            } else if (filtro === 'DISPONIBLES') {
-                mensajeFinal += `Disponibles: ${disponibles.length}\n\n`;
-                mensajeFinal += disponibles.map(formatear).join('\n\n');
-            } else if (filtro === 'ACTIVAS') {
-                mensajeFinal += `Activas: ${activos.length}\n\n`;
-                mensajeFinal += activos.map(formatear).join('\n\n');
-            } else if (filtro === 'DEBUFF') {
-                mensajeFinal += `Debuff: ${debuffs.length}\n\n`;
-                mensajeFinal += debuffs.map(formatear).join('\n\n');
+        // Función para formatear
+        const formatear = (u) => {
+            const base = `${u.username} - https://app.warera.io/user/${u._id}`;
+            if (u.estado === 'activa') {
+                return `${base}\nPastilla: activa hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
+            } else if (u.estado === 'debuff') {
+                return `${base}\nPastilla: debuff hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
             } else {
-                mensajeFinal = "Filtro no válido. Usa ACTIVAS, DEBUFF, DISPONIBLES o TODAS.";
+                return `${base}\nPastilla: disponible`;
             }
+        };
 
-            bot.sendMessage(chatId, mensajeFinal);
+        let mensajeFinal = '';
 
-        } catch (error) {
-            console.error(error);
-            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
+        if (filtro === 'TODAS') {
+            mensajeFinal += `Disponibles: ${disponibles.length}, Activas: ${activos.length}, Debuff: ${debuffs.length}\n\n`;
+            mensajeFinal += [...disponibles, ...activos, ...debuffs].map(formatear).join('\n\n');
+        } else if (filtro === 'DISPONIBLES') {
+            mensajeFinal += `Disponibles: ${disponibles.length}\n\n`;
+            mensajeFinal += disponibles.map(formatear).join('\n\n');
+        } else if (filtro === 'ACTIVAS') {
+            mensajeFinal += `Activas: ${activos.length}\n\n`;
+            mensajeFinal += activos.map(formatear).join('\n\n');
+        } else if (filtro === 'DEBUFF') {
+            mensajeFinal += `Debuff: ${debuffs.length}\n\n`;
+            mensajeFinal += debuffs.map(formatear).join('\n\n');
+        } else {
+            mensajeFinal = "Filtro no válido. Usa ACTIVAS, DEBUFF, DISPONIBLES o TODAS.";
         }
-    },
-    mupastilla: async (chatId, args) => {
+
+        bot.sendMessage(chatId, mensajeFinal);
+
+    } catch (error) {
+        console.error(error);
+        bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
+    }
+},
+
+muPastilla: async (chatId, args) => {
     if (args.length < 2) {
         bot.sendMessage(chatId, "Ejemplo: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS");
         return;
@@ -366,10 +367,9 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
         ? args[0].split('/').pop()
         : args[0];
 
-    const filtro = args[1] ? args[1].trim().toUpperCase() : "TODAS";
+    const filtro = args[1] ? args[1].toUpperCase() : "TODAS";
 
     try {
-        // Obtener datos del MU
         const muRes = await axios.get(`https://api2.warera.io/trpc/mu.getById?input=${encodeURIComponent(JSON.stringify({ muId }))}`);
         const muData = muRes.data?.result?.data;
 
@@ -408,12 +408,10 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
             }
         }
 
-        // Separar por estado
         const disponibles = usuariosFiltrados.filter(u => u.estado === 'disponible');
-        const activos = usuariosFiltrados.filter(u => u.estado === 'activa');
-        const debuffs = usuariosFiltrados.filter(u => u.estado === 'debuff');
+        const activos = usuariosFiltrados.filter(u => u.estado === 'activa').sort((a,b) => a.fecha - b.fecha);
+        const debuffs = usuariosFiltrados.filter(u => u.estado === 'debuff').sort((a,b) => a.fecha - b.fecha);
 
-        // Formatear mensaje
         const formatear = (u) => {
             const base = `${u.username} - https://app.warera.io/user/${u._id}`;
             if (u.estado === 'activa') {
