@@ -5,8 +5,8 @@ const express = require('express');
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
-// ID del grupo donde quieres que funcione el bot
-const GROUP_ID = -1002840225634; // <-- reemplaza con el chatId real cuando lo tengas
+// GROUP ID: -1002840225634 CHAT ID: 696082291
+const GROUP_ID = -1002840225634;
 
 // Lista de usuarios
 const usuarios = [
@@ -54,7 +54,7 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
 
     // Solo responder si viene del grupo permitido
-    if (GROUP_ID && chatId !== GROUP_ID) return; // mientras GROUP_ID sea null no filtra
+    if (GROUP_ID && chatId !== GROUP_ID) return; // Si se establece GROUP_ID como null se evita este filtro
 
     const text = msg.text;
     if (!text) return;
@@ -85,7 +85,6 @@ bot.on('message', async (msg) => {
     // Comando /hambre
     if (!text.startsWith('/hambre')) return;
 
-    // Separar argumentos
     const args = text.split(' ');
     if (args.length < 3) {
         bot.sendMessage(chatId, "Formato: /hambre <URL> <MENSAJE>");
