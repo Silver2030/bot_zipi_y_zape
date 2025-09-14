@@ -225,13 +225,15 @@ FILTROS:
 - PAN: Se supone un caso en el que todos usaran pan para recuperar hp
 - FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
 - PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp
+EJEMPLO: /paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO
 
 /muDanyo <ID_MU/MU> <FILTRO>
 Muestra el daño disponible de una mu y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
 FILTROS:
 - PAN: Se supone un caso en el que todos usaran pan para recuperar hp
 - FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
-- PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp`;
+- PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp
+EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
         bot.sendMessage(chatId, helpMessage);
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
