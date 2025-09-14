@@ -6,7 +6,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // GROUP ID: -1002840225634 CHAT ID: 696082291
-const GROUP_ID = -1002840225634;
+const GROUP_ID = 696082291;
 
 // Lista de usuarios
 const usuarios = [
@@ -34,7 +34,7 @@ const usuarios = [
     { userId: "684aba6474cdd09ff4bdb1c9", mention: "@kesta_pasando" },
     { userId: "686be039fb337713b29e172d", mention: "@Brayanorsini" },
     { userId: "686d0bf95841fc53d8fe3e69", mention: "@Flopero" },
-    { userId: "686eb3bab7dc5cb1d7e3085b", mention: "@Dopillo" },
+    { userId: "686eb3bab7dc5cb1d7e3085", mention: "@Dopillo" },
     { userId: "686eca28c6f1851a706a304d", mention: "@bt0mas" },
     { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     { userId: "6876632469f52d5b9c1271d7", mention: "@noSeQuienEsYandro" },
@@ -50,73 +50,69 @@ const usuarios = [
     { userId: "68b6cff38cb553cbc3f79eec", mention: "@noSeQuienEsMardOuaz" }
 ];
 
+// --- Comandos del bot ---
+const comandos = {
+    help: (chatId) => {
+        const helpMessage = 
+`Comandos disponibles:
+
+/help
+Acabas de usarlo subnormal
+
+/status
+Comprueba si el bot está funcionando y recuerda a Yitan lo que es
+
+/hambre <URL> <MENSAJE>
+Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)`;
+        bot.sendMessage(chatId, helpMessage);
+    },
+    status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
+    hambre: async (chatId, args) => {
+        if (args.length < 3) {
+            bot.sendMessage(chatId, "Formato: /hambre <URL> <MENSAJE>");
+            return;
+        }
+
+        const urlBattle = args[1];
+        const mensajeExtra = args.slice(2).join(' ');
+        const menciones = [];
+
+        for (const usuario of usuarios) {
+            try {
+                const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
+                const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
+                const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
+                const data = response.data?.result?.data;
+                const hunger = data?.skills?.hunger;
+                const username = data?.username;
+
+                if (hunger && hunger.currentBarValue >= 0.6 * hunger.total) {
+                    menciones.push(`${usuario.mention} (${username})`);
+                }
+            } catch (error) {
+                console.error(`Error con usuario ${usuario.userId}:`, error.message);
+            }
+        }
+
+        const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
+        bot.sendMessage(chatId, mensajeFinal);
+    }
+};
+
+// --- Listener principal ---
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
 
-    // Solo responder si viene del grupo permitido
-    if (GROUP_ID && chatId !== GROUP_ID) return; // Si se establece GROUP_ID como null se evita este filtro
+    if (GROUP_ID && chatId !== GROUP_ID) return; // Filtro por grupo
 
     const text = msg.text;
-    if (!text) return;
+    if (!text || !text.startsWith('/')) return;
 
-    // Comando /help
-    if (text.startsWith('/help')) {
-        const helpMessage = 
-        `Comandos disponibles:
+    const [cmd, ...args] = text.slice(1).split(' ');
 
-        /help
-        Acabas de usarlo subnormal
-
-        /status
-        Comprueba si el bot está funcionando y recuerda a Yitan lo que es
-
-        /hambre <URL> <MENSAJE>
-        Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)`;
-        bot.sendMessage(chatId, helpMessage);
-        return;
+    if (comandos[cmd]) {
+        await comandos[cmd](chatId, args);
     }
-    
-    // Comando /status
-    if (text.startsWith('/status')) {
-        bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón');
-        return;
-    }
-
-    // Comando /hambre
-    if (!text.startsWith('/hambre')) return;
-
-    const args = text.split(' ');
-    if (args.length < 3) {
-        bot.sendMessage(chatId, "Formato: /hambre <URL> <MENSAJE>");
-        return;
-    }
-
-    const urlBattle = args[1];
-    const mensajeExtra = args.slice(2).join(' ');
-
-    const menciones = [];
-
-    // Revisar cada usuario
-    for (const usuario of usuarios) {
-        try {
-            const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
-            const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
-
-            const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
-            const data = response.data?.result?.data;
-            const hunger = data?.skills?.hunger;
-            const username = data?.username;
-
-            if (hunger && hunger.currentBarValue >= 0.6 * hunger.total) {
-                menciones.push(`${usuario.mention} (${username})`);
-            }
-        } catch (error) {
-            console.error(`Error con usuario ${usuario.userId}:`, error.message);
-        }
-    }
-
-    const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
-    bot.sendMessage(chatId, mensajeFinal);
 });
 
 // --- Express para UptimeRobot ---
