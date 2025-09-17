@@ -145,7 +145,6 @@ const CHAT_ID = 696082291;
 
 // Lista de usuarios
 const usuarios = [
-    { userId: "6877c0446097872ea4988815", mention: "@LoganSS021" },
     { userId: "688955d9b9407610b5a9808d", mention: "@Daotma" },
     { userId: "688f351bd672278e5d09b3e3", mention: "@Daotma" },
     { userId: "683f624fc6294e3b6516c78e", mention: "@JoseManuelMaCa" },
