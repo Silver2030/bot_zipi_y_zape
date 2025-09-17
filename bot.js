@@ -182,7 +182,8 @@ const usuarios = [
     { userId: "68a34a08d1c35b2e594c6ea6", mention: "@Oresito" },
     { userId: "68b4eb03ff683cdd14acf90b", mention: "@noSeQuienEsMegalomaniaa" },
     { userId: "68b6cff38cb553cbc3f79eec", mention: "@noSeQuienEsMardOuaz" },
-    { userId: "68386302a484755f062b16a8", mention: "@GaryRr" }
+    { userId: "68386302a484755f062b16a8", mention: "@GaryRr" },
+    { userId: "68703ddf37ff51dd0dc590d0", mention: "@GaryRr" }
 ];
 
 // --- Comandos del bot ---
