@@ -502,7 +502,7 @@ Muestra el ranking de daño de esta semana de los players registrados`;
 
             // Formatear salida numerada
             const lista = resultados
-                .map((r, i) => `${i + 1}) ${r.username}: ${r.weeklyDamage.toLocaleString()}`)
+                .map((r, i) => `${i + 1}) ${r.username}: ${r.weeklyDamage.toLocaleString('es-ES')}`)
                 .join('\n');
 
             const mensajeFinal = `Daño semanal por jugador:\n\n${lista}\n\nMedia de daño: ${media.toLocaleString()}`;
