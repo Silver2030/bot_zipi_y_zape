@@ -508,7 +508,7 @@ Muestra el ranking de daño de esta semana de los players registrados`;
             const mensajeFinal = `Daño semanal:\n\n${lista}\n\nMedia de daño: ${media.toLocaleString('es-ES')}`;
             bot.sendMessage(chatId, mensajeFinal);
         } catch (error) {
-            console.error("Error en /weeklyDamage:", error.message);
+            console.error("Error en /danyoSemanal:", error.message);
             bot.sendMessage(chatId, "Error al obtener los daños semanales.");
         }
     }
