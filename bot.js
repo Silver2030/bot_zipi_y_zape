@@ -233,39 +233,52 @@ FILTROS:
 - PAN: Se supone un caso en el que todos usaran pan para recuperar hp
 - FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
 - PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp
-EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
+EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN
+
+/dañoSemanal
+Muestra el ranking de daño de esta semana de los players registrados`;
         bot.sendMessage(chatId, helpMessage);
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
     hambre: async (chatId, args) => {
-        if (!args[0] || !args[1]) {
-            bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
-            return;
-        }
+    if (!args[0] || !args[1]) {
+        bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
+        return;
+    }
 
-        const urlBattle = args[0];
-        const mensajeExtra = args.slice(1).join(' ');
-        const menciones = [];
+    const urlBattle = args[0];
+    const mensajeExtra = args.slice(1).join(' ');
+    const menciones = [];
 
-        for (const usuario of usuarios) {
-            try {
-                const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
-                const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
-                const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
-                const data = response.data?.result?.data;
-                const hunger = data?.skills?.hunger;
-                const username = data?.username;
+    for (const usuario of usuarios) {
+        try {
+            const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
+            const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
+            const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
+            const data = response.data?.result?.data;
+            if (!data) continue;
 
-                if (hunger && hunger.currentBarValue >= 0.6 * hunger.total) {
-                    menciones.push(`${usuario.mention} (${username})`);
-                }
-            } catch (error) {
-                console.error(`Error con usuario ${usuario.userId}:`, error.message);
+            const hunger = data?.skills?.hunger;
+            const username = data?.username;
+            const debuffs = data?.buffs?.debuffCodes || [];
+
+            // No mencionar si tiene debuff "cocain"
+            if (debuffs.includes("cocain")) {
+                console.log(`Excluido ${username} (${usuario.userId}) por debuff de cocain`);
+                continue;
             }
-        }
 
-        const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
-        bot.sendMessage(chatId, mensajeFinal);
+            // Validar hambre ≥ 30%
+            if (hunger && hunger.currentBarValue >= 0.3 * hunger.total) {
+                menciones.push(`${usuario.mention} (${username})`);
+            }
+        } catch (error) {
+            console.error(`Error con usuario ${usuario.userId}:`, error.message);
+        }
+    }
+
+    const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
+    bot.sendMessage(chatId, mensajeFinal);
     },
     paisespastilla: async (chatId, args) => {
     if (args.length < 2) {
@@ -351,109 +364,154 @@ EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN`;
 
         bot.sendMessage(chatId, mensajeFinal);
 
-    } catch (error) {
-        console.error(error);
-        bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
-    }
-},
+        } catch (error) {
+            console.error(error);
+            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
+        }
+    },
 
-mupastilla: async (chatId, args) => {
-    if (args.length < 2) {
-        bot.sendMessage(chatId, "Ejemplo: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS");
-        return;
-    }
-
-    let muId = args[0].includes('warera.io')
-        ? args[0].split('/').pop()
-        : args[0];
-
-    const filtro = args[1] ? args[1].toUpperCase() : "TODAS";
-
-    try {
-        const muRes = await axios.get(`https://api2.warera.io/trpc/mu.getById?input=${encodeURIComponent(JSON.stringify({ muId }))}`);
-        const muData = muRes.data?.result?.data;
-
-        if (!muData || !muData.members?.length) {
-            bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+    mupastilla: async (chatId, args) => {
+        if (args.length < 2) {
+            bot.sendMessage(chatId, "Ejemplo: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS");
             return;
         }
 
-        const usuariosFiltrados = [];
+        let muId = args[0].includes('warera.io')
+            ? args[0].split('/').pop()
+            : args[0];
 
-        for (const userId of muData.members) {
-            try {
-                const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId}))}`);
-                const data = userRes.data?.result?.data;
-                if (!data) continue;
+        const filtro = args[1] ? args[1].toUpperCase() : "TODAS";
 
-                let estado = 'disponible';
-                let fecha = null;
+        try {
+            const muRes = await axios.get(`https://api2.warera.io/trpc/mu.getById?input=${encodeURIComponent(JSON.stringify({ muId }))}`);
+            const muData = muRes.data?.result?.data;
 
-                if (data.buffs?.buffCodes?.length) {
-                    estado = 'activa';
-                    fecha = new Date(data.buffs.buffEndAt);
-                } else if (data.buffs?.debuffCodes?.length) {
-                    estado = 'debuff';
-                    fecha = new Date(data.buffs.debuffEndAt);
+            if (!muData || !muData.members?.length) {
+                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+                return;
+            }
+
+            const usuariosFiltrados = [];
+
+            for (const userId of muData.members) {
+                try {
+                    const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId}))}`);
+                    const data = userRes.data?.result?.data;
+                    if (!data) continue;
+
+                    let estado = 'disponible';
+                    let fecha = null;
+
+                    if (data.buffs?.buffCodes?.length) {
+                        estado = 'activa';
+                        fecha = new Date(data.buffs.buffEndAt);
+                    } else if (data.buffs?.debuffCodes?.length) {
+                        estado = 'debuff';
+                        fecha = new Date(data.buffs.debuffEndAt);
+                    }
+
+                    usuariosFiltrados.push({
+                        username: data.username,
+                        _id: data._id,
+                        estado,
+                        fecha
+                    });
+                } catch (e) {
+                    console.error(`Error obteniendo usuario ${userId}:`, e.message);
                 }
-
-                usuariosFiltrados.push({
-                    username: data.username,
-                    _id: data._id,
-                    estado,
-                    fecha
-                });
-            } catch (e) {
-                console.error(`Error obteniendo usuario ${userId}:`, e.message);
             }
-        }
 
-        const disponibles = usuariosFiltrados.filter(u => u.estado === 'disponible');
-        const activos = usuariosFiltrados.filter(u => u.estado === 'activa').sort((a,b) => a.fecha - b.fecha);
-        const debuffs = usuariosFiltrados.filter(u => u.estado === 'debuff').sort((a,b) => a.fecha - b.fecha);
+            const disponibles = usuariosFiltrados.filter(u => u.estado === 'disponible');
+            const activos = usuariosFiltrados.filter(u => u.estado === 'activa').sort((a,b) => a.fecha - b.fecha);
+            const debuffs = usuariosFiltrados.filter(u => u.estado === 'debuff').sort((a,b) => a.fecha - b.fecha);
 
-        const formatear = (u) => {
-            const base = `${u.username} - https://app.warera.io/user/${u._id}`;
-            if (u.estado === 'activa') {
-                return `${base}\nPastilla: activa hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
-            } else if (u.estado === 'debuff') {
-                return `${base}\nPastilla: debuff hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
+            const formatear = (u) => {
+                const base = `${u.username} - https://app.warera.io/user/${u._id}`;
+                if (u.estado === 'activa') {
+                    return `${base}\nPastilla: activa hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
+                } else if (u.estado === 'debuff') {
+                    return `${base}\nPastilla: debuff hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
+                } else {
+                    return `${base}\nPastilla: disponible`;
+                }
+            };
+
+            let mensajeFinal = '';
+
+            if (filtro === 'TODAS') {
+                mensajeFinal += `Disponibles: ${disponibles.length}, Activas: ${activos.length}, Debuff: ${debuffs.length}\n\n`;
+                mensajeFinal += [...disponibles, ...activos, ...debuffs].map(formatear).join('\n\n');
+            } else if (filtro === 'DISPONIBLES') {
+                mensajeFinal += `Disponibles: ${disponibles.length}\n\n`;
+                mensajeFinal += disponibles.map(formatear).join('\n\n');
+            } else if (filtro === 'ACTIVAS') {
+                mensajeFinal += `Activas: ${activos.length}\n\n`;
+                mensajeFinal += activos.map(formatear).join('\n\n');
+            } else if (filtro === 'DEBUFF') {
+                mensajeFinal += `Debuff: ${debuffs.length}\n\n`;
+                mensajeFinal += debuffs.map(formatear).join('\n\n');
             } else {
-                return `${base}\nPastilla: disponible`;
+                mensajeFinal = "Filtro no válido. Usa ACTIVAS, DEBUFF, DISPONIBLES o TODAS.";
             }
-        };
 
-        let mensajeFinal = '';
+            bot.sendMessage(chatId, mensajeFinal);
 
-        if (filtro === 'TODAS') {
-            mensajeFinal += `Disponibles: ${disponibles.length}, Activas: ${activos.length}, Debuff: ${debuffs.length}\n\n`;
-            mensajeFinal += [...disponibles, ...activos, ...debuffs].map(formatear).join('\n\n');
-        } else if (filtro === 'DISPONIBLES') {
-            mensajeFinal += `Disponibles: ${disponibles.length}\n\n`;
-            mensajeFinal += disponibles.map(formatear).join('\n\n');
-        } else if (filtro === 'ACTIVAS') {
-            mensajeFinal += `Activas: ${activos.length}\n\n`;
-            mensajeFinal += activos.map(formatear).join('\n\n');
-        } else if (filtro === 'DEBUFF') {
-            mensajeFinal += `Debuff: ${debuffs.length}\n\n`;
-            mensajeFinal += debuffs.map(formatear).join('\n\n');
-        } else {
-            mensajeFinal = "Filtro no válido. Usa ACTIVAS, DEBUFF, DISPONIBLES o TODAS.";
+        } catch (error) {
+            console.error(error);
+            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
         }
+        },
+        paisesdanyo: async (chatId, args) => {
+            calcularDanyoGrupo(chatId, args, 'pais');
+        },
+        mudanyo: async (chatId, args) => {
+            calcularDanyoGrupo(chatId, args, 'mu');
+        },
+        dañosemanal: async (chatId) => {
+        try {
+            const resultados = [];
 
-        bot.sendMessage(chatId, mensajeFinal);
+            for (const usuario of usuarios) {
+                try {
+                    const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
+                    const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
+                    const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
+                    const data = response.data?.result?.data;
+                    if (!data) continue;
 
-    } catch (error) {
-        console.error(error);
-        bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
+                    const username = data.username;
+                    const weeklyDamage = data.rankings?.weeklyUserDamages?.value ?? 0;
+
+                    resultados.push({ username, weeklyDamage });
+                } catch (error) {
+                    console.error(`Error con usuario ${usuario.userId}:`, error.message);
+                }
+            }
+
+            if (resultados.length === 0) {
+                bot.sendMessage(chatId, "No se pudo obtener el daño semanal de ningún jugador.");
+                return;
+            }
+
+            // Ordenar de mayor a menor daño
+            resultados.sort((a, b) => b.weeklyDamage - a.weeklyDamage);
+
+            // Calcular la media
+            const totalDamage = resultados.reduce((sum, r) => sum + r.weeklyDamage, 0);
+            const media = Math.round(totalDamage / resultados.length);
+
+            // Formatear salida numerada
+            const lista = resultados
+                .map((r, i) => `${i + 1}) ${r.username}: ${r.weeklyDamage.toLocaleString()}`)
+                .join('\n');
+
+            const mensajeFinal = `📊 Daño semanal por jugador:\n\n${lista}\n\n - Media de daño: ${media.toLocaleString()}`;
+            bot.sendMessage(chatId, mensajeFinal);
+        } catch (error) {
+            console.error("Error en /weeklyDamage:", error.message);
+            bot.sendMessage(chatId, "Error al obtener los daños semanales.");
+        }
     }
-},
-    paisesdanyo: async (chatId, args) => {
-    calcularDanyoGrupo(chatId, args, 'pais');
-},
-    mudanyo: async (chatId, args) => {
-    calcularDanyoGrupo(chatId, args, 'mu');
-}
 
 };
 
