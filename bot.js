@@ -235,7 +235,7 @@ FILTROS:
 - PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp
 EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN
 
-/dañoSemanal
+/danyosemanal
 Muestra el ranking de daño de esta semana de los players registrados`;
         bot.sendMessage(chatId, helpMessage);
     },
@@ -467,7 +467,7 @@ Muestra el ranking de daño de esta semana de los players registrados`;
         mudanyo: async (chatId, args) => {
             calcularDanyoGrupo(chatId, args, 'mu');
         },
-        dañosemanal: async (chatId) => {
+        danyosemanal: async (chatId) => {
         try {
             const resultados = [];
 
