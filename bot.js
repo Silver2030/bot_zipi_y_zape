@@ -505,7 +505,7 @@ Muestra el ranking de daño de esta semana de los players registrados`;
                 .map((r, i) => `${i + 1}) ${r.username}: ${r.weeklyDamage.toLocaleString()}`)
                 .join('\n');
 
-            const mensajeFinal = `📊 Daño semanal por jugador:\n\n${lista}\n\n - Media de daño: ${media.toLocaleString()}`;
+            const mensajeFinal = `Daño semanal por jugador:\n\n${lista}\n\nMedia de daño: ${media.toLocaleString()}`;
             bot.sendMessage(chatId, mensajeFinal);
         } catch (error) {
             console.error("Error en /weeklyDamage:", error.message);
