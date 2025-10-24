@@ -166,20 +166,14 @@ const usuarios = [
     { userId: "6841e93f4503de9d2a49bac2", mention: "@Mikeeeel" },
     { userId: "6849bef474cdd09ff494ddf1", mention: "@YitanRR" },
     { userId: "684aba6474cdd09ff4bdb1c9", mention: "@kesta_pasando" },
-    { userId: "686be039fb337713b29e172d", mention: "@Brayanorsini" },
     { userId: "686d0bf95841fc53d8fe3e69", mention: "@Flopero" },
-    { userId: "686eb3bab7dc5cb1d7e3085b", mention: "@Dopillo" },
     { userId: "686eca28c6f1851a706a304d", mention: "@bt0mas" },
     { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     { userId: "6876632469f52d5b9c1271d7", mention: "@noSeQuienEsYandro" },
     { userId: "6877c0446097872ea4988815", mention: "@LoganSS021" },
     { userId: "687b345ee6f08f7066aa7aff", mention: "@noSeQuienEsSurpriseMagician" },
-    { userId: "688a5b63449469e970769c28", mention: "@Oresito" },
     { userId: "68920253cb23029a760fe72a", mention: "@noSeQuienEsBaguchin" },
-    { userId: "689a5f3a5c3c40f764859813", mention: "@Dopillo" },
-    { userId: "689a5f94f3c7e02ba2f2b981", mention: "@Dopillo" },
     { userId: "689cb0d3d52432c932980841", mention: "@noSeQuienEsPotato" },
-    { userId: "68a34a08d1c35b2e594c6ea6", mention: "@Oresito" },
     { userId: "68b4eb03ff683cdd14acf90b", mention: "@noSeQuienEsMegalomaniaa" },
     { userId: "68b6cff38cb553cbc3f79eec", mention: "@noSeQuienEsMardOuaz" },
     { userId: "68386302a484755f062b16a8", mention: "@GaryRr" },
@@ -200,41 +194,18 @@ Comprueba si el bot está funcionando y recuerda a Yitan lo que es
 
 /hambre <ENLACE_GUERRA> <MENSAJE>
 Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
-EJEMPLO: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO
 
 /paisesPastilla <ID_PAIS/ENLACE_PAIS> <FILTRO>
 Muestra el estado de las pastillas de un pais
-FILTROS:
-- ACTIVAS: Muestra aquellos con la pastilla en activo
-- DEBUFF: Muestra aquellos con la pastilla en debuff
-- DISPONIBLES: Muestra aquellos con la pastilla disponible para usar
-- TODAS: Muestra todas las opciones
-EJEMPLO: /paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS
 
 /muPastilla <ID_MU/MU> <FILTRO>
 Muestra el estado de las pastillas de una mu
-FILTROS:
-- ACTIVAS: Muestra aquellos con la pastilla en activo
-- DEBUFF: Muestra aquellos con la pastilla en debuff
-- DISPONIBLES: Muestra aquellos con la pastilla disponible para usar
-- TODAS: Muestra todas las opciones
-EJEMPLO: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS
 
 /paisesDanyo <ID_PAIS/ENLACE_PAIS> <FILTRO>
 Muestra el daño disponible de un pais y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
-FILTROS:
-- PAN: Se supone un caso en el que todos usaran pan para recuperar hp
-- FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
-- PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp
-EJEMPLO: /paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO
 
 /muDanyo <ID_MU/MU> <FILTRO>
 Muestra el daño disponible de una mu y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
-FILTROS:
-- PAN: Se supone un caso en el que todos usaran pan para recuperar hp
-- FILETE: Se supone un caso en el que todos usaran filetes para recuperar hp
-- PESCADO: Se supone un caso en el que todos usaran pescado para recuperar hp
-EJEMPLO: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PAN
 
 /danyosemanal
 Muestra el ranking de daño de esta semana de los players registrados`;
