@@ -240,7 +240,10 @@ Muestra el daño disponible de un pais y el que puede hacer a lo largo de 24h (S
 Muestra el daño disponible de una mu y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
 
 /danyosemanal
-Muestra el ranking de daño de esta semana de los players registrados`;
+Muestra el ranking de daño de esta semana de los players registrados
+
+/guerras <GUERRA>
+Muestra el daño realizado a lo largo de un conflicto`;
         bot.sendMessage(chatId, helpMessage);
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
