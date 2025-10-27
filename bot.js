@@ -248,44 +248,58 @@ Muestra el daño realizado a lo largo de un conflicto`;
     },
     status: (chatId) => bot.sendMessage(chatId, 'Sigo funcionando, Yitan maricón'),
     hambre: async (chatId, args) => {
-    if (!args[0] || !args[1]) {
-        bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
-        return;
-    }
-
-    const urlBattle = args[0];
-    const mensajeExtra = args.slice(1).join(' ');
-    const menciones = [];
-
-    for (const usuario of usuarios) {
-        try {
-            const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
-            const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
-            const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
-            const data = response.data?.result?.data;
-            if (!data) continue;
-
-            const hunger = data?.skills?.hunger;
-            const username = data?.username;
-            const debuffs = data?.buffs?.debuffCodes || [];
-
-            // No mencionar si tiene debuff "cocain"
-            if (debuffs.includes("cocain")) {
-                console.log(`Excluido ${username} (${usuario.userId}) por debuff de cocain`);
-                continue;
-            }
-
-            // Validar hambre ≥ 30%
-            if (hunger && hunger.currentBarValue >= 0.3 * hunger.total) {
-                menciones.push(`${usuario.mention} (${username})`);
-            }
-        } catch (error) {
-            console.error(`Error con usuario ${usuario.userId}:`, error.message);
+        if (!args[0] || !args[1]) {
+            bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
+            return;
         }
-    }
 
-    const mensajeFinal = `${urlBattle}\n${mensajeExtra}\n${menciones.join('\n')}`;
-    bot.sendMessage(chatId, mensajeFinal);
+        const urlBattle = args[0];
+        const mensajeExtra = args.slice(1).join(' ');
+        const menciones = [];
+
+        for (const usuario of usuarios) {
+            try {
+                const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
+                const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
+                const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
+                const data = response.data?.result?.data;
+                if (!data) continue;
+
+                const hunger = data?.skills?.hunger;
+                const username = data?.username;
+                const debuffs = data?.buffs?.debuffCodes || [];
+
+                // No mencionar si tiene debuff "cocain"
+                if (debuffs.includes("cocain")) {
+                    console.log(`Excluido ${username} (${usuario.userId}) por debuff de cocain`);
+                    continue;
+                }
+
+                // Validar hambre ≥ 30%
+                if (hunger && hunger.currentBarValue >= 0.3 * hunger.total) {
+                    menciones.push(`${usuario.mention} (${username})`);
+                }
+            } catch (error) {
+                console.error(`Error con usuario ${usuario.userId}:`, error.message);
+            }
+        }
+
+        // --- Enviar mensajes por partes ---
+        if (menciones.length === 0) {
+            bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}\n\nNadie necesita comer 🍞`);
+            return;
+        }
+
+        // Mensaje principal (sin menciones)
+        await bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}`);
+
+        // Enviar menciones en bloques de 5
+        const chunkSize = 5;
+        for (let i = 0; i < menciones.length; i += chunkSize) {
+            const grupo = menciones.slice(i, i + chunkSize).join('\n');
+            await bot.sendMessage(chatId, grupo);
+            await new Promise(res => setTimeout(res, 500)); // pequeña pausa para no saturar Telegram
+        }
     },
     paisespastilla: async (chatId, args) => {
     if (args.length < 2) {
