@@ -221,8 +221,8 @@ const comandos = {
 /hambre <ENLACE_GUERRA> <MENSAJE>
 Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
 
-/paisesPastilla <ID_PAIS/ENLACE_PAIS> <FILTRO>
-Muestra el estado de las pastillas de un pais
+/jugadoresPais <ID_PAIS/ENLACE_PAIS>
+Muestra las builds de los jugadores de un pais y sus pastillas
 
 /muPastilla <ID_MU/MU> <FILTRO>
 Muestra el estado de las pastillas de una mu
@@ -294,9 +294,9 @@ Muestra el daño realizado a lo largo de un conflicto`;
             await new Promise(res => setTimeout(res, 500)); // pequeña pausa para no saturar Telegram
         }
     },
-    paisespastilla: async (chatId, args) => {
-        if (args.length < 2) {
-            bot.sendMessage(chatId, "Ejemplo: /paisesPastilla https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
+    jugadoresPais: async (chatId, args) => {
+        if (args.length < 1) {
+            bot.sendMessage(chatId, "Ejemplo: /jugadoresPais https://app.warera.io/country/683ddd2c24b5a2e114af15d9");
             return;
         }
 
@@ -304,9 +304,7 @@ Muestra el daño realizado a lo largo de un conflicto`;
             ? args[0].split('/').pop() 
             : args[0];
 
-        const filtro = args[1].toUpperCase();
         const costes = [0,1,3,6,10,15,21,28,36,45,55];
-
         const skillsPvp = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
         const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
 
@@ -325,7 +323,6 @@ Muestra el daño realizado a lo largo de un conflicto`;
                     // Estado pastilla
                     let icono = "";
                     let fecha = null;
-
                     if (data.buffs?.buffCodes?.length) {
                         icono = "💊";
                         fecha = new Date(data.buffs.buffEndAt);
@@ -336,14 +333,8 @@ Muestra el daño realizado a lo largo de un conflicto`;
 
                     // Puntos gastados
                     let pvpPoints = 0, ecoPoints = 0;
-
-                    skillsPvp.forEach(s => {
-                        pvpPoints += costes[data.skills[s]?.level || 0];
-                    });
-
-                    skillsEco.forEach(s => {
-                        ecoPoints += costes[data.skills[s]?.level || 0];
-                    });
+                    skillsPvp.forEach(s => { pvpPoints += costes[data.skills[s]?.level || 0]; });
+                    skillsEco.forEach(s => { ecoPoints += costes[data.skills[s]?.level || 0]; });
 
                     const total = pvpPoints + ecoPoints;
                     const pctPvp = total ? (pvpPoints / total) * 100 : 0;
@@ -353,45 +344,56 @@ Muestra el daño realizado a lo largo de un conflicto`;
                     if (pctPvp > 65) build = "PVP";
                     else if (pctEco > 65) build = "ECO";
 
-                    usuarios.push({
-                        username: data.username,
-                        _id: data._id,
-                        icono,
-                        fecha,
-                        build
-                    });
+                    usuarios.push({ username: data.username, _id: data._id, icono, fecha, build });
 
-                } catch (e) {}
+                } catch (e) {
+                    console.error(`Error con usuario ${item._id}:`, e.message);
+                }
             }
 
-            const disponibles = usuarios.filter(u => u.icono === "");
-            const activas = usuarios.filter(u => u.icono === "💊").sort((a,b)=>a.fecha-b.fecha);
-            const debuffs = usuarios.filter(u => u.icono === "⛔").sort((a,b)=>a.fecha-b.fecha);
+            // Separar por tipo de build
+            const pvp = usuarios.filter(u => u.build === "PVP");
+            const hibridos = usuarios.filter(u => u.build === "HIBRIDA");
+            const eco = usuarios.filter(u => u.build === "ECO");
 
-            const formatear = u => {
-                let linea = `${u.icono} ${u.username} (${u.build})\nhttps://app.warera.io/user/${u._id}`;
-                if (u.fecha) linea += `\nHasta: ${u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'})}`;
-                return linea;
+            // Contadores pastillas
+            const disponibles = usuarios.filter(u => u.icono === "").length;
+            const activas = usuarios.filter(u => u.icono === "💊").length;
+            const debuffs = usuarios.filter(u => u.icono === "⛔").length;
+
+            const crearBotones = arr => {
+                return arr.map(u => {
+                    let text = u.username;
+                    if (u.icono) text += ` ${u.icono}`;
+                    if (u.fecha) text += ` ${u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'})}`;
+                    return [{ text, url: `https://app.warera.io/user/${u._id}` }];
+                });
             };
 
-            let mensaje = "";
+            let keyboard = [];
 
-            if (filtro === 'TODAS') {
-                mensaje += `Disponibles: ${disponibles.length}, Activas: ${activas.length}, Debuff: ${debuffs.length}\n\n`;
-                mensaje += [...disponibles, ...activas, ...debuffs].map(formatear).join('\n\n');
-            } else if (filtro === 'DISPONIBLES') {
-                mensaje += `Disponibles: ${disponibles.length}\n\n` + disponibles.map(formatear).join('\n\n');
-            } else if (filtro === 'ACTIVAS') {
-                mensaje += `Activas: ${activas.length}\n\n` + activas.map(formatear).join('\n\n');
-            } else if (filtro === 'DEBUFF') {
-                mensaje += `Debuff: ${debuffs.length}\n\n` + debuffs.map(formatear).join('\n\n');
-            } else {
-                mensaje = "Filtro no válido. Usa ACTIVAS, DEBUFF, DISPONIBLES o TODAS.";
+            if (pvp.length) {
+                keyboard.push([{ text: "PVP", callback_data: "none" }]);
+                keyboard.push(...crearBotones(pvp));
+            }
+            if (hibridos.length) {
+                keyboard.push([{ text: "HIBRIDA", callback_data: "none" }]);
+                keyboard.push(...crearBotones(hibridos));
+            }
+            if (eco.length) {
+                keyboard.push([{ text: "ECO", callback_data: "none" }]);
+                keyboard.push(...crearBotones(eco));
             }
 
-            bot.sendMessage(chatId, mensaje);
+            const resumen = `**PASTILLAS**\nDisponibles: ${disponibles}, Activas: ${activas}, Debuff: ${debuffs}`;
+
+            bot.sendMessage(chatId, resumen, {
+                parse_mode: "Markdown",
+                reply_markup: { inline_keyboard: keyboard }
+            });
 
         } catch (error) {
+            console.error(error);
             bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
         }
     },
