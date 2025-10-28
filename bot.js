@@ -313,7 +313,7 @@ Muestra el daño realizado a lo largo de un conflicto`;
         const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
 
         function escapeMarkdownV2(text) {
-            // Escapa todos los caracteres reservados excepto []() ya que son necesarios para links
+            // Escapa los caracteres reservados excepto []() que usamos para links
             return text.replace(/([_*~`>#+\-=|{}.!])/g, '\\$1');
         }
 
@@ -377,12 +377,17 @@ Muestra el daño realizado a lo largo de un conflicto`;
             const debuffs = usuarios.filter(u => u.icono === "⛔").length;
 
             const format = u => {
-                let username = escapeMarkdownV2(u.username); // Escapamos solo caracteres peligrosos, no []()
-                let link = `https://app.warera.io/user/${u._id}`;
-                let line = `[${username}](${link})`; // Link válido sin escapar []
+                const username = escapeMarkdownV2(u.username);  // solo el nombre
+                const link = `https://app.warera.io/user/${u._id}`;
+                let line = `[${username}](${link})`;  // link sin escapar []
 
-                if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
-                if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }))}`;
+                if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;  // emoji fuera del link
+                if (u.fecha) {
+                    // escapamos los paréntesis de la fecha, porque van fuera del link
+                    const fechaStr = u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
+                    line += ` ${escapeMarkdownV2(fechaStr)}`;
+                }
+
                 return line;
             };
 
