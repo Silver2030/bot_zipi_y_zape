@@ -313,8 +313,10 @@ Muestra el daño realizado a lo largo de un conflicto`;
         const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
 
         function escapeMarkdownV2(text) {
-            return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+            // Escapa todos los caracteres reservados en MarkdownV2
+            return text.replace(/([_*\[\]()~`>#+\-=|{}.!:\/])/g, '\\$1');
         }
+
 
         try {
             const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
