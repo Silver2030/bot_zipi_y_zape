@@ -294,7 +294,7 @@ Muestra el daño realizado a lo largo de un conflicto`;
             await new Promise(res => setTimeout(res, 500)); // pequeña pausa para no saturar Telegram
         }
     },
-    jugadoresPais: async (chatId, args) => {
+    jugadorespais: async (chatId, args) => {
         if (args.length < 1) {
             bot.sendMessage(chatId, "Ejemplo: /jugadoresPais https://app.warera.io/country/683ddd2c24b5a2e114af15d9");
             return;
