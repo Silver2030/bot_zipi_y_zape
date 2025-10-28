@@ -304,7 +304,6 @@ Muestra el daño realizado a lo largo de un conflicto`;
             ? args[0].split('/').pop() 
             : args[0];
 
-        const filtro = args[1].toUpperCase();
         const costes = [0,1,3,6,10,15,21,28,36,45,55];
 
         const skillsPvp = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
