@@ -351,7 +351,7 @@ Muestra el daño realizado a lo largo de un conflicto`;
                 }
             }
 
-            // Separar por tipo de build
+            // Separar por tipo de build 
             const pvp = usuarios.filter(u => u.build === "PVP");
             const hibridos = usuarios.filter(u => u.build === "HIBRIDA");
             const eco = usuarios.filter(u => u.build === "ECO");
