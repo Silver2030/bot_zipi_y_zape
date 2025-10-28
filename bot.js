@@ -316,7 +316,6 @@ jugadorespais: async (chatId, args) => {
     function escapeMarkdownV2(text) {
         return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
     }
-
     try {
         const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
         const items = usersRes.data?.result?.data?.items || [];
@@ -391,6 +390,9 @@ jugadorespais: async (chatId, args) => {
         mensaje += `*PVP - ${pvp.length}*\n` + (pvp.length ? pvp.map(format).join('\n') : "(ninguno)") + `\n\n`;
         mensaje += `*HIBRIDA - ${hibridos.length}*\n` + (hibridos.length ? hibridos.map(format).join('\n') : "(ninguno)") + `\n\n`;
         mensaje += `*ECO - ${eco.length}*\n` + (eco.length ? eco.map(format).join('\n') : "(ninguno)");
+
+        // Escapa el carácter '-' en el mensaje final
+        mensaje = mensaje.replace(/-/g, '\\-');
 
         // Enviar mensaje
         bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
