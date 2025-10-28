@@ -313,8 +313,8 @@ Muestra el daño realizado a lo largo de un conflicto`;
         const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
 
         function escapeMarkdownV2(text) {
-            // Escapa todos los caracteres reservados en MarkdownV2
-            return text.replace(/([_*\[\]()~`>#+\-=|{}.!:\/])/g, '\\$1');
+            // Escapa todos los caracteres reservados excepto []() ya que los necesitamos para links
+            return text.replace(/([_*~`>#+\-=|{}.!:\/])/g, '\\$1');
         }
 
 
@@ -376,27 +376,30 @@ Muestra el daño realizado a lo largo de un conflicto`;
             const activas = usuarios.filter(u => u.icono === "💊").length;
             const debuffs = usuarios.filter(u => u.icono === "⛔").length;
 
-            // Función para formatear cada usuario
             const format = u => {
-                let line = `[${escapeMarkdownV2(u.username)}](https://app.warera.io/user/${u._id})`;
+                // Construye el link sin escapar [] y ()
+                let username = escapeMarkdownV2(u.username);
+                let link = `https://app.warera.io/user/${u._id}`;
+                let line = `[${username}](${link})`;
+
                 if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
-                if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
+                if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }))}`;
                 return line;
             };
 
-            // Construir mensaje completo
-            let mensaje = `*${escapeMarkdownV2("PASTILLAS")}*\nDisponibles: ${disponibles}, Activas: ${activas}, Debuff: ${debuffs}\n\n`;
+            let mensaje = `*PASTILLAS*\nDisponibles: ${disponibles}, Activas: ${activas}, Debuff: ${debuffs}\n\n`;
 
-            mensaje += `*${escapeMarkdownV2("PVP")} (${pvp.length})*\n`;
+            mensaje += `*PVP* (${pvp.length})\n`;
             mensaje += pvp.length ? pvp.map(format).join('\n') : "(ninguno)";
             mensaje += `\n\n`;
 
-            mensaje += `*${escapeMarkdownV2("HIBRIDA")} (${hibridos.length})*\n`;
+            mensaje += `*HIBRIDA* (${hibridos.length})\n`;
             mensaje += hibridos.length ? hibridos.map(format).join('\n') : "(ninguno)";
             mensaje += `\n\n`;
 
-            mensaje += `*${escapeMarkdownV2("ECO")} (${eco.length})*\n`;
+            mensaje += `*ECO* (${eco.length})\n`;
             mensaje += eco.length ? eco.map(format).join('\n') : "(ninguno)";
+
 
             bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
 
