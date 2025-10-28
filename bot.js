@@ -372,27 +372,36 @@ Muestra el daño realizado a lo largo de un conflicto`;
             const activas = usuarios.filter(u => u.icono === "💊").length;
             const debuffs = usuarios.filter(u => u.icono === "⛔").length;
 
-            // Línea usuario con hipervínculo
-            const format = u => {
-                let line = `[${u.username}](https://app.warera.io/user/${u._id})`;
-                if (u.icono) line += ` ${u.icono}`;
-                if (u.fecha) line += ` ${u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'})}`;
-                return line;
-            };
+            function escapeMarkdownV2(text) {
+                return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+            }
 
-            let mensaje = `*PASTILLAS*\nDisponibles: ${disponibles}, Activas: ${activas}, Debuff: ${debuffs}\n\n`;
+            let mensaje = "";
 
-            mensaje += `*${escapeMarkdownV2("PVP (" + pvp.length + ")")}*\n`;
-            mensaje += pvp.length ? pvp.map(format).join('\n') : "(ninguno)";
+            // Cabecera de pastillas en negrita
+            mensaje += `*PASTILLAS*\n`;
+            mensaje += `*Disponibles:* ${disponibles}, *Activas:* ${activas}, *Debuff:* ${debuffs}\n\n`;
+
+            // Sección PVP
+            mensaje += `*PVP (${pvp.length})*\n`;
+            mensaje += pvp.length
+                ? pvp.map(u => `[${escapeMarkdownV2(u.nombre)}](${escapeMarkdownV2(u.link)})`).join('\n')
+                : "(ninguno)";
             mensaje += `\n\n`;
 
-            mensaje += `*${escapeMarkdownV2("HIBRIDA (" + hibridos.length + ")")}*\n`;
-            mensaje += hibridos.length ? hibridos.map(format).join('\n') : "(ninguno)";
+            // Sección HIBRIDA
+            mensaje += `*HIBRIDA (${hibridos.length})*\n`;
+            mensaje += hibridos.length
+                ? hibridos.map(u => `[${escapeMarkdownV2(u.nombre)}](${escapeMarkdownV2(u.link)})`).join('\n')
+                : "(ninguno)";
             mensaje += `\n\n`;
 
-            mensaje += `*${escapeMarkdownV2("ECO (" + eco.length + ")")}*\n`;
-            mensaje += eco.length ? eco.map(format).join('\n') : "(ninguno)";
-
+            // Sección ECO
+            mensaje += `*ECO (${eco.length})*\n`;
+            mensaje += eco.length
+                ? eco.map(u => `[${escapeMarkdownV2(u.nombre)}](${escapeMarkdownV2(u.link)})`).join('\n')
+                : "(ninguno)";
+                
             bot.sendMessage(chatId, mensaje, { parse_mode: "Markdown" });
 
         } catch (error) {
