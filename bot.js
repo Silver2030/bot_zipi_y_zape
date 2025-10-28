@@ -384,16 +384,17 @@ jugadorespais: async (chatId, args) => {
         // Construir mensaje final
         let mensaje = `*PASTILLAS*\n*Disponibles:* ${disponibles}, *Activas:* ${activas}, *Debuff:* ${debuffs}\n\n`;
 
-        mensaje += `*PVP (${pvp.length})*\n`;
+        mensaje += `*${escapeMarkdownV2("PVP")} \\(${pvp.length}\\)*\n`;
         mensaje += pvp.length ? pvp.map(format).join('\n') : "(ninguno)";
         mensaje += `\n\n`;
 
-        mensaje += `*HIBRIDA (${hibridos.length})*\n`;
+        mensaje += `*${escapeMarkdownV2("HIBRIDA")} \\(${hibridos.length}\\)*\n`;
         mensaje += hibridos.length ? hibridos.map(format).join('\n') : "(ninguno)";
         mensaje += `\n\n`;
 
-        mensaje += `*ECO (${eco.length})*\n`;
+        mensaje += `*${escapeMarkdownV2("ECO")} \\(${eco.length}\\)*\n`;
         mensaje += eco.length ? eco.map(format).join('\n') : "(ninguno)";
+
 
         bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
 
