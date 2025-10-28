@@ -295,8 +295,8 @@ Muestra el daño realizado a lo largo de un conflicto`;
         }
     },
     jugadorespais: async (chatId, args) => {
-        if (args.length < 1) {
-            bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/683ddd2c24b5a2e114af15d9");
+        if (args.length < 2) {
+            bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
             return;
         }
 
@@ -304,12 +304,14 @@ Muestra el daño realizado a lo largo de un conflicto`;
             ? args[0].split('/').pop() 
             : args[0];
 
+        const filtro = args[1].toUpperCase();
         const costes = [0,1,3,6,10,15,21,28,36,45,55];
 
         const skillsPvp = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
         const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
 
         try {
+
             const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
             const items = usersRes.data?.result?.data?.items || [];
 
@@ -321,6 +323,7 @@ Muestra el daño realizado a lo largo de un conflicto`;
                     const data = userRes.data?.result?.data;
                     if (!data) continue;
 
+                    // Estado pastilla
                     let icono = "";
                     let fecha = null;
 
@@ -332,15 +335,10 @@ Muestra el daño realizado a lo largo de un conflicto`;
                         fecha = new Date(data.buffs.debuffEndAt);
                     }
 
+                    // Puntos gastados
                     let pvpPoints = 0, ecoPoints = 0;
-
-                    skillsPvp.forEach(s => {
-                        pvpPoints += costes[data.skills[s]?.level || 0];
-                    });
-
-                    skillsEco.forEach(s => {
-                        ecoPoints += costes[data.skills[s]?.level || 0];
-                    });
+                    skillsPvp.forEach(s => pvpPoints += costes[data.skills[s]?.level || 0]);
+                    skillsEco.forEach(s => ecoPoints += costes[data.skills[s]?.level || 0]);
 
                     const total = pvpPoints + ecoPoints;
                     const pctPvp = total ? (pvpPoints / total) * 100 : 0;
@@ -361,46 +359,35 @@ Muestra el daño realizado a lo largo de un conflicto`;
                 } catch (e) {}
             }
 
-            // Separar builds
+            // Separación por build
             const pvp = usuarios.filter(u => u.build === "PVP");
             const hibridos = usuarios.filter(u => u.build === "HIBRIDA");
             const eco = usuarios.filter(u => u.build === "ECO");
 
-            // Contadores
+            // Contadores pastillas
             const disponibles = usuarios.filter(u => u.icono === "").length;
             const activas = usuarios.filter(u => u.icono === "💊").length;
             const debuffs = usuarios.filter(u => u.icono === "⛔").length;
 
-            const escapeMarkdown = (text) => {
-                return text
-                    .replace(/_/g, "\\_")
-                    .replace(/\*/g, "\\*")
-                    .replace(/\[/g, "\\[")
-                    .replace(/`/g, "\\`");
-            };
-
+            // Línea usuario con hipervínculo
             const format = u => {
-                let name = escapeMarkdown(u.username);
-                let line = name;
-
+                let line = `[${u.username}](https://app.warera.io/user/${u._id})`;
                 if (u.icono) line += ` ${u.icono}`;
                 if (u.fecha) line += ` ${u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'})}`;
-                
                 return line;
             };
 
-            // Construcción mensaje
             let mensaje = `*PASTILLAS*\nDisponibles: ${disponibles}, Activas: ${activas}, Debuff: ${debuffs}\n\n`;
 
-            mensaje += `*PVP*\n`;
+            mensaje += `*PVP* (${pvp.length})\n`;
             mensaje += pvp.length ? pvp.map(format).join('\n') : "(ninguno)";
             mensaje += `\n\n`;
 
-            mensaje += `*HIBRIDA*\n`;
+            mensaje += `*HIBRIDA* (${hibridos.length})\n`;
             mensaje += hibridos.length ? hibridos.map(format).join('\n') : "(ninguno)";
             mensaje += `\n\n`;
 
-            mensaje += `*ECO*\n`;
+            mensaje += `*ECO* (${eco.length})\n`;
             mensaje += eco.length ? eco.map(format).join('\n') : "(ninguno)";
 
             bot.sendMessage(chatId, mensaje, { parse_mode: "Markdown" });
