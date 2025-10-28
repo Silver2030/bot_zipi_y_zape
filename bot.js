@@ -371,11 +371,21 @@ Muestra el daño realizado a lo largo de un conflicto`;
             const activas = usuarios.filter(u => u.icono === "💊").length;
             const debuffs = usuarios.filter(u => u.icono === "⛔").length;
 
-            // Formateo línea
+            const escapeMarkdown = (text) => {
+                return text
+                    .replace(/_/g, "\\_")
+                    .replace(/\*/g, "\\*")
+                    .replace(/\[/g, "\\[")
+                    .replace(/`/g, "\\`");
+            };
+
             const format = u => {
-                let line = u.username;
+                let name = escapeMarkdown(u.username);
+                let line = name;
+
                 if (u.icono) line += ` ${u.icono}`;
                 if (u.fecha) line += ` ${u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'})}`;
+                
                 return line;
             };
 
