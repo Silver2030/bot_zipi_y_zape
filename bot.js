@@ -295,8 +295,8 @@ Muestra el daño realizado a lo largo de un conflicto`;
         }
     },
     jugadorespais: async (chatId, args) => {
-        if (args.length < 2) {
-            bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/683ddd2c24b5a2e114af15d9 TODAS");
+        if (args.length < 1) {
+            bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/683ddd2c24b5a2e114af15d9");
             return;
         }
 
