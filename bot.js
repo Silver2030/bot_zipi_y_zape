@@ -313,10 +313,8 @@ Muestra el daño realizado a lo largo de un conflicto`;
         const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
 
         function escapeMarkdownV2(text) {
-            // Escapa los caracteres reservados excepto []() que usamos para links
-            return text.replace(/([_*~`>#+\-=|{}.!])/g, '\\$1');
+            return text.replace(/([_*\[\]()~`>#+\-=|{}.!:\/])/g, '\\$1');
         }
-
 
         try {
             const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
@@ -330,7 +328,6 @@ Muestra el daño realizado a lo largo de un conflicto`;
                     const data = userRes.data?.result?.data;
                     if (!data) continue;
 
-                    // Estado pastilla
                     let icono = "";
                     let fecha = null;
 
@@ -342,7 +339,6 @@ Muestra el daño realizado a lo largo de un conflicto`;
                         fecha = new Date(data.buffs.debuffEndAt);
                     }
 
-                    // Puntos gastados
                     let pvpPoints = 0, ecoPoints = 0;
                     skillsPvp.forEach(s => pvpPoints += costes[data.skills[s]?.level || 0]);
                     skillsEco.forEach(s => ecoPoints += costes[data.skills[s]?.level || 0]);
@@ -366,44 +362,33 @@ Muestra el daño realizado a lo largo de un conflicto`;
                 } catch (e) { console.error(e.message); }
             }
 
-            // Separación por build
             const pvp = usuarios.filter(u => u.build === "PVP");
             const hibridos = usuarios.filter(u => u.build === "HIBRIDA");
             const eco = usuarios.filter(u => u.build === "ECO");
 
-            // Contadores pastillas
             const disponibles = usuarios.filter(u => u.icono === "").length;
             const activas = usuarios.filter(u => u.icono === "💊").length;
             const debuffs = usuarios.filter(u => u.icono === "⛔").length;
 
             const format = u => {
-                const username = escapeMarkdownV2(u.username);  // solo el nombre
-                const link = `https://app.warera.io/user/${u._id}`;
-                let line = `[${username}](${link})`;  // link sin escapar []
-
-                if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;  // emoji fuera del link
-                if (u.fecha) {
-                    // escapamos los paréntesis de la fecha, porque van fuera del link
-                    const fechaStr = u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
-                    line += ` ${escapeMarkdownV2(fechaStr)}`;
-                }
-
+                let line = `[${escapeMarkdownV2(u.username)}](https://app.warera.io/user/${u._id})`;
+                if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
+                if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
                 return line;
             };
 
-            let mensaje = `*PASTILLAS*\nDisponibles: ${disponibles}, Activas: ${activas}, Debuff: ${debuffs}\n\n`;
+            let mensaje = `*PASTILLAS*\nDisponibles - ${disponibles}, Activas - ${activas}, Debuff - ${debuffs}\n\n`;
 
-            mensaje += `*PVP* (${pvp.length})\n`;
+            mensaje += `*PVP - ${pvp.length}*\n`;
             mensaje += pvp.length ? pvp.map(format).join('\n') : "(ninguno)";
             mensaje += `\n\n`;
 
-            mensaje += `*HIBRIDA* (${hibridos.length})\n`;
+            mensaje += `*HIBRIDA - ${hibridos.length}*\n`;
             mensaje += hibridos.length ? hibridos.map(format).join('\n') : "(ninguno)";
             mensaje += `\n\n`;
 
-            mensaje += `*ECO* (${eco.length})\n`;
+            mensaje += `*ECO - ${eco.length}*\n`;
             mensaje += eco.length ? eco.map(format).join('\n') : "(ninguno)";
-
 
             bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
 
