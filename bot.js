@@ -53,6 +53,10 @@ async function calcularDanyo(userData, healFood) {
     };
 }
 
+function escapeMarkdownV2(text) {
+    return text.replace(/([_\*\[\]\(\)~`>#+\-=|{}.!])/g, '\\$1');
+}
+
 // --- Función unificada para país o MU ---
 async function calcularDanyoGrupo(chatId, args, tipo = 'pais') {
     if (args.length < 2) {
@@ -396,95 +400,104 @@ Muestra el daño realizado a lo largo de un conflicto`;
         }
     },
     mupastilla: async (chatId, args) => {
-        if (args.length < 2) {
-            bot.sendMessage(chatId, "Ejemplo: /muPastilla https://app.warera.io/country/687cbb53fae4c9cf04340e77 TODAS");
-            return;
-        }
-
-        let muId = args[0].includes('warera.io')
-            ? args[0].split('/').pop()
-            : args[0];
-
-        const filtro = args[1] ? args[1].toUpperCase() : "TODAS";
-
-        try {
-            const muRes = await axios.get(`https://api2.warera.io/trpc/mu.getById?input=${encodeURIComponent(JSON.stringify({ muId }))}`);
-            const muData = muRes.data?.result?.data;
-
-            if (!muData || !muData.members?.length) {
-                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+            if (args.length < 1) {
+                bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/683ddd2c24b5a2e114af15d9");
                 return;
             }
 
-            const usuariosFiltrados = [];
+            let countryId = args[0].includes('warera.io') 
+                ? args[0].split('/').pop() 
+                : args[0];
 
-            for (const userId of muData.members) {
-                try {
-                    const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId}))}`);
-                    const data = userRes.data?.result?.data;
-                    if (!data) continue;
+            const costes = [0,1,3,6,10,15,21,28,36,45,55];
+            const skillsPvp = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
+            const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
 
-                    let estado = 'disponible';
-                    let fecha = null;
+            try {
+                const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
+                const items = usersRes.data?.result?.data?.items || [];
 
-                    if (data.buffs?.buffCodes?.length) {
-                        estado = 'activa';
-                        fecha = new Date(data.buffs.buffEndAt);
-                    } else if (data.buffs?.debuffCodes?.length) {
-                        estado = 'debuff';
-                        fecha = new Date(data.buffs.debuffEndAt);
-                    }
+                const usuarios = [];
 
-                    usuariosFiltrados.push({
-                        username: data.username,
-                        _id: data._id,
-                        estado,
-                        fecha
-                    });
-                } catch (e) {
-                    console.error(`Error obteniendo usuario ${userId}:`, e.message);
+                for (const item of items) {
+                    try {
+                        const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
+                        const data = userRes.data?.result?.data;
+                        if (!data) continue;
+
+                        // Estado pastilla
+                        let icono = "";
+                        let fecha = null;
+
+                        if (data.buffs?.buffCodes?.length) {
+                            icono = "💊";
+                            fecha = new Date(data.buffs.buffEndAt);
+                        } else if (data.buffs?.debuffCodes?.length) {
+                            icono = "⛔";
+                            fecha = new Date(data.buffs.debuffEndAt);
+                        }
+
+                        // Puntos gastados
+                        let pvpPoints = 0, ecoPoints = 0;
+                        skillsPvp.forEach(s => pvpPoints += costes[data.skills[s]?.level || 0]);
+                        skillsEco.forEach(s => ecoPoints += costes[data.skills[s]?.level || 0]);
+
+                        const total = pvpPoints + ecoPoints;
+                        const pctPvp = total ? (pvpPoints / total) * 100 : 0;
+                        const pctEco = total ? (ecoPoints / total) * 100 : 0;
+
+                        let build = "HIBRIDA";
+                        if (pctPvp > 65) build = "PVP";
+                        else if (pctEco > 65) build = "ECO";
+
+                        usuarios.push({
+                            username: data.username,
+                            _id: data._id,
+                            icono,
+                            fecha,
+                            build
+                        });
+
+                    } catch (e) { console.error(e.message); }
                 }
+
+                // Separación por build
+                const pvp = usuarios.filter(u => u.build === "PVP");
+                const hibridos = usuarios.filter(u => u.build === "HIBRIDA");
+                const eco = usuarios.filter(u => u.build === "ECO");
+
+                // Contadores pastillas
+                const disponibles = usuarios.filter(u => u.icono === "").length;
+                const activas = usuarios.filter(u => u.icono === "💊").length;
+                const debuffs = usuarios.filter(u => u.icono === "⛔").length;
+
+                // Línea usuario con hipervínculo escapando MarkdownV2
+                const format = u => {
+                    let line = `[${escapeMarkdownV2(u.username)}](https://app.warera.io/user/${u._id})`;
+                    if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
+                    if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
+                    return line;
+                };
+
+                let mensaje = `*${escapeMarkdownV2("PASTILLAS")}*\nDisponibles: ${disponibles}, Activas: ${activas}, Debuff: ${debuffs}\n\n`;
+
+                mensaje += `*${escapeMarkdownV2("PVP")}* (${pvp.length})\n`;
+                mensaje += pvp.length ? pvp.map(format).join('\n') : "(ninguno)";
+                mensaje += `\n\n`;
+
+                mensaje += `*${escapeMarkdownV2("HIBRIDA")}* (${hibridos.length})\n`;
+                mensaje += hibridos.length ? hibridos.map(format).join('\n') : "(ninguno)";
+                mensaje += `\n\n`;
+
+                mensaje += `*${escapeMarkdownV2("ECO")}* (${eco.length})\n`;
+                mensaje += eco.length ? eco.map(format).join('\n') : "(ninguno)";
+
+                bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+
+            } catch (error) {
+                console.error(error);
+                bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
             }
-
-            const disponibles = usuariosFiltrados.filter(u => u.estado === 'disponible');
-            const activos = usuariosFiltrados.filter(u => u.estado === 'activa').sort((a,b) => a.fecha - b.fecha);
-            const debuffs = usuariosFiltrados.filter(u => u.estado === 'debuff').sort((a,b) => a.fecha - b.fecha);
-
-            const formatear = (u) => {
-                const base = `${u.username} - https://app.warera.io/user/${u._id}`;
-                if (u.estado === 'activa') {
-                    return `${base}\nPastilla: activa hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
-                } else if (u.estado === 'debuff') {
-                    return `${base}\nPastilla: debuff hasta ${u.fecha.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}`;
-                } else {
-                    return `${base}\nPastilla: disponible`;
-                }
-            };
-
-            let mensajeFinal = '';
-
-            if (filtro === 'TODAS') {
-                mensajeFinal += `Disponibles: ${disponibles.length}, Activas: ${activos.length}, Debuff: ${debuffs.length}\n\n`;
-                mensajeFinal += [...disponibles, ...activos, ...debuffs].map(formatear).join('\n\n');
-            } else if (filtro === 'DISPONIBLES') {
-                mensajeFinal += `Disponibles: ${disponibles.length}\n\n`;
-                mensajeFinal += disponibles.map(formatear).join('\n\n');
-            } else if (filtro === 'ACTIVAS') {
-                mensajeFinal += `Activas: ${activos.length}\n\n`;
-                mensajeFinal += activos.map(formatear).join('\n\n');
-            } else if (filtro === 'DEBUFF') {
-                mensajeFinal += `Debuff: ${debuffs.length}\n\n`;
-                mensajeFinal += debuffs.map(formatear).join('\n\n');
-            } else {
-                mensajeFinal = "Filtro no válido. Usa ACTIVAS, DEBUFF, DISPONIBLES o TODAS.";
-            }
-
-            bot.sendMessage(chatId, mensajeFinal);
-
-        } catch (error) {
-            console.error(error);
-            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
-        }
         },
         paisesdanyo: async (chatId, args) => {
             calcularDanyoGrupo(chatId, args, 'pais');
