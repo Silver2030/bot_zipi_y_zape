@@ -806,7 +806,7 @@ Ranking productivo de materiales`;
                 return Math.round(num * 100000) / 100000;
             }
 
-            // Función para escapar MarkdownV2 (sin escapar saltos de línea)
+            // Función para escapar MarkdownV2
             function escapeMarkdownV2(text) {
                 return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
             }
@@ -866,9 +866,9 @@ Ranking productivo de materiales`;
 
             // Calcular productividad para materias primas
             for (const [material, datos] of Object.entries(materiasPrimas)) {
-                const produccion = productionData[material];
-                if (produccion !== undefined) {
-                    const productividad = limitarDecimales(produccion / datos.pp);
+                const precioVenta = productionData[material];
+                if (precioVenta !== undefined) {
+                    const productividad = limitarDecimales(precioVenta / datos.pp);
                     resultados.push({
                         nombre: material,
                         nombreDisplay: traducciones[material] || material,
@@ -880,26 +880,24 @@ Ranking productivo de materiales`;
 
             // Calcular productividad para productos manufacturados
             for (const [producto, datos] of Object.entries(productosManufacturados)) {
-                const produccion = productionData[producto];
-                if (produccion !== undefined) {
+                const precioVentaProducto = productionData[producto];
+                if (precioVentaProducto !== undefined) {
                     // Calcular coste total en materias primas
                     let costeMateriasPrimas = 0;
                     for (const [materia, cantidad] of Object.entries(datos.materias)) {
-                        const produccionMateria = productionData[materia];
-                        if (produccionMateria !== undefined) {
-                            // Productividad de la materia prima por unidad
-                            const productividadMateria = produccionMateria / materiasPrimas[materia].pp;
-                            costeMateriasPrimas += (cantidad / productividadMateria);
+                        const precioVentaMateria = productionData[materia];
+                        if (precioVentaMateria !== undefined) {
+                            costeMateriasPrimas += (precioVentaMateria * cantidad);
                         }
                     }
 
-                    // Productividad neta (producción - coste en materias primas)
-                    const productividadNeta = limitarDecimales((produccion - costeMateriasPrimas) / datos.pp);
+                    // Productividad = (precio_venta - coste_materias) / pp
+                    const productividad = limitarDecimales((precioVentaProducto - costeMateriasPrimas) / datos.pp);
                     
                     resultados.push({
                         nombre: producto,
                         nombreDisplay: traducciones[producto] || producto,
-                        productividad: productividadNeta,
+                        productividad: productividad,
                         tipo: 'manufacturado'
                     });
                 }
