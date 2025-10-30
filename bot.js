@@ -793,7 +793,7 @@ Ranking productivo de materiales`;
     produccion: async (chatId, args) => {
         try {
             // Hacer la petición a la API de producción
-            const productionRes = await axios.get(`https://api2.warera.io/trpc/user.getUserProduction`);
+            const productionRes = await axios.get(`https://api2.warera.io/trpc/itemTrading.getPrices`);
             const productionData = productionRes.data?.result?.data;
 
             if (!productionData) {
