@@ -222,6 +222,9 @@ const comandos = {
         const helpMessage = 
 `Comandos disponibles:
 
+/buscar <TEXTO>
+Busca el enlace in game
+
 /hambre <ENLACE_GUERRA> <MENSAJE>
 Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
 
@@ -243,6 +246,85 @@ Muestra el ranking de daño de esta semana de los players registrados
 /guerras <GUERRA>
 Muestra el daño realizado a lo largo de un conflicto`;
         bot.sendMessage(chatId, helpMessage);
+    },
+    buscar: async (chatId, args) => {
+        if (args.length < 1) {
+            bot.sendMessage(chatId, "Ejemplo: /buscar Silver");
+            return;
+        }
+
+        const searchText = args.join(' ');
+
+        try {
+            // Hacer la petición a la API de búsqueda
+            const searchRes = await axios.get(`https://api2.warera.io/trpc/search.searchAnything?input=${encodeURIComponent(JSON.stringify({searchText}))}`);
+            const searchData = searchRes.data?.result?.data;
+
+            if (!searchData?.hasData) {
+                bot.sendMessage(chatId, `No se encontraron resultados para: "${searchText}"`);
+                return;
+            }
+
+            // Función para escapar MarkdownV2
+            function escapeMarkdownV2(text) {
+                return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+            }
+
+            let mensaje = `*Resultados de búsqueda para:* ${escapeMarkdownV2(searchText)}\n\n`;
+
+            // Procesar usuarios
+            if (searchData.userIds?.length > 0) {
+                mensaje += `*👤 Usuarios*\n`;
+                searchData.userIds.forEach(userId => {
+                    const url = `https://app.warera.io/user/${userId}`;
+                    mensaje += `${escapeMarkdownV2(url)}\n`;
+                });
+                mensaje += `\n`;
+            }
+
+            // Procesar MUs
+            if (searchData.muIds?.length > 0) {
+                mensaje += `*🏢 MUs*\n`;
+                searchData.muIds.forEach(muId => {
+                    const url = `https://app.warera.io/mu/${muId}`;
+                    mensaje += `${escapeMarkdownV2(url)}\n`;
+                });
+                mensaje += `\n`;
+            }
+
+            // Procesar países
+            if (searchData.countryIds?.length > 0) {
+                mensaje += `*🇺🇳 Países*\n`;
+                searchData.countryIds.forEach(countryId => {
+                    const url = `https://app.warera.io/country/${countryId}`;
+                    mensaje += `${escapeMarkdownV2(url)}\n`;
+                });
+                mensaje += `\n`;
+            }
+
+            // Procesar regiones
+            if (searchData.regionIds?.length > 0) {
+                mensaje += `*🗺️ Regiones*\n`;
+                searchData.regionIds.forEach(regionId => {
+                    const url = `https://app.warera.io/region/${regionId}`;
+                    mensaje += `${escapeMarkdownV2(url)}\n`;
+                });
+                mensaje += `\n`;
+            }
+
+            // Si no hay resultados en ninguna categoría
+            if (!searchData.userIds?.length && !searchData.muIds?.length && 
+                !searchData.countryIds?.length && !searchData.regionIds?.length) {
+                mensaje += `No se encontraron resultados en ninguna categoría.`;
+            }
+
+            // Enviar mensaje
+            bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+
+        } catch (error) {
+            console.error(error);
+            bot.sendMessage(chatId, "Ha ocurrido un error al procesar la búsqueda.");
+        }
     },
     hambre: async (chatId, args) => {
         if (!args[0] || !args[1]) {
