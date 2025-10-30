@@ -852,9 +852,9 @@ Ranking productivo de materiales`;
             const productosManufacturados = {
                 cookedFish: { materias: { fish: 1 }, pp: 40 },
                 heavyAmmo: { materias: { lead: 16 }, pp: 16 },
-                steel: { materias: { iron: 1 }, pp: 1 },
+                steel: { materias: { iron: 10 }, pp: 1 },
                 bread: { materias: { grain: 10 }, pp: 10 },
-                concrete: { materias: { limestone: 1 }, pp: 1 },
+                concrete: { materias: { limestone: 10 }, pp: 1 },
                 oil: { materias: { petroleum: 1 }, pp: 1 },
                 lightAmmo: { materias: { lead: 1 }, pp: 1 },
                 steak: { materias: { livestock: 1 }, pp: 20 },
