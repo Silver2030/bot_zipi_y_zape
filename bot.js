@@ -255,7 +255,10 @@ Muestra el ranking de daño de esta semana de los players registrados.
 Muestra el daño realizado a lo largo de un conflicto.
 
 /all
-Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)`;
+Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)
+
+/produccion
+Ranking productivo de materiales`;
         bot.sendMessage(chatId, helpMessage);
     },
     buscar: async (chatId, args) => {
@@ -785,6 +788,135 @@ Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)`;
         } catch (error) {
             console.error("Error en comando /all:", error);
             bot.sendMessage(chatId, "Error al enviar las menciones.");
+        }
+    },
+    produccion: async (chatId, args) => {
+        try {
+            // Hacer la petición a la API de producción
+            const productionRes = await axios.get(`https://api2.warera.io/trpc/user.getUserProduction`);
+            const productionData = productionRes.data?.result?.data;
+
+            if (!productionData) {
+                bot.sendMessage(chatId, "No se pudieron obtener los datos de producción.");
+                return;
+            }
+
+            // Función para limitar a 5 decimales
+            function limitarDecimales(num) {
+                return Math.round(num * 100000) / 100000;
+            }
+
+            // Traducciones al español
+            const traducciones = {
+                // Materias primas
+                grain: "Granos",
+                livestock: "Ganado", 
+                limestone: "Caliza",
+                coca: "Plantas",
+                lead: "Plomo",
+                petroleum: "Petróleo",
+                iron: "Hierro",
+                fish: "Pescado",
+                
+                // Productos manufacturados
+                cookedFish: "Pescado Cocido",
+                heavyAmmo: "Munición Pesada",
+                steel: "Acero",
+                bread: "Pan",
+                concrete: "Hormigón",
+                oil: "Aceite",
+                lightAmmo: "Munición Ligera",
+                steak: "Filete",
+                cocain: "Pastilla",
+                ammo: "Munición"
+            };
+
+            // Materias primas y sus costes en pp
+            const materiasPrimas = {
+                grain: { pp: 1 },
+                livestock: { pp: 20 },
+                limestone: { pp: 1 },
+                coca: { pp: 1 },
+                lead: { pp: 1 },
+                petroleum: { pp: 1 },
+                iron: { pp: 1 },
+                fish: { pp: 40 }
+            };
+
+            // Productos manufacturados y sus costes
+            const productosManufacturados = {
+                cookedFish: { materias: { fish: 1 }, pp: 40 },
+                heavyAmmo: { materias: { lead: 16 }, pp: 16 },
+                steel: { materias: { iron: 1 }, pp: 1 },
+                bread: { materias: { grain: 10 }, pp: 10 },
+                concrete: { materias: { limestone: 1 }, pp: 1 },
+                oil: { materias: { petroleum: 1 }, pp: 1 },
+                lightAmmo: { materias: { lead: 1 }, pp: 1 },
+                steak: { materias: { livestock: 1 }, pp: 20 },
+                cocain: { materias: { coca: 200 }, pp: 200 },
+                ammo: { materias: { lead: 4 }, pp: 4 }
+            };
+
+            const resultados = [];
+
+            // Calcular productividad para materias primas
+            for (const [material, datos] of Object.entries(materiasPrimas)) {
+                const produccion = productionData[material];
+                if (produccion !== undefined) {
+                    const productividad = limitarDecimales(produccion / datos.pp);
+                    resultados.push({
+                        nombre: material,
+                        nombreDisplay: traducciones[material] || material,
+                        productividad: productividad,
+                        tipo: 'materia_prima'
+                    });
+                }
+            }
+
+            // Calcular productividad para productos manufacturados
+            for (const [producto, datos] of Object.entries(productosManufacturados)) {
+                const produccion = productionData[producto];
+                if (produccion !== undefined) {
+                    // Calcular coste total en materias primas
+                    let costeMateriasPrimas = 0;
+                    for (const [materia, cantidad] of Object.entries(datos.materias)) {
+                        const produccionMateria = productionData[materia];
+                        if (produccionMateria !== undefined) {
+                            // Productividad de la materia prima por unidad
+                            const productividadMateria = produccionMateria / materiasPrimas[materia].pp;
+                            costeMateriasPrimas += (cantidad / productividadMateria);
+                        }
+                    }
+
+                    // Productividad neta (producción - coste en materias primas)
+                    const productividadNeta = limitarDecimales((produccion - costeMateriasPrimas) / datos.pp);
+                    
+                    resultados.push({
+                        nombre: producto,
+                        nombreDisplay: traducciones[producto] || producto,
+                        productividad: productividadNeta,
+                        tipo: 'manufacturado'
+                    });
+                }
+            }
+
+            // Ordenar de mayor a menor productividad
+            resultados.sort((a, b) => b.productividad - a.productividad);
+
+            // Construir mensaje
+            let mensaje = "*RANKING PRODUCTIVIDAD*\\n\\n";
+
+            resultados.forEach((item, index) => {
+                const emoji = item.tipo === 'materia_prima' ? '⛏️' : '🏭';
+                mensaje += `${index + 1}\\. ${emoji} *${item.nombreDisplay}*: ${item.productividad.toFixed(5)}/pp\\n`;
+            });
+
+            // Enviar mensaje
+            bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+
+        } catch (error) {
+            console.error("Error en comando /produccion:", error);
+            bot.sendMessage(chatId, "Error al obtener los datos de producción.");
         }
     }
 };
