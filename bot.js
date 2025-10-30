@@ -754,26 +754,42 @@ Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)`;
     },
     all: async (chatId) => {
         try {
-            // Obtener todos los miembros del grupo
-            const memberCount = await bot.getChatMembersCount(chatId);
-            const allMembers = await bot.getChatMembers(chatId, 0, memberCount);
+            const botToken = process.env.TELEGRAM_BOT_TOKEN;
+            const menciones = [];
+
+            // Para grupos de ~40 personas, hacemos una sola petición con límite alto
+            const response = await axios.get(
+                `https://api.telegram.org/bot${botToken}/getChatMembersCount?chat_id=${chatId}`
+            );
             
-            // Filtrar usuarios con username y que no sean bots
-            const menciones = allMembers
-                .filter(member => member.user && member.user.username && !member.user.is_bot)
-                .map(member => `@${member.user.username}`);
+            const totalMembers = response.data.result;
+            console.log(`Total de miembros: ${totalMembers}`);
+
+            // Obtenemos todos los miembros de una vez (hasta 10,000 que es el límite de Telegram)
+            const membersResponse = await axios.get(
+                `https://api.telegram.org/bot${botToken}/getChatMembers?chat_id=${chatId}&offset=0&limit=${totalMembers}`
+            );
+
+            if (membersResponse.data.ok) {
+                membersResponse.data.result.forEach(member => {
+                    if (member.user && member.user.username && !member.user.is_bot) {
+                        menciones.push(`@${member.user.username}`);
+                    }
+                });
+            }
 
             if (menciones.length === 0) {
                 bot.sendMessage(chatId, "No hay usuarios con username en el grupo.");
                 return;
             }
 
+            console.log(`Encontrados ${menciones.length} usuarios para mencionar`);
+
             // Enviar menciones en bloques de 5
             const chunkSize = 5;
             for (let i = 0; i < menciones.length; i += chunkSize) {
                 const grupo = menciones.slice(i, i + chunkSize).join('\n');
                 await bot.sendMessage(chatId, grupo);
-                // Pequeña pausa entre bloques
                 if (i + chunkSize < menciones.length) {
                     await new Promise(res => setTimeout(res, 300));
                 }
@@ -781,9 +797,9 @@ Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)`;
 
         } catch (error) {
             console.error("Error en comando /all:", error);
-            bot.sendMessage(chatId, "Error: El bot necesita ser administrador para usar este comando.");
+            bot.sendMessage(chatId, "Error: El bot necesita permisos de administrador.");
         }
-    }
+    },
 };
 
 // --- Listener principal ---
