@@ -149,38 +149,45 @@ const CHAT_ID = 696082291;
 
 // Lista de usuarios
 const usuarios = [
-    { userId: "688955d9b9407610b5a9808d", mention: "@Daotma" },
-    { userId: "688f351bd672278e5d09b3e3", mention: "@Daotma" },
-    { userId: "683f624fc6294e3b6516c78e", mention: "@JoseManuelMaCa" },
-    { userId: "688a5b63449469e970769c28", mention: "@Oresito" },
-    { userId: "6840e2eefb821d5f963e6b36", mention: "@LordWark" },
-    { userId: "688e2e05eda4287d4d40f1d9", mention: "@LordWark" },
-    { userId: "683d9c606e2c1b9aa4448f2f", mention: "@ElYodas" },
-    { userId: "686bca33b7dc5cb1d7710a47", mention: "@BZ_033" },
-    { userId: "6897a6b1d286896c6760e474", mention: "@Daotma" },
-    { userId: "688fc8522d7fcdd226cda5ee", mention: "@gonchiii1" },
-    { userId: "6830b7bdec8d7fb5ea1444a0", mention: "@achtzing" },
+    { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
+    { userId: "686eefe3ee16d37c417a0e59", mention: "@lodensy" },
     { userId: "683d088a0b5bc553dcd1bf17", mention: "@Xaandree" },
-    { userId: "683d87d781b2e093d7ef6fbd", mention: "@CarlosMorG" },
-    { userId: "683da442ca51017a7ae9ba9e", mention: "@Valthognir" },
-    { userId: "683e13f6a1027da10c805af0", mention: "@Robeloxinthahouse" },
+    { userId: "688a5b63449469e970769c28", mention: "@Oresito" },
     { userId: "683f8cd86e3808e6765938f6", mention: "@blitzkriegseven" },
-    { userId: "6840b9945a2ea3f4a4819680", mention: "@flashmolox" },
+    { userId: "683e13f6a1027da10c805af0", mention: "@Robeloxinthahouse" },
+    { userId: "68386302a484755f062b16a8", mention: "@GaryRr" },
+    { userId: "68703ddf37ff51dd0dc590d0", mention: "@TowDl" },
     { userId: "6841e93f4503de9d2a49bac2", mention: "@Mikeeeel" },
     { userId: "6849bef474cdd09ff494ddf1", mention: "@YitanRR" },
-    { userId: "684aba6474cdd09ff4bdb1c9", mention: "@kesta_pasando" },
-    { userId: "686d0bf95841fc53d8fe3e69", mention: "@Flopero" },
+    { userId: "68f8f5ad5dc34ed689e1784c", mention: "@maromaromero" },
+    { userId: "6830b7bdec8d7fb5ea1444a0", mention: "@achtzing" },
+    { userId: "683d87d781b2e093d7ef6fbd", mention: "@CarlosMorG" },
+    { userId: "68b43bcaa297b1be001db43b", mention: "@Sharp_1313" },
     { userId: "686eca28c6f1851a706a304d", mention: "@bt0mas" },
-    { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
-    { userId: "6876632469f52d5b9c1271d7", mention: "@noSeQuienEsYandro" },
-    { userId: "6877c0446097872ea4988815", mention: "@LoganSS021" },
-    { userId: "687b345ee6f08f7066aa7aff", mention: "@noSeQuienEsSurpriseMagician" },
-    { userId: "68920253cb23029a760fe72a", mention: "@noSeQuienEsBaguchin" },
-    { userId: "689cb0d3d52432c932980841", mention: "@noSeQuienEsPotato" },
-    { userId: "68b4eb03ff683cdd14acf90b", mention: "@noSeQuienEsMegalomaniaa" },
-    { userId: "68b6cff38cb553cbc3f79eec", mention: "@noSeQuienEsMardOuaz" },
-    { userId: "68386302a484755f062b16a8", mention: "@GaryRr" },
-    { userId: "68703ddf37ff51dd0dc590d0", mention: "@GaryRr" }
+    { userId: "686bca33b7dc5cb1d7710a47", mention: "@BZ_033" },
+    { userId: "688955d9b9407610b5a9808d", mention: "@Daotma" },
+    { userId: "688f351bd672278e5d09b3e3", mention: "@Daotma" },
+    { userId: "6897a6b1d286896c6760e474", mention: "@Daotma" },
+    { userId: "6840e2eefb821d5f963e6b36", mention: "@LordWark" },
+    { userId: "688e2e05eda4287d4d40f1d9", mention: "@LordWark" },
+    { userId: "68fff9bd7c1583c2c84af9c5", mention: "@Savior3444" },
+    { userId: "68fff805ce2953e2e62f2032", mention: "@Cruzado_Antifascista" },
+    { userId: "68979dcdd2bf43cdb31abb9f", mention: "@XBrotherX" },
+    { userId: "683d9c606e2c1b9aa4448f2f", mention: "@ElYodas" },
+    { userId: "688fc8522d7fcdd226cda5ee", mention: "@gonchiii1" },
+    { userId: "6877c0446097872ea4988815", mention: "@AliceProtectorR" },
+    { userId: "68fa132511af9654175f1070", mention: "@SaikoRR" },
+    { userId: "686d0bf95841fc53d8fe3e69", mention: "@Flopero" },
+    { userId: "6840b9945a2ea3f4a4819680", mention: "@flashmolox" },
+    { userId: "684aba6474cdd09ff4bdb1c9", mention: "@kesta_pasando" },
+    { userId: "68a090bcae3c1ce846baba17", mention: "@Atero3D" },
+    { userId: "68a090bcae3c1ce846baba17", mention: "@Hollow3EY35" },
+    { userId: "683f624fc6294e3b6516c78e", mention: "@JoseManuelMaCa" },
+    { userId: "686be039fb337713b29e172d", mention: "@Brayanorsini" },
+    { userId: "686eb3bab7dc5cb1d7e3085b", mention: "@Brayanorsini" },
+    { userId: "688fd7fe2d7fcdd226d90dbb", mention: "@Dafuju22" },
+    { userId: "68a34a08d1c35b2e594c6ea6", mention: "@GosvagRR" },
+    { userId: "688fd7fe2d7fcdd226d90dbb", mention: "@apolo" }
 ];
 
 const guerraMundial1 = [
@@ -622,7 +629,7 @@ Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)`;
             bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
         }
     },
-        paisesdanyo: async (chatId, args) => {
+    paisesdanyo: async (chatId, args) => {
             calcularDanyoGrupo(chatId, args, 'pais');
         },
         mudanyo: async (chatId, args) => {
@@ -754,52 +761,32 @@ Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)`;
     },
     all: async (chatId) => {
         try {
-            const botToken = process.env.TELEGRAM_BOT_TOKEN;
-            const menciones = [];
+            // Usar SOLO la lista predefinida y eliminar duplicados
+            const mencionesUnicas = [...new Set(usuarios.map(usuario => usuario.mention))];
 
-            // Para grupos de ~40 personas, hacemos una sola petición con límite alto
-            const response = await axios.get(
-                `https://api.telegram.org/bot${botToken}/getChatMembersCount?chat_id=${chatId}`
-            );
-            
-            const totalMembers = response.data.result;
-            console.log(`Total de miembros: ${totalMembers}`);
-
-            // Obtenemos todos los miembros de una vez (hasta 10,000 que es el límite de Telegram)
-            const membersResponse = await axios.get(
-                `https://api.telegram.org/bot${botToken}/getChatMembers?chat_id=${chatId}&offset=0&limit=${totalMembers}`
-            );
-
-            if (membersResponse.data.ok) {
-                membersResponse.data.result.forEach(member => {
-                    if (member.user && member.user.username && !member.user.is_bot) {
-                        menciones.push(`@${member.user.username}`);
-                    }
-                });
-            }
-
-            if (menciones.length === 0) {
-                bot.sendMessage(chatId, "No hay usuarios con username en el grupo.");
+            if (mencionesUnicas.length === 0) {
+                bot.sendMessage(chatId, "No hay usuarios en la lista para mencionar.");
                 return;
             }
 
-            console.log(`Encontrados ${menciones.length} usuarios para mencionar`);
+            console.log(`Mencionando a ${mencionesUnicas.length} usuarios únicos de la lista`);
 
             // Enviar menciones en bloques de 5
             const chunkSize = 5;
-            for (let i = 0; i < menciones.length; i += chunkSize) {
-                const grupo = menciones.slice(i, i + chunkSize).join('\n');
+            for (let i = 0; i < mencionesUnicas.length; i += chunkSize) {
+                const grupo = mencionesUnicas.slice(i, i + chunkSize).join('\n');
                 await bot.sendMessage(chatId, grupo);
-                if (i + chunkSize < menciones.length) {
+                // Pequeña pausa entre bloques
+                if (i + chunkSize < mencionesUnicas.length) {
                     await new Promise(res => setTimeout(res, 300));
                 }
             }
 
         } catch (error) {
             console.error("Error en comando /all:", error);
-            bot.sendMessage(chatId, "Error: El bot necesita permisos de administrador.");
+            bot.sendMessage(chatId, "Error al enviar las menciones.");
         }
-    },
+    }
 };
 
 // --- Listener principal ---
