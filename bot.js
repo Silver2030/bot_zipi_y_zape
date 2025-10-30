@@ -806,7 +806,7 @@ Ranking productivo de materiales`;
                 return Math.round(num * 100000) / 100000;
             }
 
-            // Función para escapar MarkdownV2 (incluyendo puntos en números)
+            // Función para escapar MarkdownV2 (sin escapar saltos de línea)
             function escapeMarkdownV2(text) {
                 return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
             }
@@ -908,15 +908,15 @@ Ranking productivo de materiales`;
             // Ordenar de mayor a menor productividad
             resultados.sort((a, b) => b.productividad - a.productividad);
 
-            // Construir mensaje ESCAPANDO TODO
-            let mensaje = `*${escapeMarkdownV2("RANKING PRODUCTIVIDAD")}*\\n\\n`;
+            // Construir mensaje con formato correcto
+            let mensaje = "*RANKING PRODUCTIVIDAD*\n\n";
 
             resultados.forEach((item, index) => {
                 const emoji = item.tipo === 'materia_prima' ? '⛏️' : '🏭';
                 const nombreEscapado = escapeMarkdownV2(item.nombreDisplay);
                 const productividadEscapada = escapeMarkdownV2(item.productividad.toFixed(5));
                 
-                mensaje += `${escapeMarkdownV2((index + 1).toString())}\\. ${emoji} *${nombreEscapado}*: ${productividadEscapada}/pp\\n`;
+                mensaje += `${index + 1}\\. ${emoji} *${nombreEscapado}*: ${productividadEscapada} pp\n`;
             });
 
             // Enviar mensaje
