@@ -298,111 +298,116 @@ Muestra el daño realizado a lo largo de un conflicto`;
             await new Promise(res => setTimeout(res, 500)); // pequeña pausa para no saturar Telegram
         }
     },
-jugadorespais: async (chatId, args) => {
-    if (args.length < 1) {
-        bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/6813b6d446e731854c7ac7ae");
-        return;
-    }
-
-    let countryId = args[0].includes('warera.io') 
-        ? args[0].split('/').pop() 
-        : args[0];
-
-    const costes = [0,1,3,6,10,15,21,28,36,45,55];
-    const skillsPvp = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
-    const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
-
-    // Escapa todos los caracteres reservados de MarkdownV2
-    function escapeMarkdownV2(text) {
-        return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
-    }
-    try {
-        const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
-        const items = usersRes.data?.result?.data?.items || [];
-
-        const usuarios = [];
-
-        for (const item of items) {
-            try {
-                const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
-                const data = userRes.data?.result?.data;
-                if (!data) continue;
-
-                // Estado pastilla
-                let icono = "";
-                let fecha = null;
-
-                if (data.buffs?.buffCodes?.length) {
-                    icono = "💊";
-                    fecha = new Date(data.buffs.buffEndAt);
-                } else if (data.buffs?.debuffCodes?.length) {
-                    icono = "⛔";
-                    fecha = new Date(data.buffs.debuffEndAt);
-                }
-
-                // Puntos gastados
-                let pvpPoints = 0, ecoPoints = 0;
-                skillsPvp.forEach(s => pvpPoints += costes[data.skills[s]?.level || 0]);
-                skillsEco.forEach(s => ecoPoints += costes[data.skills[s]?.level || 0]);
-
-                const total = pvpPoints + ecoPoints;
-                const pctPvp = total ? (pvpPoints / total) * 100 : 0;
-                const pctEco = total ? (ecoPoints / total) * 100 : 0;
-
-                let build = "HIBRIDA";
-                if (pctPvp > 65) build = "PVP";
-                else if (pctEco > 65) build = "ECO";
-
-                usuarios.push({
-                    username: data.username,
-                    _id: data._id,
-                    icono,
-                    fecha,
-                    build
-                });
-
-            } catch (e) { console.error(e.message); }
+    jugadorespais: async (chatId, args) => {
+        if (args.length < 1) {
+            bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/6813b6d446e731854c7ac7ae");
+            return;
         }
 
-        // Separación por build
-        const pvp = usuarios.filter(u => u.build === "PVP");
-        const hibridos = usuarios.filter(u => u.build === "HIBRIDA");
-        const eco = usuarios.filter(u => u.build === "ECO");
+        let countryId = args[0].includes('warera.io') 
+            ? args[0].split('/').pop() 
+            : args[0];
 
-        // Contadores pastillas
-        const disponibles = usuarios.filter(u => u.icono === "").length;
-        const activas = usuarios.filter(u => u.icono === "💊").length;
-        const debuffs = usuarios.filter(u => u.icono === "⛔").length;
+        const costes = [0,1,3,6,10,15,21,28,36,45,55];
+        const skillsPvp = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
+        const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
 
-        // Formatea cada usuario con hipervínculo seguro
-        const format = u => {
-            const username = escapeMarkdownV2(u.username);
-            const url = escapeMarkdownV2(`https://app.warera.io/user/${u._id}`);
-            let line = `[${username}](${url})`;
-            if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
-            if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
-            return line;
-        };
+        // Función para escapar MarkdownV2
+        function escapeMarkdownV2(text) {
+            return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+        }
 
-        // Construir mensaje completo
-        let mensaje = `*PASTILLAS*\nDisponibles: ${disponibles}, Activas: ${activas}, Debuff: ${debuffs}\n\n`;
+        try {
+            const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
+            const items = usersRes.data?.result?.data?.items || [];
 
-        mensaje += `*PVP - ${pvp.length}*\n` + (pvp.length ? pvp.map(format).join('\n') : "(ninguno)") + `\n\n`;
-        mensaje += `*HIBRIDA - ${hibridos.length}*\n` + (hibridos.length ? hibridos.map(format).join('\n') : "(ninguno)") + `\n\n`;
-        mensaje += `*ECO - ${eco.length}*\n` + (eco.length ? eco.map(format).join('\n') : "(ninguno)");
+            const usuarios = [];
 
-        // Escapa el carácter '-' en el mensaje final
-        mensaje = mensaje.replace(/-/g, '\\-');
+            for (const item of items) {
+                try {
+                    const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
+                    const data = userRes.data?.result?.data;
+                    if (!data) continue;
 
-        // Enviar mensaje
-        bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+                    // Estado pastilla
+                    let icono = "";
+                    let fecha = null;
 
-    } catch (error) {
-        console.error(error);
-        bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
-    }
-},
+                    if (data.buffs?.buffCodes?.length) {
+                        icono = "💊";
+                        fecha = new Date(data.buffs.buffEndAt);
+                    } else if (data.buffs?.debuffCodes?.length) {
+                        icono = "⛔";
+                        fecha = new Date(data.buffs.debuffEndAt);
+                    }
 
+                    // Puntos gastados
+                    let pvpPoints = 0, ecoPoints = 0;
+                    skillsPvp.forEach(s => pvpPoints += costes[data.skills[s]?.level || 0]);
+                    skillsEco.forEach(s => ecoPoints += costes[data.skills[s]?.level || 0]);
+
+                    const total = pvpPoints + ecoPoints;
+                    const pctPvp = total ? (pvpPoints / total) * 100 : 0;
+                    const pctEco = total ? (ecoPoints / total) * 100 : 0;
+
+                    let build = "HIBRIDA";
+                    if (pctPvp > 65) build = "PVP";
+                    else if (pctEco > 65) build = "ECO";
+
+                    usuarios.push({
+                        username: data.username,
+                        _id: data._id,
+                        icono,
+                        fecha,
+                        build
+                    });
+
+                } catch (e) { console.error(e.message); }
+            }
+
+            // Separación por build
+            const pvp = usuarios.filter(u => u.build === "PVP");
+            const hibridos = usuarios.filter(u => u.build === "HIBRIDA");
+            const eco = usuarios.filter(u => u.build === "ECO");
+
+            // Contadores pastillas
+            const disponibles = usuarios.filter(u => u.icono === "").length;
+            const activas = usuarios.filter(u => u.icono === "💊").length;
+            const debuffs = usuarios.filter(u => u.icono === "⛔").length;
+
+            // Formatea cada usuario con hipervínculo seguro
+            const format = u => {
+                const username = escapeMarkdownV2(u.username);
+                const url = escapeMarkdownV2(`https://app.warera.io/user/${u._id}`);
+                let line = `[${username}](${url})`;
+                if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
+                if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
+                return line;
+            };
+
+            // Construir mensaje completo ESCAPANDO TODO
+            let mensaje = `*${escapeMarkdownV2("PASTILLAS")}*\n`;
+            mensaje += `${escapeMarkdownV2("Disponibles:")} ${disponibles}, ${escapeMarkdownV2("Activas:")} ${activas}, ${escapeMarkdownV2("Debuff:")} ${debuffs}\n\n`;
+
+            mensaje += `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("-")} ${pvp.length}*\n`;
+            mensaje += pvp.length ? pvp.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
+            mensaje += `\n\n`;
+
+            mensaje += `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("-")} ${hibridos.length}*\n`;
+            mensaje += hibridos.length ? hibridos.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
+            mensaje += `\n\n`;
+
+            mensaje += `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("-")} ${eco.length}*\n`;
+            mensaje += eco.length ? eco.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
+
+            // Enviar mensaje
+            bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+
+        } catch (error) {
+            console.error(error);
+            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
+        }
+    },
     mupastilla: async (chatId, args) => {
             if (args.length < 1) {
                 bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/683ddd2c24b5a2e114af15d9");
