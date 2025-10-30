@@ -142,9 +142,9 @@ async function calcularDanyoGrupo(chatId, args, tipo = 'pais') {
     }
 }
 
-// GROUP ID: -1002840225634 CHAT ID: 696082291
-const GROUP_ID = -1002840225634;
-const GROUP_PRUEBAS_ID = -4981907547;
+// GROUP ID: -4981907547 CHAT ID: 1003246477704
+const GROUP_ID = -4981907547;
+const GROUP_PRUEBAS_ID = -1003246477704; 
 const CHAT_ID = 696082291;
 
 // Lista de usuarios
