@@ -152,6 +152,7 @@ const usuarios = [
     { userId: "688955d9b9407610b5a9808d", mention: "@Daotma" },
     { userId: "688f351bd672278e5d09b3e3", mention: "@Daotma" },
     { userId: "683f624fc6294e3b6516c78e", mention: "@JoseManuelMaCa" },
+    { userId: "688a5b63449469e970769c28", mention: "@Oresito" },
     { userId: "6840e2eefb821d5f963e6b36", mention: "@LordWark" },
     { userId: "688e2e05eda4287d4d40f1d9", mention: "@LordWark" },
     { userId: "683d9c606e2c1b9aa4448f2f", mention: "@ElYodas" },
@@ -223,28 +224,31 @@ const comandos = {
 `Comandos disponibles:
 
 /buscar <TEXTO>
-Busca el enlace in game
+Busca el enlace in game.
 
 /hambre <ENLACE_GUERRA> <MENSAJE>
 Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
 
 /jugadoresPais <ID_PAIS/ENLACE_PAIS>
-Muestra las builds de los jugadores de un pais y sus pastillas
+Muestra las builds de los jugadores de un pais y sus pastillas.
 
 /jugadoresMu <ID_PAIS/ENLACE_PAIS>
-Muestra las builds de los jugadores de una mu y sus pastillas
+Muestra las builds de los jugadores de una mu y sus pastillas.
 
 /paisesDanyo <ID_PAIS/ENLACE_PAIS> <FILTRO>
-Muestra el daño disponible de un pais y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
+Muestra el daño disponible de un pais y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones).
 
 /muDanyo <ID_MU/MU> <FILTRO>
-Muestra el daño disponible de una mu y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones)
+Muestra el daño disponible de una mu y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones).
 
 /danyosemanal
-Muestra el ranking de daño de esta semana de los players registrados
+Muestra el ranking de daño de esta semana de los players registrados.
 
 /guerras <GUERRA>
-Muestra el daño realizado a lo largo de un conflicto`;
+Muestra el daño realizado a lo largo de un conflicto.
+
+/all
+Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)`;
         bot.sendMessage(chatId, helpMessage);
     },
     buscar: async (chatId, args) => {
@@ -747,6 +751,38 @@ Muestra el daño realizado a lo largo de un conflicto`;
         });
 
         bot.sendMessage(chatId, mensaje, { parse_mode: "Markdown" });
+    },
+    all: async (chatId) => {
+        try {
+            // Obtener todos los miembros del grupo
+            const memberCount = await bot.getChatMembersCount(chatId);
+            const allMembers = await bot.getChatMembers(chatId, 0, memberCount);
+            
+            // Filtrar usuarios con username y que no sean bots
+            const menciones = allMembers
+                .filter(member => member.user && member.user.username && !member.user.is_bot)
+                .map(member => `@${member.user.username}`);
+
+            if (menciones.length === 0) {
+                bot.sendMessage(chatId, "No hay usuarios con username en el grupo.");
+                return;
+            }
+
+            // Enviar menciones en bloques de 5
+            const chunkSize = 5;
+            for (let i = 0; i < menciones.length; i += chunkSize) {
+                const grupo = menciones.slice(i, i + chunkSize).join('\n');
+                await bot.sendMessage(chatId, grupo);
+                // Pequeña pausa entre bloques
+                if (i + chunkSize < menciones.length) {
+                    await new Promise(res => setTimeout(res, 300));
+                }
+            }
+
+        } catch (error) {
+            console.error("Error en comando /all:", error);
+            bot.sendMessage(chatId, "Error: El bot necesita ser administrador para usar este comando.");
+        }
     }
 };
 
