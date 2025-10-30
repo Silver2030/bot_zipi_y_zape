@@ -354,32 +354,36 @@ Muestra el daño realizado a lo largo de un conflicto`;
                     if (pctPvp > 65) build = "PVP";
                     else if (pctEco > 65) build = "ECO";
 
+                    // Obtener el nivel del usuario
+                    const nivel = data.leveling?.level || 0;
+
                     usuarios.push({
                         username: data.username,
                         _id: data._id,
                         icono,
                         fecha,
-                        build
+                        build,
+                        nivel // Agregar el nivel aquí
                     });
 
                 } catch (e) { console.error(e.message); }
             }
 
-            // Separación por build
-            const pvp = usuarios.filter(u => u.build === "PVP");
-            const hibridos = usuarios.filter(u => u.build === "HIBRIDA");
-            const eco = usuarios.filter(u => u.build === "ECO");
+            // Separación por build y ordenar por nivel (descendente) dentro de cada categoría
+            const pvp = usuarios.filter(u => u.build === "PVP").sort((a, b) => b.nivel - a.nivel);
+            const hibridos = usuarios.filter(u => u.build === "HIBRIDA").sort((a, b) => b.nivel - a.nivel);
+            const eco = usuarios.filter(u => u.build === "ECO").sort((a, b) => b.nivel - a.nivel);
 
             // Contadores pastillas
             const disponibles = usuarios.filter(u => u.icono === "").length;
             const activas = usuarios.filter(u => u.icono === "💊").length;
             const debuffs = usuarios.filter(u => u.icono === "⛔").length;
 
-            // Formatea cada usuario con hipervínculo seguro
+            // Formatea cada usuario con nivel al inicio
             const format = u => {
                 const username = escapeMarkdownV2(u.username);
                 const url = escapeMarkdownV2(`https://app.warera.io/user/${u._id}`);
-                let line = `[${username}](${url})`;
+                let line = `${u.nivel}\\) [${username}](${url})`; // Nivel al inicio
                 if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
                 if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
                 return line;
