@@ -867,7 +867,7 @@ Ranking productivo de materiales`;
             // Calcular productividad para materias primas
             for (const [material, datos] of Object.entries(materiasPrimas)) {
                 const precioVenta = productionData[material];
-                if (precioVenta !== undefined) {
+                if (precioVenta !== undefined && precioVenta !== null) {
                     const productividad = limitarDecimales(precioVenta / datos.pp);
                     resultados.push({
                         nombre: material,
@@ -881,40 +881,54 @@ Ranking productivo de materiales`;
             // Calcular productividad para productos manufacturados
             for (const [producto, datos] of Object.entries(productosManufacturados)) {
                 const precioVentaProducto = productionData[producto];
-                if (precioVentaProducto !== undefined) {
+                if (precioVentaProducto !== undefined && precioVentaProducto !== null) {
                     // Calcular coste total en materias primas
                     let costeMateriasPrimas = 0;
+                    let todasLasMateriasDisponibles = true;
+                    
                     for (const [materia, cantidad] of Object.entries(datos.materias)) {
                         const precioVentaMateria = productionData[materia];
-                        if (precioVentaMateria !== undefined) {
+                        if (precioVentaMateria !== undefined && precioVentaMateria !== null) {
                             costeMateriasPrimas += (precioVentaMateria * cantidad);
+                        } else {
+                            todasLasMateriasDisponibles = false;
+                            break;
                         }
                     }
 
-                    // Productividad = (precio_venta - coste_materias) / pp
-                    const productividad = limitarDecimales((precioVentaProducto - costeMateriasPrimas) / datos.pp);
-                    
-                    resultados.push({
-                        nombre: producto,
-                        nombreDisplay: traducciones[producto] || producto,
-                        productividad: productividad,
-                        tipo: 'manufacturado'
-                    });
+                    // Solo calcular si tenemos todos los precios necesarios
+                    if (todasLasMateriasDisponibles) {
+                        // Productividad = (precio_venta - coste_materias) / pp
+                        const productividad = limitarDecimales((precioVentaProducto - costeMateriasPrimas) / datos.pp);
+                        
+                        resultados.push({
+                            nombre: producto,
+                            nombreDisplay: traducciones[producto] || producto,
+                            productividad: productividad,
+                            tipo: 'manufacturado'
+                        });
+                    }
                 }
             }
 
-            // Ordenar de mayor a menor productividad
-            resultados.sort((a, b) => b.productividad - a.productividad);
+            // Filtrar resultados válidos y ordenar de mayor a menor productividad
+            const resultadosValidos = resultados.filter(item => 
+                item.productividad !== undefined && 
+                item.productividad !== null && 
+                !isNaN(item.productividad)
+            );
+            
+            resultadosValidos.sort((a, b) => b.productividad - a.productividad);
 
             // Construir mensaje con formato correcto
             let mensaje = "*RANKING PRODUCTIVIDAD*\n\n";
 
-            resultados.forEach((item, index) => {
+            resultadosValidos.forEach((item, index) => {
                 const emoji = item.tipo === 'materia_prima' ? '⛏️' : '🏭';
                 const nombreEscapado = escapeMarkdownV2(item.nombreDisplay);
                 const productividadEscapada = escapeMarkdownV2(item.productividad.toFixed(5));
                 
-                mensaje += `${index + 1}\\. ${emoji} *${nombreEscapado}*: ${productividadEscapada} pp\n`;
+                mensaje += `${index + 1}\\. ${emoji} *${nombreEscapado}*: ${productividadEscapada} monedas/pp\n`;
             });
 
             // Enviar mensaje
