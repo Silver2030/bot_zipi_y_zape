@@ -11,7 +11,7 @@ async function calcularDanyo(userData, healFood) {
     const critChance = (userData.skills.criticalChance?.total || 0) / 100;
     const critDmg = (userData.skills.criticalDamages?.total || 0) / 100;
     const precision = (userData.skills.precision?.total || 0) / 100;
-    const armor = (userData.skills.armor?.total || 0) / 100;
+    const armor = Math.min((userData.skills.armor?.total || 0) / 100, 0.9); 
     const dodge = (userData.skills.dodge?.total || 0) / 100;
 
     const hpNow = (userData.skills.health?.currentBarValue || 0)
@@ -28,18 +28,40 @@ async function calcularDanyo(userData, healFood) {
         for (let i = 0; i < simulaciones; i++) {
             let hp = hpTotal;
             let dmg = 0;
+            let comidaRestante = Math.floor(userData.skills.hunger?.currentBarValue || 0);
 
             while (hp >= 10) {
-                const esquiva = Math.random() < dodge;
-                const coste = esquiva ? 0 : 10 * (1 - armor);
-                if (hp < coste) break;
-                hp -= coste;
 
                 let base = atk;
-                if (Math.random() < critChance) base *= (1 + critDmg);
-                if (Math.random() >= precision) base *= 0.5;
 
+                if (Math.random() < critChance) {
+                    base *= (1 + critDmg);
+                }
+                if (Math.random() >= precision) {
+                    base *= 0.5;
+                }
+                
                 dmg += base;
+
+                const esquiva = Math.random() < dodge;
+                if (!esquiva) {
+                    let damageTaken = 10 * (1 - armor);
+                    damageTaken = Math.max(1, damageTaken); 
+                    
+                    if (hp <= damageTaken) {
+                        break; 
+                    }
+                    hp -= damageTaken;
+                }
+
+                while (hp < 10 && comidaRestante > 0) {
+                    hp += healFood;
+                    comidaRestante -= 1;
+                }
+
+                if (hp < 10) {
+                    break;
+                }
             }
             totalDanyo += dmg;
         }
@@ -633,12 +655,12 @@ Ranking productivo de materiales`;
         }
     },
     paisesdanyo: async (chatId, args) => {
-            calcularDanyoGrupo(chatId, args, 'pais');
-        },
+        calcularDanyoGrupo(chatId, args, 'pais');
+    },
         mudanyo: async (chatId, args) => {
-            calcularDanyoGrupo(chatId, args, 'mu');
-        },
-        danyosemanal: async (chatId) => {
+        calcularDanyoGrupo(chatId, args, 'mu');
+    },
+    danyosemanal: async (chatId) => {
         try {
             const resultados = [];
 
