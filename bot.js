@@ -1071,43 +1071,56 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             // Ordenar por riqueza total (descendente)
             resultados.sort((a, b) => b.totalWealth - a.totalWealth);
 
-            // Construir mensaje
-            let mensaje = `💰 *DINERO DE ${countryName.toUpperCase()}*\n\n`;
+            // Construir mensaje principal con estadísticas
+            let mensajePrincipal = `💰 *DINERO DE ${countryName.toUpperCase()}*\n\n`;
             
             // Estadísticas generales
-            mensaje += `*Estadísticas Generales:*\n`;
-            mensaje += `👥 Jugadores: ${playerCount}\n`;
-            mensaje += `💰 Wealth total: ${totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `🏭 Wealth en fábricas: ${totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `💵 Wealth liquido/almacen: ${totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `🔧 Total fábricas: ${totalFactories}\n\n`;
+            mensajePrincipal += `*Estadísticas Generales:*\n`;
+            mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
+            mensajePrincipal += `💰 Wealth total: ${totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `🏭 Wealth fábricas: ${totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `💵 Wealth dinero/almacen: ${totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `🔧 Total fábricas: ${totalFactories}\n\n`;
 
             // Promedios
-            mensaje += `*Promedios por Jugador:*\n`;
-            mensaje += `💰 Wealth: ${avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `🏭 Fábricas: ${avgFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `💵 Liquidez/Almacen: ${avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
+            mensajePrincipal += `*Promedios por Jugador:*\n`;
+            mensajePrincipal += `💰 Wealth: ${avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `🏭 Fábricas: ${avgFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `💵 Dinero/Almacen: ${avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
 
-            // Todos los jugadores (no solo 15)
-            mensaje += `*Ranking Completo (${resultados.length} jugadores):*\n\n`;
-            
-            resultados.forEach((jugador, index) => {
-                mensaje += `${index + 1}) ${jugador.username}\n`;
-                mensaje += `https://app.warera.io/user/${jugador.userId}\n`;
-                mensaje += `💰 Total: ${jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
-                mensaje += `🏭 Fábricas: ${jugador.factoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
-                mensaje += `💵 Liquidez/Almacen: ${jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
-                mensaje += `🔧 ${jugador.factoryCount} fábricas\n\n`;
-            });
+            // Enviar mensaje principal primero
+            await bot.sendMessage(chatId, mensajePrincipal);
 
-            bot.sendMessage(chatId, mensaje);
+            // Dividir la lista de usuarios en chunks de 10 para evitar mensajes demasiado largos
+            const chunkSize = 10;
+            for (let i = 0; i < resultados.length; i += chunkSize) {
+                const chunk = resultados.slice(i, i + chunkSize);
+                let mensajeChunk = `*Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)} de ${resultados.length}:*\n\n`;
+                
+                chunk.forEach((jugador, index) => {
+                    const globalIndex = i + index + 1;
+                    mensajeChunk += `${globalIndex}) ${jugador.username}\n`;
+                    mensajeChunk += `https://app.warera.io/user/${jugador.userId}\n`;
+                    mensajeChunk += `💰 Wealth: ${jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                    mensajeChunk += `🏭 Fábricas: ${jugador.factoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                    mensajeChunk += `💵 Dinero/Almacen: ${jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                    mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
+                });
+
+                await bot.sendMessage(chatId, mensajeChunk);
+                
+                // Pequeña pausa entre mensajes para no saturar la API de Telegram
+                if (i + chunkSize < resultados.length) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
 
         } catch (error) {
             console.error("Error en /dineropais:", error);
             bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
         }
-    }
+    }   
 };
 
 // --- Listener principal ---
