@@ -1076,23 +1076,28 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             // Ordenar por riqueza total (descendente)
             resultados.sort((a, b) => b.totalWealth - a.totalWealth);
 
-            // Construir mensaje principal con estadísticas (escapando todo)
+            // Función para formatear números
+            function formatNumber(num) {
+                return num.toLocaleString('es-ES', {maximumFractionDigits: 2});
+            }
+
+            // Construir mensaje principal con estadísticas
             let mensajePrincipal = `💰 *DINERO DE ${escapeMarkdownV2(countryName.toUpperCase())}*\n\n`;
             
             // Estadísticas generales
             mensajePrincipal += `*Estadísticas Generales:*\n`;
             mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
-            mensajePrincipal += `💰 Wealth: ${escapeMarkdownV2(totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
-            mensajePrincipal += `🏭 Wealth Fábricas: ${escapeMarkdownV2(totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
-            mensajePrincipal += `💵 Dinero/Almacen: ${escapeMarkdownV2(totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
+            mensajePrincipal += `💰 Riqueza total: ${formatNumber(totalWealth)} monedas\n`;
+            mensajePrincipal += `🏭 Riqueza en fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
+            mensajePrincipal += `💵 Riqueza líquida: ${formatNumber(totalLiquidWealth)} monedas\n`;
             mensajePrincipal += `🔧 Total fábricas: ${totalFactories}\n\n`;
 
             // Promedios
             mensajePrincipal += `*Promedios por Jugador:*\n`;
-            mensajePrincipal += `💰 Wealth: ${escapeMarkdownV2(avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
-            mensajePrincipal += `🏭 Wealth Fábricas: ${escapeMarkdownV2(avgFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
-            mensajePrincipal += `💵 Dinero/Almacen: ${escapeMarkdownV2(avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
-            mensajePrincipal += `🔧 Nº fábricas: ${escapeMarkdownV2(avgFactories.toFixed(1))}\n\n`;
+            mensajePrincipal += `💰 Riqueza: ${formatNumber(avgWealth)} monedas\n`;
+            mensajePrincipal += `🏭 Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
+            mensajePrincipal += `💵 Líquido: ${formatNumber(avgLiquidWealth)} monedas\n`;
+            mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
 
             // Enviar mensaje principal primero
             await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "Markdown" });
@@ -1106,16 +1111,14 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 chunk.forEach((jugador, index) => {
                     const globalIndex = i + index + 1;
                     const usernameEscapado = escapeMarkdownV2(jugador.username);
-                    const urlEscapada = escapeMarkdownV2(`https://app.warera.io/user/${jugador.userId}`);
-                    const totalEscapado = escapeMarkdownV2(jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}));
-                    const factoryEscapado = escapeMarkdownV2(jugador.factoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}));
-                    const liquidEscapado = escapeMarkdownV2(jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}));
+                    // URL sin escapar para que sea clickeable
+                    const url = `https://app.warera.io/user/${jugador.userId}`;
                     
                     mensajeChunk += `${globalIndex}) ${usernameEscapado}\n`;
-                    mensajeChunk += `${urlEscapada}\n`;
-                    mensajeChunk += `💰 Wealth: ${totalEscapado} | `;
-                    mensajeChunk += `🏭 Wealth Fábricas: ${factoryEscapado} | `;
-                    mensajeChunk += `💵 Dinero/Almacen: ${liquidEscapado} | `;
+                    mensajeChunk += `${url}\n`;
+                    mensajeChunk += `💰 Total: ${formatNumber(jugador.totalWealth)} | `;
+                    mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)} | `;
+                    mensajeChunk += `💵 Líquido: ${formatNumber(jugador.liquidWealth)} | `;
                     mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
                 });
 
