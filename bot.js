@@ -1087,17 +1087,17 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             // Estadísticas generales
             mensajePrincipal += `*Estadísticas Generales:*\n`;
             mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
-            mensajePrincipal += `💰 Wealth Total: ${formatNumber(totalWealth)} monedas\n`;
+            mensajePrincipal += `💰 Wealth total: ${formatNumber(totalWealth)} monedas\n`;
             mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
             mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Nº Fábricas: ${totalFactories}\n\n`;
+            mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n\n`;
 
             // Promedios
             mensajePrincipal += `*Promedios por Jugador:*\n`;
-            mensajePrincipal += `💰 Wealth Total: ${formatNumber(avgWealth)} monedas\n`;
+            mensajePrincipal += `💰 Wealth: ${formatNumber(avgWealth)} monedas\n`;
             mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
             mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Nº Fábricas: ${avgFactories.toFixed(1)}\n\n`;
+            mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
 
             // Enviar mensaje principal primero
             await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "Markdown" });
@@ -1110,6 +1110,7 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 
                 chunk.forEach((jugador, index) => {
                     const globalIndex = i + index + 1;
+                    // Escapar el nombre de usuario para evitar problemas con Markdown
                     const usernameEscapado = escapeMarkdownV2(jugador.username);
                     // URL sin escapar para que sea clickeable
                     const url = `https://app.warera.io/user/${jugador.userId}`;
@@ -1117,11 +1118,12 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                     mensajeChunk += `${globalIndex}) ${usernameEscapado}\n`;
                     mensajeChunk += `${url}\n`;
                     mensajeChunk += `💰 Wealth: ${formatNumber(jugador.totalWealth)} | `;
-                    mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)} | `;
-                    mensajeChunk += `💵 Dinero/Almacen: ${formatNumber(jugador.liquidWealth)} \n`;
+                    mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)} \n `;
+                    mensajeChunk += `💵 Dinero/Almacen: ${formatNumber(jugador.liquidWealth)} | `;
                     mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
                 });
 
+                // Usar parse_mode: "Markdown" para que se muestren correctamente los caracteres escapados
                 await bot.sendMessage(chatId, mensajeChunk, { parse_mode: "Markdown" });
                 
                 // Pequeña pausa entre mensajes para no saturar la API de Telegram
