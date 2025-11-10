@@ -280,7 +280,10 @@ Muestra el daño realizado a lo largo de un conflicto.
 Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)
 
 /produccion
-Ranking productivo de materiales`;
+Ranking productivo de materiales
+
+/dineropais <ID_PAIS/ENLACE_PAIS>
+Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, con promedios por jugador.`;
         bot.sendMessage(chatId, helpMessage);
     },
     buscar: async (chatId, args) => {
@@ -959,6 +962,144 @@ Ranking productivo de materiales`;
         } catch (error) {
             console.error("Error en comando /produccion:", error);
             bot.sendMessage(chatId, "Error al obtener los datos de producción.");
+        }
+    },
+    dineropais: async (chatId, args) => {
+        if (args.length < 1) {
+            bot.sendMessage(chatId, "Ejemplo: /dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae");
+            return;
+        }
+
+        let countryId = args[0].includes('warera.io') 
+            ? args[0].split('/').pop() 
+            : args[0];
+
+        try {
+            // Obtener usuarios del país
+            const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
+            const items = usersRes.data?.result?.data?.items || [];
+
+            if (items.length === 0) {
+                bot.sendMessage(chatId, "No se encontraron jugadores en ese país.");
+                return;
+            }
+
+            const resultados = [];
+            let totalWealth = 0;
+            let totalFactoryWealth = 0;
+            let totalLiquidWealth = 0;
+            let totalFactories = 0;
+
+            for (const item of items) {
+                try {
+                    // Obtener datos del usuario
+                    const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
+                    const userData = userRes.data?.result?.data;
+                    if (!userData) continue;
+
+                    const username = userData.username;
+                    const totalWealthValue = userData.rankings?.userWealth?.value || 0;
+
+                    // Obtener fábricas del usuario
+                    let factoryWealth = 0;
+                    let factoryCount = 0;
+
+                    try {
+                        const companiesRes = await axios.get(`https://api2.warera.io/trpc/company.getCompanies?input=${encodeURIComponent(JSON.stringify({userId:item._id, perPage:50}))}`);
+                        const companyIds = companiesRes.data?.result?.data?.items || [];
+
+                        // Obtener valor de cada fábrica
+                        for (const companyId of companyIds) {
+                            try {
+                                const companyRes = await axios.get(`https://api2.warera.io/trpc/company.getById?input=${encodeURIComponent(JSON.stringify({companyId}))}`);
+                                const companyData = companyRes.data?.result?.data;
+                                if (companyData && companyData.estimatedValue) {
+                                    factoryWealth += companyData.estimatedValue;
+                                    factoryCount++;
+                                }
+                            } catch (e) {
+                                console.error(`Error obteniendo fábrica ${companyId}:`, e.message);
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Error obteniendo lista de fábricas para ${username}:`, e.message);
+                    }
+
+                    const liquidWealth = totalWealthValue - factoryWealth;
+
+                    resultados.push({
+                        username,
+                        userId: item._id,
+                        totalWealth: totalWealthValue,
+                        factoryWealth,
+                        liquidWealth,
+                        factoryCount
+                    });
+
+                    // Acumular totales
+                    totalWealth += totalWealthValue;
+                    totalFactoryWealth += factoryWealth;
+                    totalLiquidWealth += liquidWealth;
+                    totalFactories += factoryCount;
+
+                } catch (e) { 
+                    console.error(`Error procesando usuario ${item._id}:`, e.message); 
+                }
+            }
+
+            if (resultados.length === 0) {
+                bot.sendMessage(chatId, "No se pudieron obtener datos de ningún jugador.");
+                return;
+            }
+
+            // Calcular promedios
+            const playerCount = resultados.length;
+            const avgWealth = totalWealth / playerCount;
+            const avgFactoryWealth = totalFactoryWealth / playerCount;
+            const avgLiquidWealth = totalLiquidWealth / playerCount;
+            const avgFactories = totalFactories / playerCount;
+
+            // Ordenar por riqueza total (descendente)
+            resultados.sort((a, b) => b.totalWealth - a.totalWealth);
+
+            // Construir mensaje
+            let mensaje = `💰 *DINERO DEL PAÍS*\n\n`;
+            
+            // Estadísticas generales
+            mensaje += `*Estadísticas Generales:*\n`;
+            mensaje += `👥 Jugadores: ${playerCount}\n`;
+            mensaje += `💰 Riqueza total: ${totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `🏭 Riqueza en fábricas: ${totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `💵 Riqueza líquida: ${totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `🔧 Total fábricas: ${totalFactories}\n\n`;
+
+            // Promedios
+            mensaje += `*Promedios por Jugador:*\n`;
+            mensaje += `💰 Riqueza: ${avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `🏭 Fábricas: ${avgFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `💵 Líquido: ${avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
+
+            // Top jugadores (máximo 15 para no saturar)
+            mensaje += `*Top ${Math.min(15, resultados.length)} Jugadores:*\n`;
+            resultados.slice(0, 15).forEach((jugador, index) => {
+                mensaje += `${index + 1}) ${jugador.username} - https://app.warera.io/user/${jugador.userId}\n`;
+                mensaje += `   💰 Total: ${jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                mensaje += `🏭 Fábricas: ${jugador.factoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                mensaje += `💵 Líquido: ${jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                mensaje += `🔧 ${jugador.factoryCount} fábricas\n\n`;
+            });
+
+            // Si hay más jugadores, mostrar resumen
+            if (resultados.length > 15) {
+                mensaje += `... y ${resultados.length - 15} jugadores más`;
+            }
+
+            bot.sendMessage(chatId, mensaje);
+
+        } catch (error) {
+            console.error("Error en /dineropais:", error);
+            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
         }
     }
 };
