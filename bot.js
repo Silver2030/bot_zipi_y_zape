@@ -1087,17 +1087,17 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             // Estadísticas generales
             mensajePrincipal += `*Estadísticas Generales:*\n`;
             mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
-            mensajePrincipal += `💰 Riqueza total: ${formatNumber(totalWealth)} monedas\n`;
-            mensajePrincipal += `🏭 Riqueza en fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
-            mensajePrincipal += `💵 Riqueza líquida: ${formatNumber(totalLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Total fábricas: ${totalFactories}\n\n`;
+            mensajePrincipal += `💰 Wealth Total: ${formatNumber(totalWealth)} monedas\n`;
+            mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
+            mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
+            mensajePrincipal += `🔧 Nº Fábricas: ${totalFactories}\n\n`;
 
             // Promedios
             mensajePrincipal += `*Promedios por Jugador:*\n`;
-            mensajePrincipal += `💰 Riqueza: ${formatNumber(avgWealth)} monedas\n`;
-            mensajePrincipal += `🏭 Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
-            mensajePrincipal += `💵 Líquido: ${formatNumber(avgLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
+            mensajePrincipal += `💰 Wealth Total: ${formatNumber(avgWealth)} monedas\n`;
+            mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
+            mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
+            mensajePrincipal += `🔧 Nº Fábricas: ${avgFactories.toFixed(1)}\n\n`;
 
             // Enviar mensaje principal primero
             await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "Markdown" });
@@ -1116,9 +1116,9 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                     
                     mensajeChunk += `${globalIndex}) ${usernameEscapado}\n`;
                     mensajeChunk += `${url}\n`;
-                    mensajeChunk += `💰 Total: ${formatNumber(jugador.totalWealth)} | `;
+                    mensajeChunk += `💰 Wealth: ${formatNumber(jugador.totalWealth)} | `;
                     mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)} | `;
-                    mensajeChunk += `💵 Líquido: ${formatNumber(jugador.liquidWealth)} | `;
+                    mensajeChunk += `💵 Dinero/Almacen: ${formatNumber(jugador.liquidWealth)} \n`;
                     mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
                 });
 
