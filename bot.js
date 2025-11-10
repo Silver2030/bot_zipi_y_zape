@@ -974,6 +974,11 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             ? args[0].split('/').pop() 
             : args[0];
 
+        // Función para escapar caracteres especiales de MarkdownV2
+        function escapeMarkdownV2(text) {
+            return String(text).replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1');
+        }
+
         try {
             // Obtener nombre del país
             let countryName = "País Desconocido";
@@ -1071,23 +1076,23 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             // Ordenar por riqueza total (descendente)
             resultados.sort((a, b) => b.totalWealth - a.totalWealth);
 
-            // Construir mensaje principal con estadísticas
-            let mensajePrincipal = `💰 *DINERO DE ${countryName.toUpperCase()}*\n\n`;
+            // Construir mensaje principal con estadísticas (escapando todo)
+            let mensajePrincipal = `💰 *DINERO DE ${escapeMarkdownV2(countryName.toUpperCase())}*\n\n`;
             
             // Estadísticas generales
             mensajePrincipal += `*Estadísticas Generales:*\n`;
             mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
-            mensajePrincipal += `💰 Riqueza total: ${totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensajePrincipal += `🏭 Riqueza en fábricas: ${totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensajePrincipal += `💵 Riqueza líquida: ${totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `💰 Wealth: ${escapeMarkdownV2(totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
+            mensajePrincipal += `🏭 Wealth Fábricas: ${escapeMarkdownV2(totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
+            mensajePrincipal += `💵 Dinero/Almacen: ${escapeMarkdownV2(totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
             mensajePrincipal += `🔧 Total fábricas: ${totalFactories}\n\n`;
 
             // Promedios
             mensajePrincipal += `*Promedios por Jugador:*\n`;
-            mensajePrincipal += `💰 Riqueza: ${avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensajePrincipal += `🏭 Fábricas: ${avgFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensajePrincipal += `💵 Líquido: ${avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
+            mensajePrincipal += `💰 Wealth: ${escapeMarkdownV2(avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
+            mensajePrincipal += `🏭 Wealth Fábricas: ${escapeMarkdownV2(avgFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
+            mensajePrincipal += `💵 Dinero/Almacen: ${escapeMarkdownV2(avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}))} monedas\n`;
+            mensajePrincipal += `🔧 Nº fábricas: ${escapeMarkdownV2(avgFactories.toFixed(1))}\n\n`;
 
             // Enviar mensaje principal primero
             await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "Markdown" });
@@ -1100,11 +1105,17 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 
                 chunk.forEach((jugador, index) => {
                     const globalIndex = i + index + 1;
-                    mensajeChunk += `${globalIndex}) ${jugador.username}\n`;
-                    mensajeChunk += `https://app.warera.io/user/${jugador.userId}\n`;
-                    mensajeChunk += `💰 Total: ${jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
-                    mensajeChunk += `🏭 Fábricas: ${jugador.factoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
-                    mensajeChunk += `💵 Líquido: ${jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                    const usernameEscapado = escapeMarkdownV2(jugador.username);
+                    const urlEscapada = escapeMarkdownV2(`https://app.warera.io/user/${jugador.userId}`);
+                    const totalEscapado = escapeMarkdownV2(jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}));
+                    const factoryEscapado = escapeMarkdownV2(jugador.factoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}));
+                    const liquidEscapado = escapeMarkdownV2(jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2}));
+                    
+                    mensajeChunk += `${globalIndex}) ${usernameEscapado}\n`;
+                    mensajeChunk += `${urlEscapada}\n`;
+                    mensajeChunk += `💰 Wealth: ${totalEscapado} | `;
+                    mensajeChunk += `🏭 Wealth Fábricas: ${factoryEscapado} | `;
+                    mensajeChunk += `💵 Dinero/Almacen: ${liquidEscapado} | `;
                     mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
                 });
 
