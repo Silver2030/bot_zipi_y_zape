@@ -1077,20 +1077,20 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             // Estadísticas generales
             mensajePrincipal += `*Estadísticas Generales:*\n`;
             mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
-            mensajePrincipal += `💰 Wealth total: ${totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensajePrincipal += `🏭 Wealth fábricas: ${totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensajePrincipal += `💵 Wealth dinero/almacen: ${totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `💰 Riqueza total: ${totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `🏭 Riqueza en fábricas: ${totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `💵 Riqueza líquida: ${totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
             mensajePrincipal += `🔧 Total fábricas: ${totalFactories}\n\n`;
 
             // Promedios
             mensajePrincipal += `*Promedios por Jugador:*\n`;
-            mensajePrincipal += `💰 Wealth: ${avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `💰 Riqueza: ${avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
             mensajePrincipal += `🏭 Fábricas: ${avgFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensajePrincipal += `💵 Dinero/Almacen: ${avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensajePrincipal += `💵 Líquido: ${avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
             mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
 
             // Enviar mensaje principal primero
-            await bot.sendMessage(chatId, mensajePrincipal);
+            await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "Markdown" });
 
             // Dividir la lista de usuarios en chunks de 10 para evitar mensajes demasiado largos
             const chunkSize = 10;
@@ -1102,13 +1102,13 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                     const globalIndex = i + index + 1;
                     mensajeChunk += `${globalIndex}) ${jugador.username}\n`;
                     mensajeChunk += `https://app.warera.io/user/${jugador.userId}\n`;
-                    mensajeChunk += `💰 Wealth: ${jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                    mensajeChunk += `💰 Total: ${jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
                     mensajeChunk += `🏭 Fábricas: ${jugador.factoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
-                    mensajeChunk += `💵 Dinero/Almacen: ${jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                    mensajeChunk += `💵 Líquido: ${jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
                     mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
                 });
 
-                await bot.sendMessage(chatId, mensajeChunk);
+                await bot.sendMessage(chatId, mensajeChunk, { parse_mode: "Markdown" });
                 
                 // Pequeña pausa entre mensajes para no saturar la API de Telegram
                 if (i + chunkSize < resultados.length) {
@@ -1120,24 +1120,32 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             console.error("Error en /dineropais:", error);
             bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
         }
-    }   
+    }
 };
 
-// --- Listener principal ---
+// --- Listener principal unificado ---
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
+    const text = msg.text;
 
-    console.log(`Mensaje recibido en chatId: ${chatId} | Texto: ${msg.text}`);
+    console.log(`Mensaje recibido en chatId: ${chatId} | Texto: ${text}`);
 
     // Filtrar por grupo o chat permitido
     if (GROUP_ID && chatId !== GROUP_ID && chatId !== GROUP_PRUEBAS_ID && chatId !== CHAT_ID) return;
 
-    const text = msg.text;
+    // Primero verificar si contiene "otto"
+    if (text && text.toLowerCase().includes('otto')) {
+        // Enviar respuesta "Putero"
+        bot.sendMessage(chatId, 'Putero');
+        console.log(`Detectada palabra "otto" en mensaje: "${text}" - Respuesta enviada: "Putero"`);
+        return; // Importante: salir después de responder para no procesar comandos
+    }
+
+    // Luego verificar comandos
     if (!text || !text.startsWith('/')) return;
 
     const [cmdRaw, ...args] = text.slice(1).split(' ');
     const cmd = cmdRaw.split('@')[0].toLowerCase();
-
 
     if (comandos[cmd]) {
         await comandos[cmd](chatId, args);
