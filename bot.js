@@ -975,6 +975,15 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             : args[0];
 
         try {
+            // Obtener nombre del país
+            let countryName = "País Desconocido";
+            try {
+                const countryRes = await axios.get(`https://api2.warera.io/trpc/country.getCountryById?input=${encodeURIComponent(JSON.stringify({countryId}))}`);
+                countryName = countryRes.data?.result?.data?.name || "País Desconocido";
+            } catch (e) {
+                console.error("Error obteniendo nombre del país:", e.message);
+            }
+
             // Obtener usuarios del país
             const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
             const items = usersRes.data?.result?.data?.items || [];
@@ -1063,37 +1072,34 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             resultados.sort((a, b) => b.totalWealth - a.totalWealth);
 
             // Construir mensaje
-            let mensaje = `💰 *DINERO DEL PAÍS*\n\n`;
+            let mensaje = `💰 *DINERO DE ${countryName.toUpperCase()}*\n\n`;
             
             // Estadísticas generales
             mensaje += `*Estadísticas Generales:*\n`;
             mensaje += `👥 Jugadores: ${playerCount}\n`;
-            mensaje += `💰 Riqueza total: ${totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `🏭 Riqueza en fábricas: ${totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `💵 Riqueza líquida: ${totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `💰 Wealth total: ${totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `🏭 Wealth en fábricas: ${totalFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `💵 Wealth liquido/almacen: ${totalLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
             mensaje += `🔧 Total fábricas: ${totalFactories}\n\n`;
 
             // Promedios
             mensaje += `*Promedios por Jugador:*\n`;
-            mensaje += `💰 Riqueza: ${avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `💰 Wealth: ${avgWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
             mensaje += `🏭 Fábricas: ${avgFactoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
-            mensaje += `💵 Líquido: ${avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
+            mensaje += `💵 Liquidez/Almacen: ${avgLiquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} monedas\n`;
             mensaje += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
 
-            // Top jugadores (máximo 15 para no saturar)
-            mensaje += `*Top ${Math.min(15, resultados.length)} Jugadores:*\n`;
-            resultados.slice(0, 15).forEach((jugador, index) => {
-                mensaje += `${index + 1}) ${jugador.username} - https://app.warera.io/user/${jugador.userId}\n`;
-                mensaje += `   💰 Total: ${jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+            // Todos los jugadores (no solo 15)
+            mensaje += `*Ranking Completo (${resultados.length} jugadores):*\n\n`;
+            
+            resultados.forEach((jugador, index) => {
+                mensaje += `${index + 1}) ${jugador.username}\n`;
+                mensaje += `https://app.warera.io/user/${jugador.userId}\n`;
+                mensaje += `💰 Total: ${jugador.totalWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
                 mensaje += `🏭 Fábricas: ${jugador.factoryWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
-                mensaje += `💵 Líquido: ${jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
+                mensaje += `💵 Liquidez/Almacen: ${jugador.liquidWealth.toLocaleString('es-ES', {maximumFractionDigits: 2})} | `;
                 mensaje += `🔧 ${jugador.factoryCount} fábricas\n\n`;
             });
-
-            // Si hay más jugadores, mostrar resumen
-            if (resultados.length > 15) {
-                mensaje += `... y ${resultados.length - 15} jugadores más`;
-            }
 
             bot.sendMessage(chatId, mensaje);
 
