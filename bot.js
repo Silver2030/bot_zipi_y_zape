@@ -1144,16 +1144,23 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    console.log(`Mensaje recibido en chatId: ${chatId} | Texto: ${text}`);
+    console.log(`Mensaje recibido en chatId: ${chatId} | Tipo: ${msg.chat.type} | Texto: ${text}`);
 
-    // Filtrar por grupo o chat permitido
-    if (GROUP_ID && chatId !== GROUP_ID && chatId !== GROUP_PRUEBAS_ID && chatId !== CHAT_ID) return;
+    // Verificar si es un chat/grupo permitido
+    const allowedChats = [GROUP_ID, GROUP_PRUEBAS_ID, CHAT_ID].filter(id => id !== undefined);
+    
+    // Si hay chats permitidos definidos, verificar que el chat actual esté en la lista
+    if (allowedChats.length > 0 && !allowedChats.includes(chatId)) {
+        console.log(`Chat no permitido: ${chatId}`);
+        return;
+    }
 
     // Primero verificar si contiene "otto"
     if (text && text.toLowerCase().includes('otto')) {
+        console.log(`Detectada palabra "otto" en el grupo: ${chatId}`);
         // Enviar respuesta "Putero"
         bot.sendMessage(chatId, 'Putero');
-        console.log(`Detectada palabra "otto" en mensaje: "${text}" - Respuesta enviada: "Putero"`);
+        console.log(`Respuesta "Putero" enviada al chat: ${chatId}`);
         return; // Importante: salir después de responder para no procesar comandos
     }
 
