@@ -1143,35 +1143,57 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
+    const messageId = msg.message_id;
+    const fromUser = msg.from ? `${msg.from.username || msg.from.first_name} (${msg.from.id})` : 'Unknown';
 
-    console.log(`Mensaje recibido en chatId: ${chatId} | Tipo: ${msg.chat.type} | Texto: ${text}`);
+    // LOG COMPLETO de TODOS los mensajes
+    console.log('=== MENSAJE RECIBIDO ===');
+    console.log('📅 Hora:', new Date().toISOString());
+    console.log('💬 Message ID:', messageId);
+    console.log('👤 De:', fromUser);
+    console.log('🏠 Chat ID:', chatId);
+    console.log('🔧 Tipo Chat:', msg.chat.type);
+    console.log('📝 Título Chat:', msg.chat.title || 'Private Chat');
+    console.log('📄 Texto:', text ? `"${text}"` : 'NO TEXT');
+    console.log('📎 Tiene adjuntos:', !!msg.document || !!msg.photo || !!msg.sticker || !!msg.video);
+    console.log('========================');
 
-    // Verificar si es un chat/grupo permitido
+    // Verificar si es un chat/grupo permitido (solo para procesamiento, no para logging)
     const allowedChats = [GROUP_ID, GROUP_PRUEBAS_ID, CHAT_ID].filter(id => id !== undefined);
     
     // Si hay chats permitidos definidos, verificar que el chat actual esté en la lista
     if (allowedChats.length > 0 && !allowedChats.includes(chatId)) {
-        console.log(`Chat no permitido: ${chatId}`);
+        console.log(`❌ Chat no permitido, ignorando procesamiento: ${chatId}`);
         return;
     }
 
-    // Primero verificar si contiene "otto"
-    if (text && text.toLowerCase().includes('otto')) {
-        console.log(`Detectada palabra "otto" en el grupo: ${chatId}`);
+    console.log(`✅ Chat permitido, procesando mensaje...`);
+
+    // PRIMERO: Siempre verificar si contiene "otto" (incluso en comandos)
+    if (textLower.includes('otto') || textLower.includes('oto') || textLower.includes('oton')) {
+        console.log(`🎯 Detectada palabra "otto" en el chat: ${chatId}`);
         // Enviar respuesta "Putero"
         bot.sendMessage(chatId, 'Putero');
-        console.log(`Respuesta "Putero" enviada al chat: ${chatId}`);
-        return; // Importante: salir después de responder para no procesar comandos
+        console.log(`📤 Respuesta "Putero" enviada al chat: ${chatId}`);
     }
 
-    // Luego verificar comandos
-    if (!text || !text.startsWith('/')) return;
+    // LUEGO: Verificar comandos
+    if (!text || !text.startsWith('/')) {
+        console.log(`ℹ️ Mensaje normal, sin comando`);
+        return;
+    }
 
     const [cmdRaw, ...args] = text.slice(1).split(' ');
     const cmd = cmdRaw.split('@')[0].toLowerCase();
 
+    console.log(`🔧 Intentando ejecutar comando: ${cmd}`, args);
+
     if (comandos[cmd]) {
+        console.log(`🚀 Ejecutando comando: ${cmd}`);
         await comandos[cmd](chatId, args);
+        console.log(`✅ Comando ${cmd} ejecutado`);
+    } else {
+        console.log(`❌ Comando no reconocido: ${cmd}`);
     }
 });
 
