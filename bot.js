@@ -1146,18 +1146,6 @@ bot.on('message', async (msg) => {
     const messageId = msg.message_id;
     const fromUser = msg.from ? `${msg.from.username || msg.from.first_name} (${msg.from.id})` : 'Unknown';
 
-    // LOG COMPLETO de TODOS los mensajes
-    console.log('=== MENSAJE RECIBIDO ===');
-    console.log('📅 Hora:', new Date().toISOString());
-    console.log('💬 Message ID:', messageId);
-    console.log('👤 De:', fromUser);
-    console.log('🏠 Chat ID:', chatId);
-    console.log('🔧 Tipo Chat:', msg.chat.type);
-    console.log('📝 Título Chat:', msg.chat.title || 'Private Chat');
-    console.log('📄 Texto:', text ? `"${text}"` : 'NO TEXT');
-    console.log('📎 Tiene adjuntos:', !!msg.document || !!msg.photo || !!msg.sticker || !!msg.video);
-    console.log('========================');
-
     // Verificar si es un chat/grupo permitido (solo para procesamiento, no para logging)
     const allowedChats = [GROUP_ID, GROUP_PRUEBAS_ID, CHAT_ID].filter(id => id !== undefined);
     
