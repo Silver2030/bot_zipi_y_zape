@@ -1167,14 +1167,22 @@ bot.on('message', async (msg) => {
         return;
     }
 
-    console.log(`✅ Chat permitido, procesando mensaje...`);
-
-    // PRIMERO: Siempre verificar si contiene "otto" (incluso en comandos)
-    if (textLower.includes('otto') || textLower.includes('oto') || textLower.includes('oton')) {
-        console.log(`🎯 Detectada palabra "otto" en el chat: ${chatId}`);
-        // Enviar respuesta "Putero"
-        bot.sendMessage(chatId, 'Putero');
-        console.log(`📤 Respuesta "Putero" enviada al chat: ${chatId}`);
+    // PRIMERO: Siempre verificar si contiene "otto" o variantes
+    if (text) {
+        const textLower = text.toLowerCase(); // ← DEFINIR textLower aquí
+        const ottoVariants = [
+            'otto', 'oto', 'oton', 'otón'
+        ];
+        
+        const foundVariant = ottoVariants.some(variant => textLower.includes(variant));
+        
+        if (foundVariant) {
+            console.log(`🎯 Detectada variante "${foundVariant}" de "otto" en el chat: ${chatId}`);
+            console.log(`📝 Texto completo: "${text}"`);
+            // Enviar respuesta "Putero"
+            bot.sendMessage(chatId, 'Putero');
+            console.log(`📤 Respuesta "Putero" enviada al chat: ${chatId}`);
+        }
     }
 
     // LUEGO: Verificar comandos
