@@ -1140,10 +1140,6 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
             mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
             mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n`;
-            if (totalWealthAdjustment > 0) {
-                mensajePrincipal += `⚙️ Ajuste por fábricas deshabilitadas: ${formatNumber(totalWealthAdjustment)} monedas\n`;
-            }
-            mensajePrincipal += `\n`;
 
             // Promedios
             mensajePrincipal += `*Promedios por Jugador:*\n`;
