@@ -989,11 +989,41 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 console.error("Error obteniendo nombre del país:", e.message);
             }
 
-            // Obtener usuarios del país
-            const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
-            const items = usersRes.data?.result?.data?.items || [];
+            // Obtener TODOS los usuarios del país (manejando paginación)
+            let allItems = [];
+            let nextCursor = null;
+            let pageCount = 0;
 
-            if (items.length === 0) {
+            do {
+                pageCount++;
+                console.log(`📄 Obteniendo página ${pageCount} de usuarios...`);
+                
+                const queryParams = { countryId, limit: 100 };
+                if (nextCursor) {
+                    queryParams.cursor = nextCursor;
+                }
+
+                const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify(queryParams))}`);
+                const responseData = usersRes.data?.result?.data;
+                
+                if (responseData?.items) {
+                    allItems = allItems.concat(responseData.items);
+                    nextCursor = responseData.nextCursor || null;
+                    console.log(`✅ Página ${pageCount}: ${responseData.items.length} usuarios, nextCursor: ${nextCursor ? 'Sí' : 'No'}`);
+                } else {
+                    nextCursor = null;
+                }
+
+                // Pequeña pausa para no saturar la API
+                if (nextCursor) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+
+            } while (nextCursor && pageCount < 10); // Límite de seguridad de 10 páginas (1000 usuarios)
+
+            console.log(`📊 Total de usuarios obtenidos: ${allItems.length}`);
+
+            if (allItems.length === 0) {
                 bot.sendMessage(chatId, "No se encontraron jugadores en ese país.");
                 return;
             }
@@ -1003,8 +1033,9 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             let totalFactoryWealth = 0;
             let totalLiquidWealth = 0;
             let totalFactories = 0;
+            let totalWealthAdjustment = 0; // Para trackear cuánto ajustamos por fábricas deshabilitadas
 
-            for (const item of items) {
+            for (const item of allItems) {
                 try {
                     // Obtener datos del usuario
                     const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
@@ -1012,11 +1043,12 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                     if (!userData) continue;
 
                     const username = userData.username;
-                    const totalWealthValue = userData.rankings?.userWealth?.value || 0;
+                    let totalWealthValue = userData.rankings?.userWealth?.value || 0;
 
                     // Obtener fábricas del usuario
                     let factoryWealth = 0;
                     let factoryCount = 0;
+                    let disabledFactoryWealth = 0;
 
                     try {
                         const companiesRes = await axios.get(`https://api2.warera.io/trpc/company.getCompanies?input=${encodeURIComponent(JSON.stringify({userId:item._id, perPage:50}))}`);
@@ -1028,6 +1060,14 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                                 const companyRes = await axios.get(`https://api2.warera.io/trpc/company.getById?input=${encodeURIComponent(JSON.stringify({companyId}))}`);
                                 const companyData = companyRes.data?.result?.data;
                                 if (companyData && companyData.estimatedValue) {
+                                    // Verificar si la fábrica está deshabilitada
+                                    const isDisabled = !!companyData.disabledAt;
+                                    
+                                    if (isDisabled) {
+                                        // Fábrica deshabilitada: sumar al wealth total para corregir
+                                        disabledFactoryWealth += companyData.estimatedValue;
+                                    }
+                                    // Todas las fábricas (activas y deshabilitadas) se suman a factoryWealth
                                     factoryWealth += companyData.estimatedValue;
                                     factoryCount++;
                                 }
@@ -1035,6 +1075,14 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                                 console.error(`Error obteniendo fábrica ${companyId}:`, e.message);
                             }
                         }
+
+                        // AJUSTE CRÍTICO: Si hay fábricas deshabilitadas, ajustar el totalWealth
+                        if (disabledFactoryWealth > 0) {
+                            totalWealthValue += disabledFactoryWealth;
+                            totalWealthAdjustment += disabledFactoryWealth;
+                            console.log(`🔧 Ajustando wealth de ${username}: +${disabledFactoryWealth} por fábricas deshabilitadas`);
+                        }
+
                     } catch (e) {
                         console.error(`Error obteniendo lista de fábricas para ${username}:`, e.message);
                     }
@@ -1047,7 +1095,8 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                         totalWealth: totalWealthValue,
                         factoryWealth,
                         liquidWealth,
-                        factoryCount
+                        factoryCount,
+                        hasDisabledFactories: disabledFactoryWealth > 0
                     });
 
                     // Acumular totales
@@ -1090,7 +1139,11 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             mensajePrincipal += `💰 Wealth total: ${formatNumber(totalWealth)} monedas\n`;
             mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
             mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n\n`;
+            mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n`;
+            if (totalWealthAdjustment > 0) {
+                mensajePrincipal += `⚙️ Ajuste por fábricas deshabilitadas: ${formatNumber(totalWealthAdjustment)} monedas\n`;
+            }
+            mensajePrincipal += `\n`;
 
             // Promedios
             mensajePrincipal += `*Promedios por Jugador:*\n`;
@@ -1115,7 +1168,11 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                     // URL sin escapar para que sea clickeable
                     const url = `https://app.warera.io/user/${jugador.userId}`;
                     
-                    mensajeChunk += `${globalIndex}) ${usernameEscapado}\n`;
+                    mensajeChunk += `${globalIndex}) ${usernameEscapado}`;
+                    if (jugador.hasDisabledFactories) {
+                        mensajeChunk += ` ⚠️`; // Indicador de fábricas deshabilitadas
+                    }
+                    mensajeChunk += `\n`;
                     mensajeChunk += `${url}\n`;
                     mensajeChunk += `💰 Wealth: ${formatNumber(jugador.totalWealth)} | `;
                     mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)} \n `;
@@ -1155,21 +1212,27 @@ bot.on('message', async (msg) => {
         return;
     }
 
-    // PRIMERO: Siempre verificar si contiene "otto" o variantes
+    // PRIMERO: Siempre verificar si contiene "otto" o variantes (solo si hay texto)
     if (text) {
-        const textLower = text.toLowerCase(); // ← DEFINIR textLower aquí
+        const textLower = text.toLowerCase();
         const ottoVariants = [
             'otto', 'oto', 'oton', 'otón'
         ];
         
-        const foundVariant = ottoVariants.some(variant => textLower.includes(variant));
+        // Buscar palabras completas (mejor método)
+        const words = textLower.split(/\s+/); // Dividir por espacios
+        const foundVariant = ottoVariants.find(variant => 
+            words.some(word => word === variant)
+        );
         
         if (foundVariant) {
-            console.log(`🎯 Detectada variante "${foundVariant}" de "otto" en el chat: ${chatId}`);
-            console.log(`📝 Texto completo: "${text}"`);
+            console.log(`🎯 Detectada variante "${foundVariant}" de "otto"`);
+            console.log(`🎯 Texto original: "${text}"`);
             // Enviar respuesta "Putero"
             bot.sendMessage(chatId, 'Putero');
-            console.log(`📤 Respuesta "Putero" enviada al chat: ${chatId}`);
+            console.log(`📤 Respuesta "Putero" enviada`);
+        } else {
+            console.log(`❌ No se detectó ninguna variante de "otto" en el texto`);
         }
     }
 
