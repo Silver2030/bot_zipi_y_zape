@@ -5,171 +5,16 @@ const express = require('express');
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
-// --- Función para calcular daño Montecarlo ---
-async function calcularDanyo(userData, healFood) {
-    const atk = userData.skills.attack?.total || 0;
-    const critChance = (userData.skills.criticalChance?.total || 0) / 100;
-    const critDmg = (userData.skills.criticalDamages?.total || 0) / 100;
-    const precision = (userData.skills.precision?.total || 0) / 100;
-    const armor = Math.min((userData.skills.armor?.total || 0) / 100, 0.9); 
-    const dodge = (userData.skills.dodge?.total || 0) / 100;
-
-    const hpNow = (userData.skills.health?.currentBarValue || 0)
-        + Math.floor(userData.skills.hunger?.currentBarValue || 0) * healFood;
-
-    const hpRegen24h = userData.skills.health?.total * 0.1 * 24;
-    const hungerRegen24h = Math.floor(userData.skills.hunger?.total * 0.1 * 24) * healFood;
-    const hp24h = hpRegen24h + hungerRegen24h;
-
-    function simular(hpTotal) {
-        const simulaciones = 10000;
-        let totalDanyo = 0;
-
-        for (let i = 0; i < simulaciones; i++) {
-            let hp = hpTotal;
-            let dmg = 0;
-            let comidaRestante = Math.floor(userData.skills.hunger?.currentBarValue || 0);
-
-            while (hp >= 10) {
-
-                let base = atk;
-
-                if (Math.random() < critChance) {
-                    base *= (1 + critDmg);
-                }
-                if (Math.random() >= precision) {
-                    base *= 0.5;
-                }
-                
-                dmg += base;
-
-                const esquiva = Math.random() < dodge;
-                if (!esquiva) {
-                    let damageTaken = 10 * (1 - armor);
-                    damageTaken = Math.max(1, damageTaken); 
-                    
-                    if (hp <= damageTaken) {
-                        break; 
-                    }
-                    hp -= damageTaken;
-                }
-
-                while (hp < 10 && comidaRestante > 0) {
-                    hp += healFood;
-                    comidaRestante -= 1;
-                }
-
-                if (hp < 10) {
-                    break;
-                }
-            }
-            totalDanyo += dmg;
-        }
-
-        return totalDanyo / simulaciones;
-    }
-
-    return {
-        danyoActual: simular(hpNow),
-        danyo24h: simular(hp24h)
-    };
-}
-
-function escapeMarkdownV2(text) {
-    return text.replace(/([_\*\[\]\(\)~`>#+\-=|{}.!])/g, '\\$1');
-}
-
-// --- Función unificada para país o MU ---
-async function calcularDanyoGrupo(chatId, args, tipo = 'pais') {
-    if (args.length < 2) {
-        bot.sendMessage(chatId, tipo === 'pais' 
-            ? "Ejemplo: /paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO"
-            : "Ejemplo: /muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PESCADO");
-        return;
-    }
-
-    const id = args[0].includes('warera.io') ? args[0].split('/').pop() : args[0];
-    const comida = args[1].toUpperCase();
-    const healMap = { PAN: 10, FILETE: 20, PESCADO: 30 };
-    const healFood = healMap[comida];
-
-    if (!healFood) {
-        bot.sendMessage(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
-        return;
-    }
-
-    try {
-        let items = [];
-
-        if (tipo === 'pais') {
-            const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({ countryId: id, limit: 100 }))}`);
-            items = usersRes.data?.result?.data?.items || [];
-        } else {
-            const muRes = await axios.get(`https://api2.warera.io/trpc/mu.getById?input=${encodeURIComponent(JSON.stringify({ muId: id }))}`);
-            const muData = muRes.data?.result?.data;
-            if (!muData?.members?.length) {
-                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
-                return;
-            }
-            items = muData.members.map(userId => ({ _id: userId }));
-        }
-
-        let totalActual = 0;
-        let total24h = 0;
-        const resultados = [];
-
-        for (const item of items) {
-            try {
-                const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({ userId: item._id }))}`);
-                const data = userRes.data?.result?.data;
-                if (!data) continue;
-
-                const { danyoActual, danyo24h } = await calcularDanyo(data, healFood);
-
-                totalActual += danyoActual;
-                total24h += danyo24h;
-
-                resultados.push({
-                    username: data.username,
-                    userId: data._id,
-                    danyoActual,
-                    danyo24h
-                });
-
-            } catch (e) {
-                console.error(`Error obteniendo usuario ${item._id}:`, e.message);
-            }
-        }
-
-        resultados.sort((a, b) => b.danyoActual - a.danyoActual);
-
-        const mensajeUsuarios = resultados.map(u => 
-            `- ${u.username} - https://app.warera.io/user/${u.userId}\n` +
-            `Daño actual: ${Math.round(u.danyoActual).toLocaleString('es-ES')}\n` +
-            `Daño 24h: ${Math.round(u.danyo24h).toLocaleString('es-ES')}`
-        ).join('\n\n');
-
-        const mensajeFinal =
-            `- ${tipo === 'pais' ? 'País' : 'MU'}: https://app.warera.io/${tipo}/${id}\n` +
-            `- Comida usada: ${comida}\n\n` +
-            `- Total de daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}\n` +
-            `- Total de daño a lo largo de 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n\n` +
-            mensajeUsuarios;
-
-        bot.sendMessage(chatId, mensajeFinal);
-
-    } catch (error) {
-        console.error(error);
-        bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
-    }
-}
-
-// GROUP ID: -1002840225634 CHAT ID: 696082291
+// --- Configuraciones y constantes ---
 const GROUP_ID = -1002840225634;
-const GROUP_PRUEBAS_ID = -1003246477704 ; 
+const GROUP_PRUEBAS_ID = -1003246477704;
 const CHAT_ID = 696082291;
 
-// Lista de usuarios
+const HEAL_FOOD_MAP = { PAN: 10, FILETE: 20, PESCADO: 30 };
+const SKILL_COSTS = [0,1,3,6,10,15,21,28,36,45,55];
+const PVP_SKILLS = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
+const ECO_SKILLS = ["energy","companies","entrepreneurship","production","lootChance"];
+
 const usuarios = [
     { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     { userId: "686eefe3ee16d37c417a0e59", mention: "@lodensy" },
@@ -246,46 +91,335 @@ const guerraMundial1 = [
     { battleId: "68fd106e8831416ea7d761a3", side: "defender"}
 ]
 
-// --- Comandos del bot ---
+// --- Funciones de utilidad ---
+function escapeMarkdownV2(text) {
+    return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+}
+
+function formatNumber(num) {
+    return num.toLocaleString('es-ES');
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// --- API Helpers ---
+async function apiCall(endpoint, params) {
+    const url = `https://api2.warera.io/trpc/${endpoint}?input=${encodeURIComponent(JSON.stringify(params))}`;
+    const response = await axios.get(url);
+    return response.data?.result?.data;
+}
+
+async function getUserData(userId) {
+    return apiCall('user.getUserLite', { userId });
+}
+
+async function getCountryUsers(countryId) {
+    return apiCall('user.getUsersByCountry', { countryId, limit: 100 });
+}
+
+async function getMUData(muId) {
+    return apiCall('mu.getById', { muId });
+}
+
+async function getCountryData(countryId) {
+    return apiCall('country.getCountryById', { countryId });
+}
+
+async function getUserCompanies(userId) {
+    return apiCall('company.getCompanies', { userId, perPage: 50 });
+}
+
+async function getCompanyData(companyId) {
+    return apiCall('company.getById', { companyId });
+}
+
+async function getBattleRanking(battleId, dataType, type, side) {
+    return apiCall('battleRanking.getRanking', { battleId, dataType, type, side });
+}
+
+// --- Núcleo de cálculo de daño ---
+function calcularDanyo(userData, healFood) {
+    const skills = userData.skills;
+    const atk = skills.attack?.total || 0;
+    const critChance = (skills.criticalChance?.total || 0) / 100;
+    const critDmg = (skills.criticalDamages?.total || 0) / 100;
+    const precision = (skills.precision?.total || 0) / 100;
+    const armor = Math.min((skills.armor?.total || 0) / 100, 0.9);
+    const dodge = (skills.dodge?.total || 0) / 100;
+
+    const hpNow = (skills.health?.currentBarValue || 0) + Math.floor(skills.hunger?.currentBarValue || 0) * healFood;
+    const hpRegen24h = skills.health?.total * 0.1 * 24;
+    const hungerRegen24h = Math.floor(skills.hunger?.total * 0.1 * 24) * healFood;
+    const hp24h = hpRegen24h + hungerRegen24h;
+
+    function simularCombate(hpTotal) {
+        const simulaciones = 10000;
+        let totalDanyo = 0;
+
+        for (let i = 0; i < simulaciones; i++) {
+            let hp = hpTotal;
+            let dmg = 0;
+            let comidaRestante = Math.floor(skills.hunger?.currentBarValue || 0);
+
+            while (hp >= 10) {
+                let baseDmg = atk;
+                if (Math.random() < critChance) baseDmg *= (1 + critDmg);
+                if (Math.random() >= precision) baseDmg *= 0.5;
+                
+                dmg += baseDmg;
+
+                const esquiva = Math.random() < dodge;
+                if (!esquiva) {
+                    let damageTaken = 10 * (1 - armor);
+                    damageTaken = Math.max(1, damageTaken);
+                    if (hp <= damageTaken) break;
+                    hp -= damageTaken;
+                }
+
+                while (hp < 10 && comidaRestante > 0) {
+                    hp += healFood;
+                    comidaRestante -= 1;
+                }
+
+                if (hp < 10) break;
+            }
+            totalDanyo += dmg;
+        }
+        return totalDanyo / simulaciones;
+    }
+
+    return {
+        danyoActual: simularCombate(hpNow),
+        danyo24h: simularCombate(hp24h)
+    };
+}
+
+// --- Procesamiento de grupos ---
+async function procesarGrupoDanyo(chatId, args, tipo) {
+    if (args.length < 2) {
+        const ejemplo = tipo === 'pais' 
+            ? "/paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO"
+            : "/muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PESCADO";
+        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`);
+        return;
+    }
+
+    const id = args[0].split('/').pop();
+    const comida = args[1].toUpperCase();
+    const healFood = HEAL_FOOD_MAP[comida];
+
+    if (!healFood) {
+        bot.sendMessage(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
+        return;
+    }
+
+    try {
+        let items = [];
+        
+        if (tipo === 'pais') {
+            const countryData = await getCountryUsers(id);
+            items = countryData?.items || [];
+        } else {
+            const muData = await getMUData(id);
+            if (!muData?.members?.length) {
+                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+                return;
+            }
+            items = muData.members.map(userId => ({ _id: userId }));
+        }
+
+        const resultados = [];
+        let totalActual = 0;
+        let total24h = 0;
+
+        for (const item of items) {
+            try {
+                const userData = await getUserData(item._id);
+                if (!userData) continue;
+
+                const { danyoActual, danyo24h } = calcularDanyo(userData, healFood);
+                totalActual += danyoActual;
+                total24h += danyo24h;
+
+                resultados.push({
+                    username: userData.username,
+                    userId: userData._id,
+                    danyoActual,
+                    danyo24h
+                });
+            } catch (error) {
+                console.error(`Error usuario ${item._id}:`, error.message);
+            }
+        }
+
+        resultados.sort((a, b) => b.danyoActual - a.danyoActual);
+
+        const mensajeUsuarios = resultados.map(u => 
+            `- ${u.username} - https://app.warera.io/user/${u.userId}\n` +
+            `Daño actual: ${Math.round(u.danyoActual).toLocaleString('es-ES')}\n` +
+            `Daño 24h: ${Math.round(u.danyo24h).toLocaleString('es-ES')}`
+        ).join('\n\n');
+
+        const mensajeFinal = [
+            `- ${tipo === 'pais' ? 'País' : 'MU'}: https://app.warera.io/${tipo}/${id}`,
+            `- Comida usada: ${comida}\n`,
+            `- Total de daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}`,
+            `- Total de daño a lo largo de 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n`,
+            mensajeUsuarios
+        ].join('\n');
+
+        bot.sendMessage(chatId, mensajeFinal);
+
+    } catch (error) {
+        console.error(error);
+        bot.sendMessage(chatId, "Error al procesar el comando.");
+    }
+}
+
+// --- Análisis de builds ---
+function analizarBuild(userData) {
+    let pvpPoints = 0, ecoPoints = 0;
+    
+    PVP_SKILLS.forEach(skill => pvpPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
+    ECO_SKILLS.forEach(skill => ecoPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
+
+    const total = pvpPoints + ecoPoints;
+    const pctPvp = total ? (pvpPoints / total) * 100 : 0;
+
+    let build = "HIBRIDA";
+    if (pctPvp > 65) build = "PVP";
+    else if (pctPvp < 35) build = "ECO";
+
+    return { build, nivel: userData.leveling?.level || 0 };
+}
+
+function obtenerEstadoPastilla(userData) {
+    const buffs = userData.buffs;
+    if (buffs?.buffCodes?.length) {
+        return { icono: "💊", fecha: new Date(buffs.buffEndAt) };
+    }
+    if (buffs?.debuffCodes?.length) {
+        return { icono: "⛔", fecha: new Date(buffs.debuffEndAt) };
+    }
+    return { icono: "", fecha: null };
+}
+
+async function procesarJugadoresGrupo(chatId, args, tipo) {
+    if (args.length < 1) {
+        const ejemplo = tipo === 'pais' 
+            ? "/jugadoresPais https://app.warera.io/country/6813b6d446e731854c7ac7ae"
+            : "/jugadoresMu https://app.warera.io/mu/687cbb53fae4c9cf04340e77";
+        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`);
+        return;
+    }
+
+    const id = args[0].split('/').pop();
+    
+    try {
+        let items = [];
+        let nombreGrupo = "Sin nombre";
+
+        if (tipo === 'pais') {
+            const countryData = await getCountryUsers(id);
+            items = countryData?.items || [];
+            const countryInfo = await getCountryData(id);
+            nombreGrupo = countryInfo?.name || "País Desconocido";
+        } else {
+            const muData = await getMUData(id);
+            if (!muData?.members?.length) {
+                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+                return;
+            }
+            items = muData.members.map(userId => ({ _id: userId }));
+            nombreGrupo = muData.name || "MU Sin nombre";
+        }
+
+        const usuarios = [];
+
+        for (const item of items) {
+            try {
+                const userData = await getUserData(item._id);
+                if (!userData) continue;
+
+                const { build, nivel } = analizarBuild(userData);
+                const { icono, fecha } = obtenerEstadoPastilla(userData);
+
+                usuarios.push({
+                    username: userData.username,
+                    _id: userData._id,
+                    icono,
+                    fecha,
+                    build,
+                    nivel
+                });
+            } catch (error) {
+                console.error(`Error procesando usuario ${item._id}:`, error.message);
+            }
+        }
+
+        const pvp = usuarios.filter(u => u.build === "PVP").sort((a, b) => b.nivel - a.nivel);
+        const hibridos = usuarios.filter(u => u.build === "HIBRIDA").sort((a, b) => b.nivel - a.nivel);
+        const eco = usuarios.filter(u => u.build === "ECO").sort((a, b) => b.nivel - a.nivel);
+
+        const disponibles = usuarios.filter(u => u.icono === "").length;
+        const activas = usuarios.filter(u => u.icono === "💊").length;
+        const debuffs = usuarios.filter(u => u.icono === "⛔").length;
+
+        const formatUsuario = u => {
+            const username = escapeMarkdownV2(u.username);
+            const url = escapeMarkdownV2(`https://app.warera.io/user/${u._id}`);
+            let line = `${u.nivel}\\) [${username}](${url})`;
+            if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
+            if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
+            return line;
+        };
+
+        let mensaje = tipo === 'pais' 
+            ? `*${escapeMarkdownV2("PASTILLAS")}*\n`
+            : `*${escapeMarkdownV2("MU")}: ${escapeMarkdownV2(nombreGrupo)}*\n*${escapeMarkdownV2("PASTILLAS")}*\n`;
+        
+        mensaje += `${escapeMarkdownV2("Disponibles:")} ${disponibles}, ${escapeMarkdownV2("Activas:")} ${activas}, ${escapeMarkdownV2("Debuff:")} ${debuffs}\n\n`;
+
+        mensaje += `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("-")} ${pvp.length}*\n`;
+        mensaje += pvp.length ? pvp.map(formatUsuario).join('\n') : escapeMarkdownV2("(ninguno)");
+        mensaje += `\n\n`;
+
+        mensaje += `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("-")} ${hibridos.length}*\n`;
+        mensaje += hibridos.length ? hibridos.map(formatUsuario).join('\n') : escapeMarkdownV2("(ninguno)");
+        mensaje += `\n\n`;
+
+        mensaje += `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("-")} ${eco.length}*\n`;
+        mensaje += eco.length ? eco.map(formatUsuario).join('\n') : escapeMarkdownV2("(ninguno)");
+
+        bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+
+    } catch (error) {
+        console.error(error);
+        bot.sendMessage(chatId, "Error al procesar el comando.");
+    }
+}
+
+// --- Comandos ---
 const comandos = {
     help: (chatId) => {
-        const helpMessage = 
-`Comandos disponibles:
+        const mensaje = `Comandos disponibles:
 
-/buscar <TEXTO>
-Busca el enlace in game.
-
-/hambre <ENLACE_GUERRA> <MENSAJE>
-Menciona a todos los jugadores que tengan un 60% o más de puntos de hambre sin usar. (Muchos pings, no seais imbeciles spameandolo)
-
-/jugadoresPais <ID_PAIS/ENLACE_PAIS>
-Muestra las builds de los jugadores de un pais y sus pastillas.
-
-/jugadoresMu <ID_PAIS/ENLACE_PAIS>
-Muestra las builds de los jugadores de una mu y sus pastillas.
-
-/paisesDanyo <ID_PAIS/ENLACE_PAIS> <FILTRO>
-Muestra el daño disponible de un pais y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones).
-
-/muDanyo <ID_MU/MU> <FILTRO>
-Muestra el daño disponible de una mu y el que puede hacer a lo largo de 24h (Sin buffos y son aproximaciones).
-
-/danyosemanal
-Muestra el ranking de daño de esta semana de los players registrados.
-
-/guerras <GUERRA>
-Muestra el daño realizado a lo largo de un conflicto.
-
-/all
-Menciona a todo el grupo. (Muchos pings, no seais imbeciles spameandolo)
-
-/produccion
-Ranking productivo de materiales
-
-/dineropais <ID_PAIS/ENLACE_PAIS>
-Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, con promedios por jugador.`;
-        bot.sendMessage(chatId, helpMessage);
+/buscar <TEXTO> - Busca enlaces en el juego
+/hambre <ENLACE_GUERRA> <MENSAJE> - Menciona jugadores con hambre
+/jugadoresPais <ID_PAIS> - Builds y pastillas del país
+/jugadoresMu <ID_MU> - Builds y pastillas de la MU
+/paisesDanyo <ID_PAIS> <COMIDA> - Daño disponible del país
+/muDanyo <ID_MU> <COMIDA> - Daño disponible de la MU
+/danyosemanal - Ranking de daño semanal
+/guerras <GUERRA> - Daño en conflictos
+/all - Menciona al grupo
+/produccion - Ranking productivo
+/dineropais <ID_PAIS> - Riqueza del país`;
+        bot.sendMessage(chatId, mensaje);
     },
+
     buscar: async (chatId, args) => {
         if (args.length < 1) {
             bot.sendMessage(chatId, "Ejemplo: /buscar Silver");
@@ -293,78 +427,42 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
         }
 
         const searchText = args.join(' ');
-
+        
         try {
-            // Hacer la petición a la API de búsqueda
-            const searchRes = await axios.get(`https://api2.warera.io/trpc/search.searchAnything?input=${encodeURIComponent(JSON.stringify({searchText}))}`);
-            const searchData = searchRes.data?.result?.data;
-
+            const searchData = await apiCall('search.searchAnything', { searchText });
+            
             if (!searchData?.hasData) {
-                bot.sendMessage(chatId, `No se encontraron resultados para: "${searchText}"`);
+                bot.sendMessage(chatId, `No hay resultados para: "${searchText}"`);
                 return;
             }
 
-            // Función para escapar MarkdownV2
-            function escapeMarkdownV2(text) {
-                return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
-            }
+            let mensaje = `*Resultados para:* ${escapeMarkdownV2(searchText)}\n\n`;
+            
+            const categorias = [
+                { key: 'userIds', nombre: '👤 Usuarios', url: 'user' },
+                { key: 'muIds', nombre: '🏢 MUs', url: 'mu' },
+                { key: 'countryIds', nombre: '🇺🇳 Países', url: 'country' },
+                { key: 'regionIds', nombre: '🗺️ Regiones', url: 'region' }
+            ];
 
-            let mensaje = `*Resultados de búsqueda para:* ${escapeMarkdownV2(searchText)}\n\n`;
+            categorias.forEach(({ key, nombre, url }) => {
+                if (searchData[key]?.length) {
+                    mensaje += `*${nombre}*\n`;
+                    searchData[key].forEach(id => {
+                        mensaje += `${escapeMarkdownV2(`https://app.warera.io/${url}/${id}`)}\n`;
+                    });
+                    mensaje += `\n`;
+                }
+            });
 
-            // Procesar usuarios
-            if (searchData.userIds?.length > 0) {
-                mensaje += `*👤 Usuarios*\n`;
-                searchData.userIds.forEach(userId => {
-                    const url = `https://app.warera.io/user/${userId}`;
-                    mensaje += `${escapeMarkdownV2(url)}\n`;
-                });
-                mensaje += `\n`;
-            }
-
-            // Procesar MUs
-            if (searchData.muIds?.length > 0) {
-                mensaje += `*🏢 MUs*\n`;
-                searchData.muIds.forEach(muId => {
-                    const url = `https://app.warera.io/mu/${muId}`;
-                    mensaje += `${escapeMarkdownV2(url)}\n`;
-                });
-                mensaje += `\n`;
-            }
-
-            // Procesar países
-            if (searchData.countryIds?.length > 0) {
-                mensaje += `*🇺🇳 Países*\n`;
-                searchData.countryIds.forEach(countryId => {
-                    const url = `https://app.warera.io/country/${countryId}`;
-                    mensaje += `${escapeMarkdownV2(url)}\n`;
-                });
-                mensaje += `\n`;
-            }
-
-            // Procesar regiones
-            if (searchData.regionIds?.length > 0) {
-                mensaje += `*🗺️ Regiones*\n`;
-                searchData.regionIds.forEach(regionId => {
-                    const url = `https://app.warera.io/region/${regionId}`;
-                    mensaje += `${escapeMarkdownV2(url)}\n`;
-                });
-                mensaje += `\n`;
-            }
-
-            // Si no hay resultados en ninguna categoría
-            if (!searchData.userIds?.length && !searchData.muIds?.length && 
-                !searchData.countryIds?.length && !searchData.regionIds?.length) {
-                mensaje += `No se encontraron resultados en ninguna categoría.`;
-            }
-
-            // Enviar mensaje
             bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
 
         } catch (error) {
             console.error(error);
-            bot.sendMessage(chatId, "Ha ocurrido un error al procesar la búsqueda.");
+            bot.sendMessage(chatId, "Error en la búsqueda.");
         }
     },
+
     hambre: async (chatId, args) => {
         if (!args[0] || !args[1]) {
             bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
@@ -377,337 +475,266 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
 
         for (const usuario of usuarios) {
             try {
-                const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
-                const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
-                const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
-                const data = response.data?.result?.data;
-                if (!data) continue;
+                const userData = await getUserData(usuario.userId);
+                if (!userData) continue;
 
-                const hunger = data?.skills?.hunger;
-                const username = data?.username;
-                const debuffs = data?.buffs?.debuffCodes || [];
+                const debuffs = userData.buffs?.debuffCodes || [];
+                if (debuffs.includes("cocain")) continue;
 
-                // No mencionar si tiene debuff "cocain"
-                if (debuffs.includes("cocain")) {
-                    console.log(`Excluido ${username} (${usuario.userId}) por debuff de cocain`);
-                    continue;
-                }
-
-                // Validar hambre ≥ 30%
+                const hunger = userData.skills?.hunger;
                 if (hunger && hunger.currentBarValue >= 0.3 * hunger.total) {
-                    menciones.push(`${usuario.mention} (${username})`);
+                    menciones.push(`${usuario.mention} (${userData.username})`);
                 }
             } catch (error) {
                 console.error(`Error con usuario ${usuario.userId}:`, error.message);
             }
         }
 
-        // --- Enviar mensajes por partes ---
         if (menciones.length === 0) {
             bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}\n\nNadie necesita comer 🍞`);
             return;
         }
 
-        // Mensaje principal (sin menciones)
         await bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}`);
 
-        // Enviar menciones en bloques de 5
         const chunkSize = 5;
         for (let i = 0; i < menciones.length; i += chunkSize) {
             const grupo = menciones.slice(i, i + chunkSize).join('\n');
             await bot.sendMessage(chatId, grupo);
-            await new Promise(res => setTimeout(res, 500)); // pequeña pausa para no saturar Telegram
+            await delay(500);
         }
     },
+
     jugadorespais: async (chatId, args) => {
-        if (args.length < 1) {
-            bot.sendMessage(chatId, "Ejemplo: /jugadorespais https://app.warera.io/country/6813b6d446e731854c7ac7ae");
-            return;
-        }
-
-        let countryId = args[0].includes('warera.io') 
-            ? args[0].split('/').pop() 
-            : args[0];
-
-        const costes = [0,1,3,6,10,15,21,28,36,45,55];
-        const skillsPvp = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
-        const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
-
-        // Función para escapar MarkdownV2
-        function escapeMarkdownV2(text) {
-            return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
-        }
-
-        try {
-            const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify({countryId, limit:100}))}`);
-            const items = usersRes.data?.result?.data?.items || [];
-
-            const usuarios = [];
-
-            for (const item of items) {
-                try {
-                    const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
-                    const data = userRes.data?.result?.data;
-                    if (!data) continue;
-
-                    // Estado pastilla
-                    let icono = "";
-                    let fecha = null;
-
-                    if (data.buffs?.buffCodes?.length) {
-                        icono = "💊";
-                        fecha = new Date(data.buffs.buffEndAt);
-                    } else if (data.buffs?.debuffCodes?.length) {
-                        icono = "⛔";
-                        fecha = new Date(data.buffs.debuffEndAt);
-                    }
-
-                    // Puntos gastados
-                    let pvpPoints = 0, ecoPoints = 0;
-                    skillsPvp.forEach(s => pvpPoints += costes[data.skills[s]?.level || 0]);
-                    skillsEco.forEach(s => ecoPoints += costes[data.skills[s]?.level || 0]);
-
-                    const total = pvpPoints + ecoPoints;
-                    const pctPvp = total ? (pvpPoints / total) * 100 : 0;
-                    const pctEco = total ? (ecoPoints / total) * 100 : 0;
-
-                    let build = "HIBRIDA";
-                    if (pctPvp > 65) build = "PVP";
-                    else if (pctEco > 65) build = "ECO";
-
-                    // Obtener el nivel del usuario
-                    const nivel = data.leveling?.level || 0;
-
-                    usuarios.push({
-                        username: data.username,
-                        _id: data._id,
-                        icono,
-                        fecha,
-                        build,
-                        nivel // Agregar el nivel aquí
-                    });
-
-                } catch (e) { console.error(e.message); }
-            }
-
-            // Separación por build y ordenar por nivel (descendente) dentro de cada categoría
-            const pvp = usuarios.filter(u => u.build === "PVP").sort((a, b) => b.nivel - a.nivel);
-            const hibridos = usuarios.filter(u => u.build === "HIBRIDA").sort((a, b) => b.nivel - a.nivel);
-            const eco = usuarios.filter(u => u.build === "ECO").sort((a, b) => b.nivel - a.nivel);
-
-            // Contadores pastillas
-            const disponibles = usuarios.filter(u => u.icono === "").length;
-            const activas = usuarios.filter(u => u.icono === "💊").length;
-            const debuffs = usuarios.filter(u => u.icono === "⛔").length;
-
-            // Formatea cada usuario con nivel al inicio
-            const format = u => {
-                const username = escapeMarkdownV2(u.username);
-                const url = escapeMarkdownV2(`https://app.warera.io/user/${u._id}`);
-                let line = `${u.nivel}\\) [${username}](${url})`; // Nivel al inicio
-                if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
-                if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
-                return line;
-            };
-
-            // Construir mensaje completo ESCAPANDO TODO
-            let mensaje = `*${escapeMarkdownV2("PASTILLAS")}*\n`;
-            mensaje += `${escapeMarkdownV2("Disponibles:")} ${disponibles}, ${escapeMarkdownV2("Activas:")} ${activas}, ${escapeMarkdownV2("Debuff:")} ${debuffs}\n\n`;
-
-            mensaje += `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("-")} ${pvp.length}*\n`;
-            mensaje += pvp.length ? pvp.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
-            mensaje += `\n\n`;
-
-            mensaje += `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("-")} ${hibridos.length}*\n`;
-            mensaje += hibridos.length ? hibridos.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
-            mensaje += `\n\n`;
-
-            mensaje += `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("-")} ${eco.length}*\n`;
-            mensaje += eco.length ? eco.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
-
-            // Enviar mensaje
-            bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
-
-        } catch (error) {
-            console.error(error);
-            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
-        }
+        procesarJugadoresGrupo(chatId, args, 'pais');
     },
+
     jugadoresmu: async (chatId, args) => {
-        if (args.length < 1) {
-            bot.sendMessage(chatId, "Ejemplo: /jugadoresmu https://app.warera.io/mu/687cbb53fae4c9cf04340e77");
-            return;
-        }
-
-        let muId = args[0].includes('warera.io') 
-            ? args[0].split('/').pop() 
-            : args[0];
-
-        const costes = [0,1,3,6,10,15,21,28,36,45,55];
-        const skillsPvp = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
-        const skillsEco = ["energy","companies","entrepreneurship","production","lootChance"];
-
-        // Función para escapar MarkdownV2
-        function escapeMarkdownV2(text) {
-            return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
-        }
-
-        try {
-            // Obtener datos de la MU
-            const muRes = await axios.get(`https://api2.warera.io/trpc/mu.getById?input=${encodeURIComponent(JSON.stringify({muId}))}`);
-            const muData = muRes.data?.result?.data;
-            
-            if (!muData?.members?.length) {
-                bot.sendMessage(chatId, "No se encontraron miembros en esa MU o la MU no existe.");
-                return;
-            }
-
-            const miembrosIds = muData.members;
-            const usuarios = [];
-
-            for (const userId of miembrosIds) {
-                try {
-                    const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId}))}`);
-                    const data = userRes.data?.result?.data;
-                    if (!data) continue;
-
-                    // Estado pastilla
-                    let icono = "";
-                    let fecha = null;
-
-                    if (data.buffs?.buffCodes?.length) {
-                        icono = "💊";
-                        fecha = new Date(data.buffs.buffEndAt);
-                    } else if (data.buffs?.debuffCodes?.length) {
-                        icono = "⛔";
-                        fecha = new Date(data.buffs.debuffEndAt);
-                    }
-
-                    // Puntos gastados
-                    let pvpPoints = 0, ecoPoints = 0;
-                    skillsPvp.forEach(s => pvpPoints += costes[data.skills[s]?.level || 0]);
-                    skillsEco.forEach(s => ecoPoints += costes[data.skills[s]?.level || 0]);
-
-                    const total = pvpPoints + ecoPoints;
-                    const pctPvp = total ? (pvpPoints / total) * 100 : 0;
-                    const pctEco = total ? (ecoPoints / total) * 100 : 0;
-
-                    let build = "HIBRIDA";
-                    if (pctPvp > 65) build = "PVP";
-                    else if (pctEco > 65) build = "ECO";
-
-                    // Obtener el nivel del usuario
-                    const nivel = data.leveling?.level || 0;
-
-                    usuarios.push({
-                        username: data.username,
-                        _id: data._id,
-                        icono,
-                        fecha,
-                        build,
-                        nivel
-                    });
-
-                } catch (e) { 
-                    console.error(`Error obteniendo usuario ${userId}:`, e.message); 
-                }
-            }
-
-            // Separación por build y ordenar por nivel (descendente) dentro de cada categoría
-            const pvp = usuarios.filter(u => u.build === "PVP").sort((a, b) => b.nivel - a.nivel);
-            const hibridos = usuarios.filter(u => u.build === "HIBRIDA").sort((a, b) => b.nivel - a.nivel);
-            const eco = usuarios.filter(u => u.build === "ECO").sort((a, b) => b.nivel - a.nivel);
-
-            // Contadores pastillas
-            const disponibles = usuarios.filter(u => u.icono === "").length;
-            const activas = usuarios.filter(u => u.icono === "💊").length;
-            const debuffs = usuarios.filter(u => u.icono === "⛔").length;
-
-            // Formatea cada usuario con nivel al inicio
-            const format = u => {
-                const username = escapeMarkdownV2(u.username);
-                const url = escapeMarkdownV2(`https://app.warera.io/user/${u._id}`);
-                let line = `${u.nivel}\\) [${username}](${url})`; // Nivel al inicio
-                if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
-                if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
-                return line;
-            };
-
-            // Construir mensaje completo ESCAPANDO TODO
-            let mensaje = `*${escapeMarkdownV2("MU")}: ${escapeMarkdownV2(muData.name || "Sin nombre")}*\n`;
-            mensaje += `*${escapeMarkdownV2("PASTILLAS")}*\n`;
-            mensaje += `${escapeMarkdownV2("Disponibles:")} ${disponibles}, ${escapeMarkdownV2("Activas:")} ${activas}, ${escapeMarkdownV2("Debuff:")} ${debuffs}\n\n`;
-
-            mensaje += `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("-")} ${pvp.length}*\n`;
-            mensaje += pvp.length ? pvp.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
-            mensaje += `\n\n`;
-
-            mensaje += `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("-")} ${hibridos.length}*\n`;
-            mensaje += hibridos.length ? hibridos.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
-            mensaje += `\n\n`;
-
-            mensaje += `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("-")} ${eco.length}*\n`;
-            mensaje += eco.length ? eco.map(format).join('\n') : escapeMarkdownV2("(ninguno)");
-
-            // Enviar mensaje
-            bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
-
-        } catch (error) {
-            console.error(error);
-            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
-        }
+        procesarJugadoresGrupo(chatId, args, 'mu');
     },
+
     paisesdanyo: async (chatId, args) => {
-        calcularDanyoGrupo(chatId, args, 'pais');
+        procesarGrupoDanyo(chatId, args, 'pais');
     },
-        mudanyo: async (chatId, args) => {
-        calcularDanyoGrupo(chatId, args, 'mu');
+
+    mudanyo: async (chatId, args) => {
+        procesarGrupoDanyo(chatId, args, 'mu');
     },
+
     danyosemanal: async (chatId) => {
         try {
             const resultados = [];
 
             for (const usuario of usuarios) {
                 try {
-                    const input = encodeURIComponent(JSON.stringify({ userId: usuario.userId }));
-                    const apiUrl = `https://api2.warera.io/trpc/user.getUserLite?input=${input}`;
-                    const response = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' } });
-                    const data = response.data?.result?.data;
-                    if (!data) continue;
+                    const userData = await getUserData(usuario.userId);
+                    if (!userData) continue;
 
-                    const username = data.username;
-                    const weeklyDamage = data.rankings?.weeklyUserDamages?.value ?? 0;
-
-                    resultados.push({ username, weeklyDamage });
+                    const weeklyDamage = userData.rankings?.weeklyUserDamages?.value ?? 0;
+                    resultados.push({ 
+                        username: userData.username, 
+                        weeklyDamage 
+                    });
                 } catch (error) {
                     console.error(`Error con usuario ${usuario.userId}:`, error.message);
                 }
             }
 
             if (resultados.length === 0) {
-                bot.sendMessage(chatId, "No se pudo obtener el daño semanal de ningún jugador.");
+                bot.sendMessage(chatId, "No se pudo obtener el daño semanal.");
                 return;
             }
 
-            // Ordenar de mayor a menor daño
             resultados.sort((a, b) => b.weeklyDamage - a.weeklyDamage);
-
-            // Calcular la media
             const totalDamage = resultados.reduce((sum, r) => sum + r.weeklyDamage, 0);
             const media = Math.round(totalDamage / resultados.length);
 
-            // Formatear salida numerada
             const lista = resultados
-                .map((r, i) => `${i + 1}) ${r.username}: ${r.weeklyDamage.toLocaleString('es-ES')}`)
+                .map((r, i) => `${i + 1}) ${r.username}: ${formatNumber(r.weeklyDamage)}`)
                 .join('\n');
 
-            const mensajeFinal = `Daño semanal:\n\n${lista}\n\nMedia de daño: ${media.toLocaleString('es-ES')}`;
+            const mensajeFinal = `Daño semanal:\n\n${lista}\n\nMedia de daño: ${formatNumber(media)}`;
             bot.sendMessage(chatId, mensajeFinal);
         } catch (error) {
-            console.error("Error en /danyoSemanal:", error.message);
-            bot.sendMessage(chatId, "Error al obtener los daños semanales.");
+            console.error("Error en /danyoSemanal:", error);
+            bot.sendMessage(chatId, "Error al obtener daños semanales.");
         }
     },
+
+    all: async (chatId) => {
+        try {
+            const mencionesUnicas = [...new Set(usuarios.map(usuario => usuario.mention))];
+            
+            if (mencionesUnicas.length === 0) {
+                bot.sendMessage(chatId, "No hay usuarios para mencionar.");
+                return;
+            }
+
+            const chunkSize = 5;
+            for (let i = 0; i < mencionesUnicas.length; i += chunkSize) {
+                const grupo = mencionesUnicas.slice(i, i + chunkSize).join('\n');
+                await bot.sendMessage(chatId, grupo);
+                if (i + chunkSize < mencionesUnicas.length) await delay(300);
+            }
+        } catch (error) {
+            console.error("Error en /all:", error);
+            bot.sendMessage(chatId, "Error al enviar menciones.");
+        }
+    },
+
+    dineropais: async (chatId, args) => {
+        if (args.length < 1) {
+            bot.sendMessage(chatId, "Ejemplo: /dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae");
+            return;
+        }
+
+        const countryId = args[0].split('/').pop();
+        
+        try {
+            const countryData = await getCountryData(countryId);
+            const countryName = countryData?.name || "País Desconocido";
+
+            let allItems = [];
+            let nextCursor = null;
+
+            do {
+                const queryParams = { countryId, limit: 100 };
+                if (nextCursor) queryParams.cursor = nextCursor;
+
+                const usersData = await apiCall('user.getUsersByCountry', queryParams);
+                if (usersData?.items) {
+                    allItems = allItems.concat(usersData.items);
+                    nextCursor = usersData.nextCursor || null;
+                } else {
+                    nextCursor = null;
+                }
+
+                if (nextCursor) await delay(200);
+            } while (nextCursor);
+
+            if (allItems.length === 0) {
+                bot.sendMessage(chatId, "No hay jugadores en ese país.");
+                return;
+            }
+
+            const resultados = [];
+            let totalWealth = 0;
+            let totalFactoryWealth = 0;
+            let totalLiquidWealth = 0;
+            let totalFactories = 0;
+
+            for (const item of allItems) {
+                try {
+                    const userData = await getUserData(item._id);
+                    if (!userData) continue;
+
+                    let totalWealthValue = userData.rankings?.userWealth?.value || 0;
+                    let factoryWealth = 0;
+                    let factoryCount = 0;
+                    let disabledFactoryWealth = 0;
+
+                    try {
+                        const companiesData = await getUserCompanies(item._id);
+                        const companyIds = companiesData?.items || [];
+
+                        for (const companyId of companyIds) {
+                            try {
+                                const companyData = await getCompanyData(companyId);
+                                if (companyData?.estimatedValue) {
+                                    if (companyData.disabledAt) {
+                                        disabledFactoryWealth += companyData.estimatedValue;
+                                    }
+                                    factoryWealth += companyData.estimatedValue;
+                                    factoryCount++;
+                                }
+                            } catch (error) {
+                                console.error(`Error fábrica ${companyId}:`, error.message);
+                            }
+                        }
+
+                        if (disabledFactoryWealth > 0) {
+                            totalWealthValue += disabledFactoryWealth;
+                        }
+                    } catch (error) {
+                        console.error(`Error fábricas usuario ${item._id}:`, error.message);
+                    }
+
+                    const liquidWealth = totalWealthValue - factoryWealth;
+
+                    resultados.push({
+                        username: userData.username,
+                        userId: item._id,
+                        totalWealth: totalWealthValue,
+                        factoryWealth,
+                        liquidWealth,
+                        factoryCount,
+                        hasDisabledFactories: disabledFactoryWealth > 0
+                    });
+
+                    totalWealth += totalWealthValue;
+                    totalFactoryWealth += factoryWealth;
+                    totalLiquidWealth += liquidWealth;
+                    totalFactories += factoryCount;
+
+                } catch (error) {
+                    console.error(`Error procesando usuario ${item._id}:`, error.message);
+                }
+            }
+
+            if (resultados.length === 0) {
+                bot.sendMessage(chatId, "No se pudieron obtener datos.");
+                return;
+            }
+
+            const playerCount = resultados.length;
+            const avgWealth = totalWealth / playerCount;
+            const avgFactoryWealth = totalFactoryWealth / playerCount;
+            const avgLiquidWealth = totalLiquidWealth / playerCount;
+            const avgFactories = totalFactories / playerCount;
+
+            resultados.sort((a, b) => b.totalWealth - a.totalWealth);
+
+            let mensajePrincipal = `💰 *DINERO DE ${countryName.toUpperCase()}*\n\n`;
+            mensajePrincipal += `*Estadísticas Generales:*\n`;
+            mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
+            mensajePrincipal += `💰 Wealth total: ${formatNumber(totalWealth)} monedas\n`;
+            mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
+            mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
+            mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n\n`;
+            mensajePrincipal += `*Promedios por Jugador:*\n`;
+            mensajePrincipal += `💰 Wealth: ${formatNumber(avgWealth)} monedas\n`;
+            mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
+            mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
+            mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}`;
+
+            await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "Markdown" });
+
+            const chunkSize = 10;
+            for (let i = 0; i < resultados.length; i += chunkSize) {
+                const chunk = resultados.slice(i, i + chunkSize);
+                let mensajeChunk = `*Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)}:*\n\n`;
+                
+                chunk.forEach((jugador, index) => {
+                    const globalIndex = i + index + 1;
+                    mensajeChunk += `${globalIndex}) ${jugador.username}`;
+                    if (jugador.hasDisabledFactories) mensajeChunk += ` ⚠️`;
+                    mensajeChunk += `\nhttps://app.warera.io/user/${jugador.userId}\n`;
+                    mensajeChunk += `💰 Wealth: ${formatNumber(jugador.totalWealth)} | `;
+                    mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)}\n`;
+                    mensajeChunk += `💵 Dinero/Almacen: ${formatNumber(jugador.liquidWealth)} | `;
+                    mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
+                });
+
+                await bot.sendMessage(chatId, mensajeChunk, { parse_mode: "Markdown" });
+                if (i + chunkSize < resultados.length) await delay(500);
+            }
+
+        } catch (error) {
+            console.error("Error en /dineropais:", error);
+            bot.sendMessage(chatId, "Error al procesar el comando.");
+        }
+    },
+    
     guerras: async (chatId, args) => {
         if (!args[0]) {
             bot.sendMessage(chatId, "Ejemplo: /guerras primeraMundial");
@@ -735,18 +762,12 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
 
         for (const guerra of guerrasSeleccionadas) {
             try {
-                // 🔹 Construimos la URL exactamente como la API la requiere
-                const inputJson = JSON.stringify({
-                    battleId: guerra.battleId,
-                    dataType: "damage",
-                    type: "country",
-                    side: guerra.side
-                });
-
-                const url = `https://api2.warera.io/trpc/battleRanking.getRanking?input=${inputJson}`;
-                const res = await axios.get(url);
-
-                const rankings = res.data?.result?.data?.rankings || [];
+                const rankings = await getBattleRanking(
+                    guerra.battleId, 
+                    "damage", 
+                    "country", 
+                    guerra.side
+                );
 
                 let resumenBatalla = {
                     battleId: guerra.battleId,
@@ -754,7 +775,7 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                     valores: {}
                 };
 
-                for (const r of rankings) {
+                for (const r of rankings || []) {
                     if (paises[r.country]) {
                         totales[paises[r.country]] += r.value;
                         resumenBatalla.valores[paises[r.country]] = r.value;
@@ -763,61 +784,32 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
 
                 detalle.push(resumenBatalla);
 
-            } catch (e) {
-                console.error(`❌ Error en batalla ${guerra.battleId}:`, e.message);
+            } catch (error) {
+                console.error(`Error en batalla ${guerra.battleId}:`, error.message);
             }
         }
 
         const totalConjunto = Object.values(totales).reduce((a, b) => a + b, 0);
 
         let mensaje = `📊 *Resultados de la guerra: ${guerraNombre}*\n\n`;
-
-        mensaje += `🇲🇾 MALASYA: ${totales.MALASYA.toLocaleString('es-ES')}\n`;
-        mensaje += `🇱🇦 LAOS: ${totales.LAOS.toLocaleString('es-ES')}\n`;
-        mensaje += `🇷🇺 RUSIA: ${totales.RUSIA.toLocaleString('es-ES')}\n`;
-        mensaje += `\n🧮 *Total combinado:* ${totalConjunto.toLocaleString('es-ES')}\n\n`;
-
+        mensaje += `🇲🇾 MALASYA: ${formatNumber(totales.MALASYA)}\n`;
+        mensaje += `🇱🇦 LAOS: ${formatNumber(totales.LAOS)}\n`;
+        mensaje += `🇷🇺 RUSIA: ${formatNumber(totales.RUSIA)}\n`;
+        mensaje += `\n🧮 *Total combinado:* ${formatNumber(totalConjunto)}\n\n`;
         mensaje += `📋 *Detalle por batalla:*\n`;
+
         detalle.forEach((b, i) => {
             mensaje += `\n${i + 1}) ${b.link}\n`;
             for (const [pais, dmg] of Object.entries(b.valores)) {
-                mensaje += `   - ${pais}: ${dmg.toLocaleString('es-ES')}\n`;
+                mensaje += `   - ${pais}: ${formatNumber(dmg)}\n`;
             }
         });
 
         bot.sendMessage(chatId, mensaje, { parse_mode: "Markdown" });
     },
-    all: async (chatId) => {
+
+    produccion: async (chatId) => {
         try {
-            // Usar SOLO la lista predefinida y eliminar duplicados
-            const mencionesUnicas = [...new Set(usuarios.map(usuario => usuario.mention))];
-
-            if (mencionesUnicas.length === 0) {
-                bot.sendMessage(chatId, "No hay usuarios en la lista para mencionar.");
-                return;
-            }
-
-            console.log(`Mencionando a ${mencionesUnicas.length} usuarios únicos de la lista`);
-
-            // Enviar menciones en bloques de 5
-            const chunkSize = 5;
-            for (let i = 0; i < mencionesUnicas.length; i += chunkSize) {
-                const grupo = mencionesUnicas.slice(i, i + chunkSize).join('\n');
-                await bot.sendMessage(chatId, grupo);
-                // Pequeña pausa entre bloques
-                if (i + chunkSize < mencionesUnicas.length) {
-                    await new Promise(res => setTimeout(res, 300));
-                }
-            }
-
-        } catch (error) {
-            console.error("Error en comando /all:", error);
-            bot.sendMessage(chatId, "Error al enviar las menciones.");
-        }
-    },
-    produccion: async (chatId, args) => {
-        try {
-            // Hacer la petición a la API de producción
             const productionRes = await axios.get(`https://api2.warera.io/trpc/itemTrading.getPrices`);
             const productionData = productionRes.data?.result?.data;
 
@@ -826,17 +818,10 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 return;
             }
 
-            // Función para limitar a 5 decimales
             function limitarDecimales(num) {
                 return Math.round(num * 100000) / 100000;
             }
 
-            // Función para escapar MarkdownV2
-            function escapeMarkdownV2(text) {
-                return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
-            }
-
-            // Traducciones al español
             const traducciones = {
                 // Materias primas
                 grain: "Granos",
@@ -861,7 +846,6 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 ammo: "Munición"
             };
 
-            // Materias primas y sus costes en pp
             const materiasPrimas = {
                 grain: { pp: 1 },
                 livestock: { pp: 20 },
@@ -873,7 +857,6 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 fish: { pp: 40 }
             };
 
-            // Productos manufacturados y sus costes
             const productosManufacturados = {
                 cookedFish: { materias: { fish: 1 }, pp: 40 },
                 heavyAmmo: { materias: { lead: 16 }, pp: 16 },
@@ -907,7 +890,6 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             for (const [producto, datos] of Object.entries(productosManufacturados)) {
                 const precioVentaProducto = productionData[producto];
                 if (precioVentaProducto !== undefined && precioVentaProducto !== null) {
-                    // Calcular coste total en materias primas
                     let costeMateriasPrimas = 0;
                     let todasLasMateriasDisponibles = true;
                     
@@ -921,9 +903,7 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                         }
                     }
 
-                    // Solo calcular si tenemos todos los precios necesarios
                     if (todasLasMateriasDisponibles) {
-                        // Productividad = (precio_venta - coste_materias) / pp
                         const productividad = limitarDecimales((precioVentaProducto - costeMateriasPrimas) / datos.pp);
                         
                         resultados.push({
@@ -936,7 +916,6 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 }
             }
 
-            // Filtrar resultados válidos y ordenar de mayor a menor productividad
             const resultadosValidos = resultados.filter(item => 
                 item.productividad !== undefined && 
                 item.productividad !== null && 
@@ -945,7 +924,6 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
             
             resultadosValidos.sort((a, b) => b.productividad - a.productividad);
 
-            // Construir mensaje con formato correcto
             let mensaje = "*RANKING PRODUCTIVIDAD*\n\n";
 
             resultadosValidos.forEach((item, index) => {
@@ -956,304 +934,45 @@ Muestra la riqueza total del país, desglosada en fábricas y dinero líquido, c
                 mensaje += `${index + 1}\\. ${emoji} *${nombreEscapado}*: ${productividadEscapada} monedas/pp\n`;
             });
 
-            // Enviar mensaje
             bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
 
         } catch (error) {
             console.error("Error en comando /produccion:", error);
             bot.sendMessage(chatId, "Error al obtener los datos de producción.");
         }
-    },
-    dineropais: async (chatId, args) => {
-        if (args.length < 1) {
-            bot.sendMessage(chatId, "Ejemplo: /dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae");
-            return;
-        }
-
-        let countryId = args[0].includes('warera.io') 
-            ? args[0].split('/').pop() 
-            : args[0];
-
-        // Función para escapar caracteres especiales de MarkdownV2
-        function escapeMarkdownV2(text) {
-            return String(text).replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1');
-        }
-
-        try {
-            // Obtener nombre del país
-            let countryName = "País Desconocido";
-            try {
-                const countryRes = await axios.get(`https://api2.warera.io/trpc/country.getCountryById?input=${encodeURIComponent(JSON.stringify({countryId}))}`);
-                countryName = countryRes.data?.result?.data?.name || "País Desconocido";
-            } catch (e) {
-                console.error("Error obteniendo nombre del país:", e.message);
-            }
-
-            // Obtener TODOS los usuarios del país (manejando paginación)
-            let allItems = [];
-            let nextCursor = null;
-            let pageCount = 0;
-
-            do {
-                pageCount++;
-                console.log(`📄 Obteniendo página ${pageCount} de usuarios...`);
-                
-                const queryParams = { countryId, limit: 100 };
-                if (nextCursor) {
-                    queryParams.cursor = nextCursor;
-                }
-
-                const usersRes = await axios.get(`https://api2.warera.io/trpc/user.getUsersByCountry?input=${encodeURIComponent(JSON.stringify(queryParams))}`);
-                const responseData = usersRes.data?.result?.data;
-                
-                if (responseData?.items) {
-                    allItems = allItems.concat(responseData.items);
-                    nextCursor = responseData.nextCursor || null;
-                    console.log(`✅ Página ${pageCount}: ${responseData.items.length} usuarios, nextCursor: ${nextCursor ? 'Sí' : 'No'}`);
-                } else {
-                    nextCursor = null;
-                }
-
-                // Pequeña pausa para no saturar la API
-                if (nextCursor) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                }
-
-            } while (nextCursor && pageCount < 10); // Límite de seguridad de 10 páginas (1000 usuarios)
-
-            console.log(`📊 Total de usuarios obtenidos: ${allItems.length}`);
-
-            if (allItems.length === 0) {
-                bot.sendMessage(chatId, "No se encontraron jugadores en ese país.");
-                return;
-            }
-
-            const resultados = [];
-            let totalWealth = 0;
-            let totalFactoryWealth = 0;
-            let totalLiquidWealth = 0;
-            let totalFactories = 0;
-            let totalWealthAdjustment = 0; // Para trackear cuánto ajustamos por fábricas deshabilitadas
-
-            for (const item of allItems) {
-                try {
-                    // Obtener datos del usuario
-                    const userRes = await axios.get(`https://api2.warera.io/trpc/user.getUserLite?input=${encodeURIComponent(JSON.stringify({userId:item._id}))}`);
-                    const userData = userRes.data?.result?.data;
-                    if (!userData) continue;
-
-                    const username = userData.username;
-                    let totalWealthValue = userData.rankings?.userWealth?.value || 0;
-
-                    // Obtener fábricas del usuario
-                    let factoryWealth = 0;
-                    let factoryCount = 0;
-                    let disabledFactoryWealth = 0;
-
-                    try {
-                        const companiesRes = await axios.get(`https://api2.warera.io/trpc/company.getCompanies?input=${encodeURIComponent(JSON.stringify({userId:item._id, perPage:50}))}`);
-                        const companyIds = companiesRes.data?.result?.data?.items || [];
-
-                        // Obtener valor de cada fábrica
-                        for (const companyId of companyIds) {
-                            try {
-                                const companyRes = await axios.get(`https://api2.warera.io/trpc/company.getById?input=${encodeURIComponent(JSON.stringify({companyId}))}`);
-                                const companyData = companyRes.data?.result?.data;
-                                if (companyData && companyData.estimatedValue) {
-                                    // Verificar si la fábrica está deshabilitada
-                                    const isDisabled = !!companyData.disabledAt;
-                                    
-                                    if (isDisabled) {
-                                        // Fábrica deshabilitada: sumar al wealth total para corregir
-                                        disabledFactoryWealth += companyData.estimatedValue;
-                                    }
-                                    // Todas las fábricas (activas y deshabilitadas) se suman a factoryWealth
-                                    factoryWealth += companyData.estimatedValue;
-                                    factoryCount++;
-                                }
-                            } catch (e) {
-                                console.error(`Error obteniendo fábrica ${companyId}:`, e.message);
-                            }
-                        }
-
-                        // AJUSTE CRÍTICO: Si hay fábricas deshabilitadas, ajustar el totalWealth
-                        if (disabledFactoryWealth > 0) {
-                            totalWealthValue += disabledFactoryWealth;
-                            totalWealthAdjustment += disabledFactoryWealth;
-                            console.log(`🔧 Ajustando wealth de ${username}: +${disabledFactoryWealth} por fábricas deshabilitadas`);
-                        }
-
-                    } catch (e) {
-                        console.error(`Error obteniendo lista de fábricas para ${username}:`, e.message);
-                    }
-
-                    const liquidWealth = totalWealthValue - factoryWealth;
-
-                    resultados.push({
-                        username,
-                        userId: item._id,
-                        totalWealth: totalWealthValue,
-                        factoryWealth,
-                        liquidWealth,
-                        factoryCount,
-                        hasDisabledFactories: disabledFactoryWealth > 0
-                    });
-
-                    // Acumular totales
-                    totalWealth += totalWealthValue;
-                    totalFactoryWealth += factoryWealth;
-                    totalLiquidWealth += liquidWealth;
-                    totalFactories += factoryCount;
-
-                } catch (e) { 
-                    console.error(`Error procesando usuario ${item._id}:`, e.message); 
-                }
-            }
-
-            if (resultados.length === 0) {
-                bot.sendMessage(chatId, "No se pudieron obtener datos de ningún jugador.");
-                return;
-            }
-
-            // Calcular promedios
-            const playerCount = resultados.length;
-            const avgWealth = totalWealth / playerCount;
-            const avgFactoryWealth = totalFactoryWealth / playerCount;
-            const avgLiquidWealth = totalLiquidWealth / playerCount;
-            const avgFactories = totalFactories / playerCount;
-
-            // Ordenar por riqueza total (descendente)
-            resultados.sort((a, b) => b.totalWealth - a.totalWealth);
-
-            // Función para formatear números
-            function formatNumber(num) {
-                return num.toLocaleString('es-ES', {maximumFractionDigits: 2});
-            }
-
-            // Construir mensaje principal con estadísticas
-            let mensajePrincipal = `💰 *DINERO DE ${escapeMarkdownV2(countryName.toUpperCase())}*\n\n`;
-            
-            // Estadísticas generales
-            mensajePrincipal += `*Estadísticas Generales:*\n`;
-            mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
-            mensajePrincipal += `💰 Wealth total: ${formatNumber(totalWealth)} monedas\n`;
-            mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
-            mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n`;
-
-            // Promedios
-            mensajePrincipal += `*Promedios por Jugador:*\n`;
-            mensajePrincipal += `💰 Wealth: ${formatNumber(avgWealth)} monedas\n`;
-            mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
-            mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}\n\n`;
-
-            // Enviar mensaje principal primero
-            await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "Markdown" });
-
-            // Dividir la lista de usuarios en chunks de 10 para evitar mensajes demasiado largos
-            const chunkSize = 10;
-            for (let i = 0; i < resultados.length; i += chunkSize) {
-                const chunk = resultados.slice(i, i + chunkSize);
-                let mensajeChunk = `*Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)} de ${resultados.length}:*\n\n`;
-                
-                chunk.forEach((jugador, index) => {
-                    const globalIndex = i + index + 1;
-                    // Escapar el nombre de usuario para evitar problemas con Markdown
-                    const usernameEscapado = escapeMarkdownV2(jugador.username);
-                    // URL sin escapar para que sea clickeable
-                    const url = `https://app.warera.io/user/${jugador.userId}`;
-                    
-                    mensajeChunk += `${globalIndex}) ${usernameEscapado}`;
-                    if (jugador.hasDisabledFactories) {
-                        mensajeChunk += ` ⚠️`; // Indicador de fábricas deshabilitadas
-                    }
-                    mensajeChunk += `\n`;
-                    mensajeChunk += `${url}\n`;
-                    mensajeChunk += `💰 Wealth: ${formatNumber(jugador.totalWealth)} | `;
-                    mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)} \n `;
-                    mensajeChunk += `💵 Dinero/Almacen: ${formatNumber(jugador.liquidWealth)} | `;
-                    mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
-                });
-
-                // Usar parse_mode: "Markdown" para que se muestren correctamente los caracteres escapados
-                await bot.sendMessage(chatId, mensajeChunk, { parse_mode: "Markdown" });
-                
-                // Pequeña pausa entre mensajes para no saturar la API de Telegram
-                if (i + chunkSize < resultados.length) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-            }
-
-        } catch (error) {
-            console.error("Error en /dineropais:", error);
-            bot.sendMessage(chatId, "Ha ocurrido un error al procesar el comando.");
-        }
     }
 };
 
-// --- Listener principal unificado ---
+// --- Listener principal ---
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
-    const messageId = msg.message_id;
-    const fromUser = msg.from ? `${msg.from.username || msg.from.first_name} (${msg.from.id})` : 'Unknown';
 
-    // Verificar si es un chat/grupo permitido (solo para procesamiento, no para logging)
-    const allowedChats = [GROUP_ID, GROUP_PRUEBAS_ID, CHAT_ID].filter(id => id !== undefined);
-    
-    // Si hay chats permitidos definidos, verificar que el chat actual esté en la lista
+    const allowedChats = [GROUP_ID, GROUP_PRUEBAS_ID, CHAT_ID].filter(id => id);
     if (allowedChats.length > 0 && !allowedChats.includes(chatId)) {
-        console.log(`❌ Chat no permitido, ignorando procesamiento: ${chatId}`);
         return;
     }
 
-    // PRIMERO: Siempre verificar si contiene "otto" o variantes (solo si hay texto)
     if (text) {
-        const textLower = text.toLowerCase();
-        const ottoVariants = [
-            'otto', 'oto', 'oton', 'otón'
-        ];
-        
-        // Buscar palabras completas (mejor método)
-        const words = textLower.split(/\s+/); // Dividir por espacios
-        const foundVariant = ottoVariants.find(variant => 
-            words.some(word => word === variant)
-        );
-        
-        if (foundVariant) {
-            console.log(`🎯 Detectada variante "${foundVariant}" de "otto"`);
-            console.log(`🎯 Texto original: "${text}"`);
-            // Enviar respuesta "Putero"
+        const palabras = text.toLowerCase().split(/\s+/);
+        const variantesOtto = ['otto', 'oto', 'oton', 'otón'];
+        if (variantesOtto.some(variant => palabras.includes(variant))) {
             bot.sendMessage(chatId, 'Putero');
-            console.log(`📤 Respuesta "Putero" enviada`);
-        } else {
-            console.log(`❌ No se detectó ninguna variante de "otto" en el texto`);
         }
     }
 
-    // LUEGO: Verificar comandos
-    if (!text || !text.startsWith('/')) {
-        console.log(`ℹ️ Mensaje normal, sin comando`);
-        return;
-    }
+    if (!text?.startsWith('/')) return;
 
     const [cmdRaw, ...args] = text.slice(1).split(' ');
     const cmd = cmdRaw.split('@')[0].toLowerCase();
 
-    console.log(`🔧 Intentando ejecutar comando: ${cmd}`, args);
-
     if (comandos[cmd]) {
-        console.log(`🚀 Ejecutando comando: ${cmd}`);
         await comandos[cmd](chatId, args);
-        console.log(`✅ Comando ${cmd} ejecutado`);
-    } else {
-        console.log(`❌ Comando no reconocido: ${cmd}`);
     }
 });
 
-// --- Express para UptimeRobot ---
+// --- Servidor Express ---
 const app = express();
-app.get('/', (req, res) => res.send('Bot alive!'));
+app.get('/', (req, res) => res.send('Bot activo'));
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
