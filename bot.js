@@ -476,10 +476,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             }
             return line;
         };
-
-        // Mensaje de resumen inicial escapando el nombre
+        // Mensaje de resumen inicial CON Markdown
         const mensajeResumen = [
-            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: [${escapeMarkdownV2(nombreGrupo)}](${grupoUrl})`,
+            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: [${nombreGrupo}](${grupoUrl})`,
             `💊 Pastillas disponibles: ${disponibles}`,
             `💊 Pastillas activas: ${activas}`,
             `⛔ Debuffs: ${debuffs}`,
