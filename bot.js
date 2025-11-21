@@ -479,8 +479,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
 
         // Mensaje de resumen inicial SIN MarkdownV2 - TEXTO PLANO
         const mensajeResumen = [
-            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: ${nombreGrupo}`,
-            `🔗 URL: ${grupoUrl}`,
+            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: [${nombreGrupo}](${grupoUrl})`,
             `💊 Pastillas disponibles: ${disponibles}`,
             `💊 Pastillas activas: ${activas}`,
             `⛔ Debuffs: ${debuffs}`,
@@ -501,7 +500,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
 
         // Enviar PVP en chunks si hay muchos
         if (pvp.length > 0) {
-            const pvpChunks = dividirEnChunks(pvp, 15);
+            const pvpChunks = dividirEnChunks(pvp, 50);
             for (let i = 0; i < pvpChunks.length; i++) {
                 const chunk = pvpChunks[i];
                 let mensajePVP = `⚔️ PVP - Parte ${i + 1}/${pvpChunks.length}:\n\n`;
@@ -513,7 +512,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
 
         // Enviar Híbridos en chunks si hay muchos
         if (hibridos.length > 0) {
-            const hibridosChunks = dividirEnChunks(hibridos, 15);
+            const hibridosChunks = dividirEnChunks(hibridos, 50);
             for (let i = 0; i < hibridosChunks.length; i++) {
                 const chunk = hibridosChunks[i];
                 let mensajeHibridos = `🎯 HIBRIDA - Parte ${i + 1}/${hibridosChunks.length}:\n\n`;
@@ -525,7 +524,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
 
         // Enviar ECO en chunks si hay muchos
         if (eco.length > 0) {
-            const ecoChunks = dividirEnChunks(eco, 15);
+            const ecoChunks = dividirEnChunks(eco, 50);
             for (let i = 0; i < ecoChunks.length; i++) {
                 const chunk = ecoChunks[i];
                 let mensajeECO = `💰 ECO - Parte ${i + 1}/${ecoChunks.length}:\n\n`;
