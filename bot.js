@@ -552,6 +552,194 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
         bot.sendMessage(chatId, "Error al procesar el comando.");
     }
 }
+
+async function procesarDineroGrupo(chatId, args, tipo) {
+    if (args.length < 1) {
+        const ejemplo = tipo === 'pais' 
+            ? "/dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae"
+            : "/dineromu https://app.warera.io/mu/687cbb53fae4c9cf04340e77";
+        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`,{ 
+            parse_mode: "Markdown",
+            disable_web_page_preview: true 
+        });
+        return;
+    }
+
+    const id = args[0].split('/').pop();
+    
+    try {
+        let items = [];
+        let nombreGrupo = "Sin nombre";
+        let grupoUrl = `https://app.warera.io/${tipo}/${id}`;
+
+        if (tipo === 'pais') {
+            const countryData = await getCountryUsers(id);
+            items = countryData?.items || [];
+            
+            try {
+                const countryInfo = await getCountryData(id);
+                nombreGrupo = countryInfo?.name || "País Desconocido";
+            } catch (error) {
+                console.error(`No se pudo obtener nombre del país ${id}:`, error.message);
+                nombreGrupo = "País Desconocido";
+            }
+        } else {
+            const muData = await getMUData(id);
+            if (!muData?.members?.length) {
+                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+                return;
+            }
+            items = muData.members.map(userId => ({ _id: userId }));
+            nombreGrupo = muData.name || "MU Sin nombre";
+        }
+
+        if (items.length === 0) {
+            bot.sendMessage(chatId, `No se encontraron jugadores en el ${tipo === 'pais' ? 'país' : 'MU'} especificado.`);
+            return;
+        }
+
+        // Mensaje de progreso
+        const progressMsg = await bot.sendMessage(chatId, `💰 Procesando ${items.length} jugadores...`);
+
+        const resultados = [];
+        let totalWealth = 0;
+        let totalFactoryWealth = 0;
+        let totalLiquidWealth = 0;
+        let totalFactories = 0;
+
+        for (const [index, item] of items.entries()) {
+            try {
+                const userData = await getUserData(item._id);
+                if (!userData) continue;
+
+                let totalWealthValue = userData.rankings?.userWealth?.value || 0;
+                let factoryWealth = 0;
+                let factoryCount = 0;
+                let disabledFactoryWealth = 0;
+
+                try {
+                    const companiesData = await getUserCompanies(item._id);
+                    const companyIds = companiesData?.items || [];
+
+                    for (const companyId of companyIds) {
+                        try {
+                            const companyData = await getCompanyData(companyId);
+                            if (companyData?.estimatedValue) {
+                                if (companyData.disabledAt) {
+                                    disabledFactoryWealth += companyData.estimatedValue;
+                                }
+                                factoryWealth += companyData.estimatedValue;
+                                factoryCount++;
+                            }
+                        } catch (error) {
+                            console.error(`Error fábrica ${companyId}:`, error.message);
+                        }
+                    }
+
+                    if (disabledFactoryWealth > 0) {
+                        totalWealthValue += disabledFactoryWealth;
+                    }
+                } catch (error) {
+                    console.error(`Error fábricas usuario ${item._id}:`, error.message);
+                }
+
+                const liquidWealth = totalWealthValue - factoryWealth;
+
+                resultados.push({
+                    username: userData.username,
+                    userId: item._id,
+                    totalWealth: totalWealthValue,
+                    factoryWealth,
+                    liquidWealth,
+                    factoryCount,
+                    hasDisabledFactories: disabledFactoryWealth > 0
+                });
+
+                totalWealth += totalWealthValue;
+                totalFactoryWealth += factoryWealth;
+                totalLiquidWealth += liquidWealth;
+                totalFactories += factoryCount;
+
+                // Actualizar progreso cada 10 usuarios
+                if (index % 10 === 0) {
+                    await bot.editMessageText(`💰 Procesando ${index + 1}/${items.length} jugadores...`, {
+                        chat_id: chatId,
+                        message_id: progressMsg.message_id
+                    });
+                }
+
+            } catch (error) {
+                console.error(`Error procesando usuario ${item._id}:`, error.message);
+            }
+        }
+
+        // Eliminar mensaje de progreso
+        await bot.deleteMessage(chatId, progressMsg.message_id);
+
+        if (resultados.length === 0) {
+            bot.sendMessage(chatId, "No se pudieron obtener datos.");
+            return;
+        }
+
+        const playerCount = resultados.length;
+        const avgWealth = totalWealth / playerCount;
+        const avgFactoryWealth = totalFactoryWealth / playerCount;
+        const avgLiquidWealth = totalLiquidWealth / playerCount;
+        const avgFactories = totalFactories / playerCount;
+
+        resultados.sort((a, b) => b.totalWealth - a.totalWealth);
+
+        // Mensaje principal con MarkdownV2
+        let mensajePrincipal = `💰 *DINERO DE ${escapeMarkdownV2(nombreGrupo.toUpperCase())}*\n\n`;
+        mensajePrincipal += `*Estadísticas Generales:*\n`;
+        mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
+        mensajePrincipal += `💰 Wealth total: ${formatNumber(totalWealth)} monedas\n`;
+        mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
+        mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
+        mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n\n`;
+        mensajePrincipal += `*Promedios por Jugador:*\n`;
+        mensajePrincipal += `💰 Wealth: ${formatNumber(avgWealth)} monedas\n`;
+        mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
+        mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
+        mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}`;
+
+        await bot.sendMessage(chatId, mensajePrincipal, { 
+            parse_mode: "MarkdownV2",
+            disable_web_page_preview: true 
+        });
+
+        // Enviar lista de jugadores en chunks
+        const chunkSize = 10;
+        for (let i = 0; i < resultados.length; i += chunkSize) {
+            const chunk = resultados.slice(i, i + chunkSize);
+            let mensajeChunk = `*Jugadores ${i + 1}\\-${Math.min(i + chunkSize, resultados.length)}:*\n\n`;
+            
+            chunk.forEach((jugador, index) => {
+                const globalIndex = i + index + 1;
+                const usernameEscapado = escapeMarkdownV2(jugador.username);
+                const userIdEscapado = escapeMarkdownV2(jugador.userId);
+                
+                mensajeChunk += `${globalIndex}\\) ${usernameEscapado}`;
+                if (jugador.hasDisabledFactories) mensajeChunk += ` ⚠️`;
+                mensajeChunk += `\nhttps://app\\.warera\\.io/user/${userIdEscapado}\n`;
+                mensajeChunk += `💰 Wealth: ${formatNumber(jugador.totalWealth)} \\| `;
+                mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)}\n`;
+                mensajeChunk += `💵 Dinero/Almacen: ${formatNumber(jugador.liquidWealth)} \\| `;
+                mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
+            });
+
+            await bot.sendMessage(chatId, mensajeChunk, { 
+                parse_mode: "MarkdownV2",
+                disable_web_page_preview: true 
+            });
+            await delay(500);
+        }
+
+    } catch (error) {
+        console.error(`Error en procesarDineroGrupo (${tipo}):`, error);
+        bot.sendMessage(chatId, "Error al procesar el comando.");
+    }
+}
  
 // --- Comandos ---
 const comandos = {
@@ -564,11 +752,12 @@ const comandos = {
 /jugadoresMu <ID_MU> - Builds y pastillas de la MU
 /paisesDanyo <ID_PAIS> <COMIDA> - Daño disponible del país
 /muDanyo <ID_MU> <COMIDA> - Daño disponible de la MU
+/dineropais <ID_PAIS> - Riqueza del país
+/dineromu <ID_MU> - Riqueza de la MU
 /danyosemanal - Ranking de daño semanal
 /guerras <GUERRA> - Daño en conflictos
 /all - Menciona al grupo
-/produccion - Ranking productivo
-/dineropais <ID_PAIS> - Riqueza del país`;
+/produccion - Ranking productivo`;
         bot.sendMessage(chatId, mensaje);
     },
 
@@ -825,162 +1014,11 @@ const comandos = {
     },
 
     dineropais: async (chatId, args) => {
-        if (args.length < 1) {
-            bot.sendMessage(chatId, "Ejemplo: /dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae",{ 
-                parse_mode: "Markdown",
-                disable_web_page_preview: true 
-            });
-            return;
-        }
+        procesarDineroGrupo(chatId, args, 'pais');
+    },
 
-        const countryId = args[0].split('/').pop();
-        
-        try {
-            const countryData = await getCountryData(countryId);
-            const countryName = countryData?.name || "País Desconocido";
-
-            let allItems = [];
-            let nextCursor = null;
-
-            do {
-                const queryParams = { countryId, limit: 100 };
-                if (nextCursor) queryParams.cursor = nextCursor;
-
-                const usersData = await apiCall('user.getUsersByCountry', queryParams);
-                if (usersData?.items) {
-                    allItems = allItems.concat(usersData.items);
-                    nextCursor = usersData.nextCursor || null;
-                } else {
-                    nextCursor = null;
-                }
-
-                if (nextCursor) await delay(200);
-            } while (nextCursor);
-
-            if (allItems.length === 0) {
-                bot.sendMessage(chatId, "No hay jugadores en ese país.");
-                return;
-            }
-
-            const resultados = [];
-            let totalWealth = 0;
-            let totalFactoryWealth = 0;
-            let totalLiquidWealth = 0;
-            let totalFactories = 0;
-
-            for (const item of allItems) {
-                try {
-                    const userData = await getUserData(item._id);
-                    if (!userData) continue;
-
-                    let totalWealthValue = userData.rankings?.userWealth?.value || 0;
-                    let factoryWealth = 0;
-                    let factoryCount = 0;
-                    let disabledFactoryWealth = 0;
-
-                    try {
-                        const companiesData = await getUserCompanies(item._id);
-                        const companyIds = companiesData?.items || [];
-
-                        for (const companyId of companyIds) {
-                            try {
-                                const companyData = await getCompanyData(companyId);
-                                if (companyData?.estimatedValue) {
-                                    if (companyData.disabledAt) {
-                                        disabledFactoryWealth += companyData.estimatedValue;
-                                    }
-                                    factoryWealth += companyData.estimatedValue;
-                                    factoryCount++;
-                                }
-                            } catch (error) {
-                                console.error(`Error fábrica ${companyId}:`, error.message);
-                            }
-                        }
-
-                        if (disabledFactoryWealth > 0) {
-                            totalWealthValue += disabledFactoryWealth;
-                        }
-                    } catch (error) {
-                        console.error(`Error fábricas usuario ${item._id}:`, error.message);
-                    }
-
-                    const liquidWealth = totalWealthValue - factoryWealth;
-
-                    resultados.push({
-                        username: userData.username,
-                        userId: item._id,
-                        totalWealth: totalWealthValue,
-                        factoryWealth,
-                        liquidWealth,
-                        factoryCount,
-                        hasDisabledFactories: disabledFactoryWealth > 0
-                    });
-
-                    totalWealth += totalWealthValue;
-                    totalFactoryWealth += factoryWealth;
-                    totalLiquidWealth += liquidWealth;
-                    totalFactories += factoryCount;
-
-                } catch (error) {
-                    console.error(`Error procesando usuario ${item._id}:`, error.message);
-                }
-            }
-
-            if (resultados.length === 0) {
-                bot.sendMessage(chatId, "No se pudieron obtener datos.");
-                return;
-            }
-
-            const playerCount = resultados.length;
-            const avgWealth = totalWealth / playerCount;
-            const avgFactoryWealth = totalFactoryWealth / playerCount;
-            const avgLiquidWealth = totalLiquidWealth / playerCount;
-            const avgFactories = totalFactories / playerCount;
-
-            resultados.sort((a, b) => b.totalWealth - a.totalWealth);
-
-            let mensajePrincipal = `💰 *DINERO DE ${countryName.toUpperCase()}*\n\n`;
-            mensajePrincipal += `*Estadísticas Generales:*\n`;
-            mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
-            mensajePrincipal += `💰 Wealth total: ${formatNumber(totalWealth)} monedas\n`;
-            mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
-            mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n\n`;
-            mensajePrincipal += `*Promedios por Jugador:*\n`;
-            mensajePrincipal += `💰 Wealth: ${formatNumber(avgWealth)} monedas\n`;
-            mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
-            mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
-            mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}`;
-
-            await bot.sendMessage(chatId, mensajePrincipal,{ 
-                parse_mode: "Markdown",
-                disable_web_page_preview: true 
-            });
-
-            const chunkSize = 10;
-            for (let i = 0; i < resultados.length; i += chunkSize) {
-                const chunk = resultados.slice(i, i + chunkSize);
-                let mensajeChunk = `*Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)}:*\n\n`;
-                
-                chunk.forEach((jugador, index) => {
-                    const globalIndex = i + index + 1;
-                    mensajeChunk += `${globalIndex}) ${jugador.username}`;
-                    if (jugador.hasDisabledFactories) mensajeChunk += ` ⚠️`;
-                    mensajeChunk += `\nhttps://app.warera.io/user/${jugador.userId}\n`;
-                    mensajeChunk += `💰 Wealth: ${formatNumber(jugador.totalWealth)} | `;
-                    mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)}\n`;
-                    mensajeChunk += `💵 Dinero/Almacen: ${formatNumber(jugador.liquidWealth)} | `;
-                    mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
-                });
-
-                await bot.sendMessage(chatId, mensajeChunk, { parse_mode: "Markdown" });
-                if (i + chunkSize < resultados.length) await delay(500);
-            }
-
-        } catch (error) {
-            console.error("Error en /dineropais:", error);
-            bot.sendMessage(chatId, "Error al procesar el comando.");
-        }
+    dineromu: async (chatId, args) => {
+        procesarDineroGrupo(chatId, args, 'mu');
     },
     
     guerras: async (chatId, args) => {
