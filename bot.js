@@ -116,7 +116,35 @@ async function getUserData(userId) {
 }
 
 async function getCountryUsers(countryId) {
-    return apiCall('user.getUsersByCountry', { countryId, limit: 100 });
+    let allItems = [];
+    let nextCursor = null;
+    let page = 1;
+
+    do {
+        console.log(`📄 Obteniendo página ${page} de usuarios del país...`);
+        
+        const queryParams = { countryId, limit: 100 };
+        if (nextCursor) {
+            queryParams.cursor = nextCursor;
+            console.log(`🔁 Usando cursor: ${nextCursor}`);
+        }
+
+        const usersData = await apiCall('user.getUsersByCountry', queryParams);
+        if (usersData?.items) {
+            allItems = allItems.concat(usersData.items);
+            nextCursor = usersData.nextCursor || null;
+            console.log(`✅ Página ${page}: ${usersData.items.length} usuarios, nextCursor: ${nextCursor ? 'Sí' : 'No'}`);
+        } else {
+            nextCursor = null;
+        }
+
+        page++;
+        if (nextCursor) await delay(200);
+
+    } while (nextCursor && page < 20); // Límite de seguridad de 20 páginas (2000 usuarios)
+
+    console.log(`📊 Total de usuarios obtenidos del país: ${allItems.length}`);
+    return { items: allItems };
 }
 
 async function getMUData(muId) {
@@ -138,6 +166,7 @@ async function getCompanyData(companyId) {
 async function getBattleRanking(battleId, dataType, type, side) {
     return apiCall('battleRanking.getRanking', { battleId, dataType, type, side });
 }
+
 
 // --- Núcleo de cálculo de daño ---
 function calcularDanyo(userData, healFood) {
@@ -336,9 +365,14 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             nombreGrupo = muData.name || "MU Sin nombre";
         }
 
+        let progressMsg;
+        if (items.length > 50) {
+            progressMsg = await bot.sendMessage(chatId, `📊 Procesando ${items.length} jugadores...`);
+        }
+
         const usuarios = [];
 
-        for (const item of items) {
+        for (const [index, item] of items.entries()) {
             try {
                 const userData = await getUserData(item._id);
                 if (!userData) continue;
@@ -354,9 +388,20 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
                     build,
                     nivel
                 });
+
+                if (items.length > 50 && index % 20 === 0) {
+                    await bot.editMessageText(`📊 Procesando ${index + 1}/${items.length} jugadores...`, {
+                        chat_id: chatId,
+                        message_id: progressMsg.message_id
+                    });
+                }
             } catch (error) {
                 console.error(`Error procesando usuario ${item._id}:`, error.message);
             }
+        }
+
+        if (items.length > 50) {
+            await bot.deleteMessage(chatId, progressMsg.message_id);
         }
 
         const pvp = usuarios.filter(u => u.build === "PVP").sort((a, b) => b.nivel - a.nivel);
