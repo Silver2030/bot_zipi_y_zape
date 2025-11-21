@@ -180,8 +180,8 @@ function generarExcelBuffer(resultados, nombreGrupo) {
     
     // Preparar los datos para la hoja
     const datos = [
-        // Encabezados
-        ['Posición', 'Usuario', 'Wealth Total', 'Wealth Fábricas', 'Dinero/Almacén', 'Nº Fábricas', 'Fábricas Deshabilitadas', 'Enlace']
+        // Encabezados (agregamos "Nivel")
+        ['Posición', 'Usuario', 'Nivel', 'Wealth Total', 'Wealth Fábricas', 'Dinero/Almacén', 'Nº Fábricas', 'Fábricas Deshabilitadas', 'Enlace']
     ];
     
     // Agregar los datos de cada jugador
@@ -189,6 +189,7 @@ function generarExcelBuffer(resultados, nombreGrupo) {
         datos.push([
             index + 1,
             jugador.username,
+            jugador.level || 'N/A', // Nivel del jugador
             jugador.totalWealth,
             jugador.factoryWealth,
             jugador.liquidWealth,
@@ -201,15 +202,116 @@ function generarExcelBuffer(resultados, nombreGrupo) {
     // Crear la hoja de cálculo
     const worksheet = XLSX.utils.aoa_to_sheet(datos);
     
+    // Definir estilos para las celdas
+    const styles = {
+        // Estilo para encabezados
+        header: {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4F81BD" } }, // Azul
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+            }
+        },
+        // Estilo para filas pares
+        evenRow: {
+            fill: { fgColor: { rgb: "DCE6F1" } }, // Azul claro
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+            }
+        },
+        // Estilo para filas impares
+        oddRow: {
+            fill: { fgColor: { rgb: "F2F2F2" } }, // Gris claro
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+            }
+        },
+        // Estilo para números (alineación derecha)
+        number: {
+            alignment: { horizontal: "right", vertical: "center" }
+        }
+    };
+    
+    // Aplicar estilos a las celdas
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    
+    for (let R = range.s.r; R <= range.e.r; R++) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+            const cell_address = { c: C, r: R };
+            const cell_ref = XLSX.utils.encode_cell(cell_address);
+            
+            if (!worksheet[cell_ref]) continue;
+            
+            // Aplicar estilo según la fila
+            if (R === 0) {
+                // Encabezados
+                worksheet[cell_ref].s = styles.header;
+            } else {
+                // Filas de datos - colores alternos
+                if (R % 2 === 0) {
+                    worksheet[cell_ref].s = styles.evenRow;
+                } else {
+                    worksheet[cell_ref].s = styles.oddRow;
+                }
+                
+                // Aplicar alineación derecha para columnas numéricas (columna 3-6)
+                if (C >= 3 && C <= 6) {
+                    worksheet[cell_ref].s = {
+                        ...worksheet[cell_ref].s,
+                        ...styles.number
+                    };
+                }
+                
+                // Aplicar alineación centrada para nivel (columna 2)
+                if (C === 2) {
+                    worksheet[cell_ref].s = {
+                        ...worksheet[cell_ref].s,
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+                }
+            }
+        }
+    }
+    
+    // Ajustar anchos de columnas
+    const colWidths = [
+        { wch: 10 },  // Posición
+        { wch: 20 },  // Usuario
+        { wch: 8 },   // Nivel
+        { wch: 15 },  // Wealth Total
+        { wch: 15 },  // Wealth Fábricas
+        { wch: 15 },  // Dinero/Almacén
+        { wch: 12 },  // Nº Fábricas
+        { wch: 20 },  // Fábricas Deshabilitadas
+        { wch: 40 }   // Enlace
+    ];
+    
+    worksheet['!cols'] = colWidths;
+    
     // Agregar la hoja al workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos');
     
     // Generar el buffer en lugar de guardar archivo
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const excelBuffer = XLSX.write(workbook, { 
+        type: 'buffer', 
+        bookType: 'xlsx',
+        cellStyles: true 
+    });
     
     return excelBuffer;
 }
-
 
 // --- Núcleo de cálculo de daño ---
 function calcularDanyo(userData, healFood) {
@@ -691,6 +793,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
                 resultados.push({
                     username: userData.username,
                     userId: item._id,
+                    level: userData.leveling?.level || 0, // <-- AGREGAR ESTA LÍNEA
                     totalWealth: totalWealthValue,
                     factoryWealth,
                     liquidWealth,
