@@ -590,33 +590,114 @@ const comandos = {
 
             let mensaje = `*Resultados para:* ${escapeMarkdownV2(searchText)}\n\n`;
             
+            // Función para obtener datos con manejo de errores
+            const obtenerDatosConNombre = async (ids, tipo) => {
+                const resultados = [];
+                
+                for (const id of ids) {
+                    try {
+                        let nombre, url;
+                        
+                        switch (tipo) {
+                            case 'user':
+                                const userData = await getUserData(id);
+                                nombre = userData?.username || "Usuario Desconocido";
+                                url = `https://app.warera.io/user/${id}`;
+                                break;
+                            case 'country':
+                                const countryData = await getCountryData(id);
+                                nombre = countryData?.name || "País Desconocido";
+                                url = `https://app.warera.io/country/${id}`;
+                                break;
+                            case 'mu':
+                                const muData = await getMUData(id);
+                                nombre = muData?.name || "MU Desconocida";
+                                url = `https://app.warera.io/mu/${id}`;
+                                break;
+                            case 'region':
+                                const regionData = await apiCall('region.getById', { regionId: id });
+                                nombre = regionData?.name || "Región Desconocida";
+                                url = `https://app.warera.io/region/${id}`;
+                                break;
+                        }
+                        
+                        if (nombre && url) {
+                            resultados.push({ nombre, url, id });
+                        }
+                    } catch (error) {
+                        console.error(`Error obteniendo datos de ${tipo} ${id}:`, error.message);
+                        // En caso de error, mostrar solo el ID
+                        resultados.push({ 
+                            nombre: `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} ${id}`, 
+                            url: `https://app.warera.io/${tipo}/${id}`,
+                            id 
+                        });
+                    }
+                    
+                    // Pequeña pausa para no saturar la API
+                    await delay(100);
+                }
+                
+                return resultados;
+            };
+
             const categorias = [
-                { key: 'userIds', nombre: '👤 Usuarios', url: 'user' },
-                { key: 'muIds', nombre: '🏢 MUs', url: 'mu' },
-                { key: 'countryIds', nombre: '🇺🇳 Países', url: 'country' },
-                { key: 'regionIds', nombre: '🗺️ Regiones', url: 'region' }
+                { 
+                    key: 'userIds', 
+                    nombre: '👤 Usuarios', 
+                    tipo: 'user',
+                    datos: []
+                },
+                { 
+                    key: 'muIds', 
+                    nombre: '🏢 MUs', 
+                    tipo: 'mu',
+                    datos: []
+                },
+                { 
+                    key: 'countryIds', 
+                    nombre: '🇺🇳 Países', 
+                    tipo: 'country',
+                    datos: []
+                },
+                { 
+                    key: 'regionIds', 
+                    nombre: '🗺️ Regiones', 
+                    tipo: 'region',
+                    datos: []
+                }
             ];
 
-            categorias.forEach(({ key, nombre, url }) => {
-                if (searchData[key]?.length) {
+            // Obtener datos para cada categoría que tenga resultados
+            for (const categoria of categorias) {
+                if (searchData[categoria.key]?.length) {
+                    console.log(`Obteniendo datos para ${categoria.nombre}...`);
+                    categoria.datos = await obtenerDatosConNombre(searchData[categoria.key], categoria.tipo);
+                }
+            }
+
+            // Construir mensaje con los datos obtenidos
+            categorias.forEach(({ nombre, datos }) => {
+                if (datos.length > 0) {
                     mensaje += `*${nombre}*\n`;
-                    searchData[key].forEach(id => {
-                        // SOLO escapar el texto del enlace, no la URL
-                        const urlCompleta = `https://app.warera.io/${url}/${id}`;
-                        const textoEnlace = urlCompleta.replace('https://', ''); // Texto más limpio
-                        mensaje += `[${escapeMarkdownV2(textoEnlace)}](${urlCompleta})\n`;
+                    datos.forEach(item => {
+                        const nombreEscapado = escapeMarkdownV2(item.nombre);
+                        const urlEscapada = escapeMarkdownV2(item.url);
+                        const idEscapado = escapeMarkdownV2(item.id);
+                        
+                        mensaje += `[${nombreEscapado}](${urlEscapada}) \\- ${idEscapado}\n`;
                     });
                     mensaje += `\n`;
                 }
             });
 
-            bot.sendMessage(chatId, mensaje, { 
+            await bot.sendMessage(chatId, mensaje, { 
                 parse_mode: "MarkdownV2",
                 disable_web_page_preview: true 
             });
 
         } catch (error) {
-            console.error(error);
+            console.error("Error en /buscar:", error);
             bot.sendMessage(chatId, "Error en la búsqueda.");
         }
     },
