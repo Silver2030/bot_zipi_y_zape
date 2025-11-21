@@ -259,7 +259,10 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
         const ejemplo = tipo === 'pais' 
             ? "/paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO"
             : "/muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PESCADO";
-        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`);
+        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`,{ 
+            parse_mode: "Markdown",
+            disable_web_page_preview: true 
+        });
         return;
     }
 
@@ -365,7 +368,10 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
         const ejemplo = tipo === 'pais' 
             ? "/jugadoresPais https://app.warera.io/country/6813b6d446e731854c7ac7ae"
             : "/jugadoresMu https://app.warera.io/mu/687cbb53fae4c9cf04340e77";
-        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`);
+        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`,{ 
+            parse_mode: "Markdown",
+            disable_web_page_preview: true 
+        });
         return;
     }
 
@@ -396,6 +402,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             items = muData.members.map(userId => ({ _id: userId }));
             nombreGrupo = muData.name || "MU Sin nombre";
         }
+        
 
         if (items.length === 0) {
             bot.sendMessage(chatId, `No se encontraron jugadores en el ${tipo === 'pais' ? 'país' : 'MU'} especificado.`);
@@ -600,7 +607,10 @@ const comandos = {
                 }
             });
 
-            bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+            bot.sendMessage(chatId, mensaje,{ 
+                parse_mode: "Markdown",
+                disable_web_page_preview: true 
+            });
 
         } catch (error) {
             console.error(error);
@@ -610,7 +620,10 @@ const comandos = {
 
     hambre: async (chatId, args) => {
         if (!args[0] || !args[1]) {
-            bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO");
+            bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/68c5efa7d9737c88a4da826c DEFENDEMOS CON TODO",{ 
+                parse_mode: "Markdown",
+                disable_web_page_preview: true 
+            });
             return;
         }
 
@@ -729,7 +742,10 @@ const comandos = {
 
     dineropais: async (chatId, args) => {
         if (args.length < 1) {
-            bot.sendMessage(chatId, "Ejemplo: /dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae");
+            bot.sendMessage(chatId, "Ejemplo: /dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae",{ 
+                parse_mode: "Markdown",
+                disable_web_page_preview: true 
+            });
             return;
         }
 
@@ -852,7 +868,10 @@ const comandos = {
             mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
             mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}`;
 
-            await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "Markdown" });
+            await bot.sendMessage(chatId, mensajePrincipal,{ 
+                parse_mode: "Markdown",
+                disable_web_page_preview: true 
+            });
 
             const chunkSize = 10;
             for (let i = 0; i < resultados.length; i += chunkSize) {
@@ -950,7 +969,10 @@ const comandos = {
             }
         });
 
-        bot.sendMessage(chatId, mensaje, { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, mensaje,{ 
+            parse_mode: "Markdown",
+            disable_web_page_preview: true 
+        });
     },
 
     produccion: async (chatId) => {
