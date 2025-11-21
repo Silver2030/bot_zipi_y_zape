@@ -259,11 +259,14 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
             items = muData.members.map(userId => ({ _id: userId }));
         }
 
+        // Mensaje de progreso
+        const progressMsg = await bot.sendMessage(chatId, `⚙️ Procesando ${items.length} jugadores...`);
+
         const resultados = [];
         let totalActual = 0;
         let total24h = 0;
 
-        for (const item of items) {
+        for (const [index, item] of items.entries()) {
             try {
                 const userData = await getUserData(item._id);
                 if (!userData) continue;
@@ -278,50 +281,55 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
                     danyoActual,
                     danyo24h
                 });
+
+                // Actualizar progreso cada 10 jugadores
+                if (index % 10 === 0) {
+                    await bot.editMessageText(`⚙️ Procesando ${index + 1}/${items.length} jugadores...`, {
+                        chat_id: chatId,
+                        message_id: progressMsg.message_id
+                    });
+                }
             } catch (error) {
                 console.error(`Error usuario ${item._id}:`, error.message);
             }
         }
 
+        // Eliminar mensaje de progreso
+        await bot.deleteMessage(chatId, progressMsg.message_id);
+
         resultados.sort((a, b) => b.danyoActual - a.danyoActual);
 
-        const mensajeUsuarios = resultados.map(u => 
-            `- ${u.username} - https://app.warera.io/user/${u.userId}\n` +
-            `Daño actual: ${Math.round(u.danyoActual).toLocaleString('es-ES')}\n` +
-            `Daño 24h: ${Math.round(u.danyo24h).toLocaleString('es-ES')}`
-        ).join('\n\n');
-
-        const mensajeFinal = [
-            `- ${tipo === 'pais' ? 'País' : 'MU'}: https://app.warera.io/${tipo}/${id}`,
-            `- Comida usada: ${comida}\n`,
-            `- Total de daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}`,
-            `- Total de daño a lo largo de 24h: ${Math.round(total24h).toLocaleString('es-ES')}\n`,
-            mensajeUsuarios
+        // Mensaje principal MUY resumido
+        const mensajeResumen = [
+            `🏛️ ${tipo === 'pais' ? 'País' : 'MU'}: https://app.warera.io/${tipo}/${id}`,
+            `🍖 Comida: ${comida}`,
+            `⚔️ Daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}`,
+            `🕐 Daño 24h: ${Math.round(total24h).toLocaleString('es-ES')}`,
+            `👥 Jugadores: ${resultados.length}`
         ].join('\n');
 
-        bot.sendMessage(chatId, mensajeFinal);
+        await bot.sendMessage(chatId, mensajeResumen);
+
+        // Dividir en chunks más pequeños para evitar límite
+        const chunkSize = 10; // Reducido a 8 por mensaje
+        for (let i = 0; i < resultados.length; i += chunkSize) {
+            const chunk = resultados.slice(i, i + chunkSize);
+            
+            const mensajeChunk = chunk.map((u, index) => {
+                const globalIndex = i + index + 1;
+                return `${globalIndex}. ${u.username}: ${Math.round(u.danyoActual).toLocaleString('es-ES')} (24h: ${Math.round(u.danyo24h).toLocaleString('es-ES')})`;
+            }).join('\n');
+
+            const header = `📊 Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)}:\n\n`;
+            
+            await bot.sendMessage(chatId, header + mensajeChunk);
+            await delay(300); // Pequeña pausa entre mensajes
+        }
 
     } catch (error) {
         console.error(error);
         bot.sendMessage(chatId, "Error al procesar el comando.");
     }
-}
-
-// --- Análisis de builds ---
-function analizarBuild(userData) {
-    let pvpPoints = 0, ecoPoints = 0;
-    
-    PVP_SKILLS.forEach(skill => pvpPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
-    ECO_SKILLS.forEach(skill => ecoPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
-
-    const total = pvpPoints + ecoPoints;
-    const pctPvp = total ? (pvpPoints / total) * 100 : 0;
-
-    let build = "HIBRIDA";
-    if (pctPvp > 65) build = "PVP";
-    else if (pctPvp < 35) build = "ECO";
-
-    return { build, nivel: userData.leveling?.level || 0 };
 }
 
 function obtenerEstadoPastilla(userData) {
