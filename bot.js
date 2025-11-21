@@ -226,7 +226,7 @@ function calcularDanyo(userData, healFood) {
 }
 
 // --- Análisis de builds ---
-async function analizarBuild(userData) {
+function analizarBuild(userData) {
     let pvpPoints = 0, ecoPoints = 0;
     
     PVP_SKILLS.forEach(skill => pvpPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
@@ -242,7 +242,7 @@ async function analizarBuild(userData) {
     return { build, nivel: userData.leveling?.level || 0 };
 }
 
-async function obtenerEstadoPastilla(userData) {
+function obtenerEstadoPastilla(userData) {
     const buffs = userData.buffs;
     if (buffs?.buffCodes?.length) {
         return { icono: "💊", fecha: new Date(buffs.buffEndAt) };
@@ -477,15 +477,15 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             return line;
         };
 
-        // Mensaje de resumen inicial CON MarkdownV2
+        // Mensaje de resumen inicial CON MarkdownV2 - VERSIÓN SIMPLIFICADA
         const mensajeResumen = [
-            `*${escapeMarkdownV2(tipo === 'pais' ? 'PAÍS' : 'MU')}\\: ${escapeMarkdownV2(nombreGrupo)}*`,
-            `${escapeMarkdownV2("URL\\:")} ${escapeMarkdownV2(grupoUrl)}`,
-            `${escapeMarkdownV2("Pastillas disponibles\\:")} ${disponibles}`,
-            `${escapeMarkdownV2("Pastillas activas\\:")} ${activas}`,
-            `${escapeMarkdownV2("Debuffs\\:")} ${debuffs}`,
-            `${escapeMarkdownV2("Total jugadores\\:")} ${usuarios.length}`,
-            `${escapeMarkdownV2("PVP\\:")} ${pvp.length} ${escapeMarkdownV2("\\|")} ${escapeMarkdownV2("Híbridos\\:")} ${hibridos.length} ${escapeMarkdownV2("\\|")} ${escapeMarkdownV2("ECO\\:")} ${eco.length}`
+            `*${escapeMarkdownV2(tipo === 'pais' ? 'PAÍS' : 'MU')}: ${escapeMarkdownV2(nombreGrupo)}*`,
+            `${escapeMarkdownV2("URL:")} ${escapeMarkdownV2(grupoUrl)}`,
+            `${escapeMarkdownV2("Pastillas disponibles:")} ${disponibles}`,
+            `${escapeMarkdownV2("Pastillas activas:")} ${activas}`,
+            `${escapeMarkdownV2("Debuffs:")} ${debuffs}`,
+            `${escapeMarkdownV2("Total jugadores:")} ${usuarios.length}`,
+            `${escapeMarkdownV2("PVP:")} ${pvp.length} | ${escapeMarkdownV2("Híbridos:")} ${hibridos.length} | ${escapeMarkdownV2("ECO:")} ${eco.length}`
         ].join('\n');
 
         await bot.sendMessage(chatId, mensajeResumen, { parse_mode: "MarkdownV2" });
