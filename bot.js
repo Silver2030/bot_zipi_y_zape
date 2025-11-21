@@ -477,9 +477,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             return line;
         };
 
-        // Mensaje de resumen inicial SIN MarkdownV2 - TEXTO PLANO
+        // Mensaje de resumen inicial escapando el nombre
         const mensajeResumen = [
-            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: [${nombreGrupo}](${grupoUrl})`,
+            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: [${escapeMarkdownV2(nombreGrupo)}](${grupoUrl})`,
             `💊 Pastillas disponibles: ${disponibles}`,
             `💊 Pastillas activas: ${activas}`,
             `⛔ Debuffs: ${debuffs}`,
