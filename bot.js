@@ -400,7 +400,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
         bot.sendMessage(chatId, "Error al procesar el comando.");
     }
 }
-
+ 
 // --- Comandos ---
 const comandos = {
     help: (chatId) => {
