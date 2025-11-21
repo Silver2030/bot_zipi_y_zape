@@ -470,7 +470,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             return line;
         };
 
-        // Mensaje de resumen inicial
+        // Mensaje de resumen inicial - ESCAPANDO EL CARÁCTER |
         const mensajeResumen = [
             `*${tipo === 'pais' ? 'PAÍS' : 'MU'}: ${escapeMarkdownV2(nombreGrupo)}*`,
             `${escapeMarkdownV2("URL:")} ${escapeMarkdownV2(grupoUrl)}`,
@@ -478,7 +478,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             `${escapeMarkdownV2("Pastillas activas:")} ${activas}`,
             `${escapeMarkdownV2("Debuffs:")} ${debuffs}`,
             `${escapeMarkdownV2("Total jugadores:")} ${usuarios.length}`,
-            `${escapeMarkdownV2("PVP:")} ${pvp.length} | ${escapeMarkdownV2("Híbridos:")} ${hibridos.length} | ${escapeMarkdownV2("ECO:")} ${eco.length}`
+            `${escapeMarkdownV2("PVP:")} ${pvp.length} ${escapeMarkdownV2("\\|")} ${escapeMarkdownV2("Híbridos:")} ${hibridos.length} ${escapeMarkdownV2("\\|")} ${escapeMarkdownV2("ECO:")} ${eco.length}`
         ].join('\n');
 
         await bot.sendMessage(chatId, mensajeResumen, { parse_mode: "MarkdownV2" });
@@ -486,10 +486,10 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
 
         // Enviar PVP en chunks si hay muchos
         if (pvp.length > 0) {
-            const pvpChunks = dividirEnChunks(pvp, 15); // 15 jugadores por mensaje
+            const pvpChunks = dividirEnChunks(pvp, 15);
             for (let i = 0; i < pvpChunks.length; i++) {
                 const chunk = pvpChunks[i];
-                let mensajePVP = `*${escapeMarkdownV2("PVP")} - Parte ${i + 1}/${pvpChunks.length}*\n`;
+                let mensajePVP = `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${pvpChunks.length}*\n`;
                 mensajePVP += chunk.map(formatUsuario).join('\n');
                 await bot.sendMessage(chatId, mensajePVP, { parse_mode: "MarkdownV2" });
                 await delay(300);
@@ -501,7 +501,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const hibridosChunks = dividirEnChunks(hibridos, 15);
             for (let i = 0; i < hibridosChunks.length; i++) {
                 const chunk = hibridosChunks[i];
-                let mensajeHibridos = `*${escapeMarkdownV2("HIBRIDA")} - Parte ${i + 1}/${hibridosChunks.length}*\n`;
+                let mensajeHibridos = `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${hibridosChunks.length}*\n`;
                 mensajeHibridos += chunk.map(formatUsuario).join('\n');
                 await bot.sendMessage(chatId, mensajeHibridos, { parse_mode: "MarkdownV2" });
                 await delay(300);
@@ -513,7 +513,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const ecoChunks = dividirEnChunks(eco, 15);
             for (let i = 0; i < ecoChunks.length; i++) {
                 const chunk = ecoChunks[i];
-                let mensajeECO = `*${escapeMarkdownV2("ECO")} - Parte ${i + 1}/${ecoChunks.length}*\n`;
+                let mensajeECO = `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${ecoChunks.length}*\n`;
                 mensajeECO += chunk.map(formatUsuario).join('\n');
                 await bot.sendMessage(chatId, mensajeECO, { parse_mode: "MarkdownV2" });
                 await delay(300);
