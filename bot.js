@@ -226,7 +226,7 @@ function calcularDanyo(userData, healFood) {
 }
 
 // --- Análisis de builds ---
-function analizarBuild(userData) {
+async function analizarBuild(userData) {
     let pvpPoints = 0, ecoPoints = 0;
     
     PVP_SKILLS.forEach(skill => pvpPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
@@ -242,7 +242,7 @@ function analizarBuild(userData) {
     return { build, nivel: userData.leveling?.level || 0 };
 }
 
-function obtenerEstadoPastilla(userData) {
+async function obtenerEstadoPastilla(userData) {
     const buffs = userData.buffs;
     if (buffs?.buffCodes?.length) {
         return { icono: "💊", fecha: new Date(buffs.buffEndAt) };
