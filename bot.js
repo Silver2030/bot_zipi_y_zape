@@ -93,11 +93,16 @@ const guerraMundial1 = [
 
 // --- Funciones de utilidad ---
 function escapeMarkdownV2(text) {
-    return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+    if (typeof text !== 'string') {
+        text = String(text);
+    }
+    return text.replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1');
 }
 
 function formatNumber(num) {
-    return num.toLocaleString('es-ES');
+    // Formatear el número y luego escaparlo para MarkdownV2
+    const formatted = num.toLocaleString('es-ES');
+    return escapeMarkdownV2(formatted);
 }
 
 function delay(ms) {
@@ -689,8 +694,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
         resultados.sort((a, b) => b.totalWealth - a.totalWealth);
 
-        // Mensaje principal con MarkdownV2
-        let mensajePrincipal = `💰 *DINERO DE ${escapeMarkdownV2(nombreGrupo.toUpperCase())}*\n\n`;
+        let mensajePrincipal = `💰 *DINERO DE [${escapeMarkdownV2(nombreGrupo)}](${escapeMarkdownV2(grupoUrl)})*\n\n`;
         mensajePrincipal += `*Estadísticas Generales:*\n`;
         mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
         mensajePrincipal += `💰 Wealth total: ${formatNumber(totalWealth)} monedas\n`;
@@ -701,7 +705,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
         mensajePrincipal += `💰 Wealth: ${formatNumber(avgWealth)} monedas\n`;
         mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
         mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
-        mensajePrincipal += `🔧 Nº fábricas: ${avgFactories.toFixed(1)}`;
+        mensajePrincipal += `🔧 Nº fábricas: ${escapeMarkdownV2(avgFactories.toFixed(1))}`;
 
         await bot.sendMessage(chatId, mensajePrincipal, { 
             parse_mode: "MarkdownV2",
