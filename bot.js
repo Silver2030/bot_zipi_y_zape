@@ -487,7 +487,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             `⚔️ PVP: ${pvp.length} | 🎯 Híbridos: ${hibridos.length} | 💰 ECO: ${eco.length}`
         ].join('\n');
 
-        await bot.sendMessage(chatId, mensajeResumen); // SIN parse_mode
+        await bot.sendMessage(chatId, mensajeResumen, { parse_mode: "Markdown" });
         await delay(500);
 
         // Función para formatear usuario - VERSIÓN SIMPLIFICADA
