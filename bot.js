@@ -180,8 +180,8 @@ function generarExcelBuffer(resultados, nombreGrupo) {
     
     // Preparar los datos para la hoja
     const datos = [
-        // Encabezados
-        ['Ranking Position', 'User', 'Lvl', 'Total Wealth', 'Factory Wealth', 'Money/Storage', 'Factory Number', 'Factory Disabled', 'Url']
+        // Encabezados (9 columnas para coincidir con los datos)
+        ['Ranking', 'Name', 'Url', 'Level', 'Companies', 'Wealth', 'Companies Wealth', 'Player Wealth', 'Factory Disabled']
     ];
     
     // Agregar los datos de cada jugador
@@ -189,13 +189,13 @@ function generarExcelBuffer(resultados, nombreGrupo) {
         datos.push([
             index + 1,
             jugador.username,
+            `https://app.warera.io/user/${jugador.userId}`,
             jugador.level || 'N/A',
+            jugador.factoryCount,
             jugador.totalWealth,
             jugador.factoryWealth,
             jugador.liquidWealth,
-            jugador.factoryCount,
-            jugador.hasDisabledFactories ? 'Sí' : 'No',
-            `https://app.warera.io/user/${jugador.userId}`
+            jugador.hasDisabledFactories ? 'Yes' : 'No'
         ]);
     });
     
@@ -205,7 +205,7 @@ function generarExcelBuffer(resultados, nombreGrupo) {
     // Aplicar estilos con la aproximación de xlsx
     const range = XLSX.utils.decode_range(worksheet['!ref']);
     
-    // Colores en formato hexadecimal que Google Drive podría reconocer
+    // Colores en formato hexadecimal
     const headerColor = { rgb: "4F81BD" }; // Azul
     const evenRowColor = { rgb: "DCE6F1" }; // Azul claro
     const oddRowColor = { rgb: "F2F2F2" };  // Gris claro
@@ -246,7 +246,7 @@ function generarExcelBuffer(resultados, nombreGrupo) {
                 right: { style: "thin", color: { rgb: "000000" } }
             };
             
-            // Alineación centrada
+            // ALINEACIÓN CENTRADA PARA TODAS LAS CELDAS
             worksheet[cell_ref].s.alignment = { 
                 horizontal: "center", 
                 vertical: "center" 
@@ -254,22 +254,22 @@ function generarExcelBuffer(resultados, nombreGrupo) {
         }
     }
     
-    // Ajustar anchos de columnas
+    // Ajustar anchos de columnas (9 columnas)
     const colWidths = [
-        { wch: 15 },  // Ranking Position
-        { wch: 20 },  // User
-        { wch: 8 },   // Lvl
-        { wch: 15 },  // Total Wealth
-        { wch: 15 },  // Factory Wealth
-        { wch: 15 },  // Money/Storage
-        { wch: 15 },  // Factory Number
-        { wch: 15 },  // Factory Disabled
-        { wch: 40 }   // Url
+        { wch: 10 },  // Ranking
+        { wch: 20 },  // Name
+        { wch: 40 },  // Url
+        { wch: 8 },   // Level
+        { wch: 12 },  // Companies
+        { wch: 15 },  // Wealth
+        { wch: 18 },  // Companies Wealth
+        { wch: 15 },  // Player Wealth
+        { wch: 15 }   // Factory Disabled
     ];
     
     worksheet['!cols'] = colWidths;
     
-    // Agregar filtros automáticos
+    // Agregar filtros automáticos (9 columnas A-I)
     worksheet['!autofilter'] = { ref: "A1:I1" };
     
     // Agregar la hoja al workbook
@@ -281,7 +281,7 @@ function generarExcelBuffer(resultados, nombreGrupo) {
         bookType: 'xlsx',
         bookSST: false,
         compression: false,
-        cellStyles: true  // ← ESTA LÍNEA ES IMPORTANTE
+        cellStyles: true
     });
     
     return excelBuffer;
