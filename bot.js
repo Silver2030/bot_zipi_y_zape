@@ -253,6 +253,113 @@ function obtenerEstadoPastilla(userData) {
     return { icono: "", fecha: null };
 }
 
+// --- Procesamiento de grupos ---
+async function procesarGrupoDanyo(chatId, args, tipo) {
+    if (args.length < 2) {
+        const ejemplo = tipo === 'pais' 
+            ? "/paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO"
+            : "/muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PESCADO";
+        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`);
+        return;
+    }
+
+    const id = args[0].split('/').pop();
+    const comida = args[1].toUpperCase();
+    const healFood = HEAL_FOOD_MAP[comida];
+
+    if (!healFood) {
+        bot.sendMessage(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
+        return;
+    }
+
+    try {
+        let items = [];
+        
+        if (tipo === 'pais') {
+            const countryData = await getCountryUsers(id);
+            items = countryData?.items || [];
+        } else {
+            const muData = await getMUData(id);
+            if (!muData?.members?.length) {
+                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+                return;
+            }
+            items = muData.members.map(userId => ({ _id: userId }));
+        }
+
+        // Mensaje de progreso
+        const progressMsg = await bot.sendMessage(chatId, `⚙️ Procesando ${items.length} jugadores...`);
+
+        const resultados = [];
+        let totalActual = 0;
+        let total24h = 0;
+
+        for (const [index, item] of items.entries()) {
+            try {
+                const userData = await getUserData(item._id);
+                if (!userData) continue;
+
+                const { danyoActual, danyo24h } = calcularDanyo(userData, healFood);
+                totalActual += danyoActual;
+                total24h += danyo24h;
+
+                resultados.push({
+                    username: userData.username,
+                    userId: userData._id,
+                    danyoActual,
+                    danyo24h
+                });
+
+                // Actualizar progreso cada 10 jugadores
+                if (index % 10 === 0) {
+                    await bot.editMessageText(`⚙️ Procesando ${index + 1}/${items.length} jugadores...`, {
+                        chat_id: chatId,
+                        message_id: progressMsg.message_id
+                    });
+                }
+            } catch (error) {
+                console.error(`Error usuario ${item._id}:`, error.message);
+            }
+        }
+
+        // Eliminar mensaje de progreso
+        await bot.deleteMessage(chatId, progressMsg.message_id);
+
+        resultados.sort((a, b) => b.danyoActual - a.danyoActual);
+
+        // Mensaje principal MUY resumido
+        const mensajeResumen = [
+            `🏛️ ${tipo === 'pais' ? 'País' : 'MU'}: https://app.warera.io/${tipo}/${id}`,
+            `🍖 Comida: ${comida}`,
+            `⚔️ Daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}`,
+            `🕐 Daño 24h: ${Math.round(total24h).toLocaleString('es-ES')}`,
+            `👥 Jugadores: ${resultados.length}`
+        ].join('\n');
+
+        await bot.sendMessage(chatId, mensajeResumen);
+
+        // Dividir en chunks más pequeños para evitar límite
+        const chunkSize = 10; // Reducido a 8 por mensaje
+        for (let i = 0; i < resultados.length; i += chunkSize) {
+            const chunk = resultados.slice(i, i + chunkSize);
+            
+            const mensajeChunk = chunk.map((u, index) => {
+                const globalIndex = i + index + 1;
+                return `${globalIndex}. ${u.username}: ${Math.round(u.danyoActual).toLocaleString('es-ES')} (24h: ${Math.round(u.danyo24h).toLocaleString('es-ES')})`;
+            }).join('\n');
+
+            const header = `📊 Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)}:\n\n`;
+            
+            await bot.sendMessage(chatId, header + mensajeChunk);
+            await delay(300); // Pequeña pausa entre mensajes
+        }
+
+    } catch (error) {
+        console.error(error);
+        bot.sendMessage(chatId, "Error al procesar el comando.");
+    }
+}
+
 async function procesarJugadoresGrupo(chatId, args, tipo) {
     if (args.length < 1) {
         const ejemplo = tipo === 'pais' 
