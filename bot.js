@@ -225,6 +225,34 @@ function calcularDanyo(userData, healFood) {
     };
 }
 
+// --- Análisis de builds ---
+function analizarBuild(userData) {
+    let pvpPoints = 0, ecoPoints = 0;
+    
+    PVP_SKILLS.forEach(skill => pvpPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
+    ECO_SKILLS.forEach(skill => ecoPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
+
+    const total = pvpPoints + ecoPoints;
+    const pctPvp = total ? (pvpPoints / total) * 100 : 0;
+
+    let build = "HIBRIDA";
+    if (pctPvp > 65) build = "PVP";
+    else if (pctPvp < 35) build = "ECO";
+
+    return { build, nivel: userData.leveling?.level || 0 };
+}
+
+function obtenerEstadoPastilla(userData) {
+    const buffs = userData.buffs;
+    if (buffs?.buffCodes?.length) {
+        return { icono: "💊", fecha: new Date(buffs.buffEndAt) };
+    }
+    if (buffs?.debuffCodes?.length) {
+        return { icono: "⛔", fecha: new Date(buffs.debuffEndAt) };
+    }
+    return { icono: "", fecha: null };
+}
+
 async function procesarJugadoresGrupo(chatId, args, tipo) {
     if (args.length < 1) {
         const ejemplo = tipo === 'pais' 
