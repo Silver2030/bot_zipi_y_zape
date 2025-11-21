@@ -575,7 +575,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     try {
         let items = [];
         let nombreGrupo = "Sin nombre";
-        let grupoUrl = `https://app.warera.io/${tipo}/${id}`;
+        let grupoUrl = tipo === 'pais' ? `https://app.warera.io/country/${id}` : `https://app.warera.io/mu/${id}`;
 
         if (tipo === 'pais') {
             const countryData = await getCountryUsers(id);
