@@ -1,6 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const express = require('express');
+const XLSX = require('xlsx');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -170,6 +171,43 @@ async function getCompanyData(companyId) {
 
 async function getBattleRanking(battleId, dataType, type, side) {
     return apiCall('battleRanking.getRanking', { battleId, dataType, type, side });
+}
+
+// --- Función para generar archivo Excel como Buffer ---
+function generarExcelBuffer(resultados, nombreGrupo) {
+    // Crear un nuevo workbook
+    const workbook = XLSX.utils.book_new();
+    
+    // Preparar los datos para la hoja
+    const datos = [
+        // Encabezados
+        ['Posición', 'Usuario', 'Wealth Total', 'Wealth Fábricas', 'Dinero/Almacén', 'Nº Fábricas', 'Fábricas Deshabilitadas', 'Enlace']
+    ];
+    
+    // Agregar los datos de cada jugador
+    resultados.forEach((jugador, index) => {
+        datos.push([
+            index + 1,
+            jugador.username,
+            jugador.totalWealth,
+            jugador.factoryWealth,
+            jugador.liquidWealth,
+            jugador.factoryCount,
+            jugador.hasDisabledFactories ? 'Sí' : 'No',
+            `https://app.warera.io/user/${jugador.userId}`
+        ]);
+    });
+    
+    // Crear la hoja de cálculo
+    const worksheet = XLSX.utils.aoa_to_sheet(datos);
+    
+    // Agregar la hoja al workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos');
+    
+    // Generar el buffer en lugar de guardar archivo
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    return excelBuffer;
 }
 
 
@@ -575,7 +613,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     try {
         let items = [];
         let nombreGrupo = "Sin nombre";
-        let grupoUrl = tipo === 'pais' ? `https://app.warera.io/country/${id}` : `https://app.warera.io/mu/${id}`;
+        let grupoUrl = `https://app.warera.io/${tipo}/${id}`;
 
         if (tipo === 'pais') {
             const countryData = await getCountryUsers(id);
@@ -694,6 +732,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
         resultados.sort((a, b) => b.totalWealth - a.totalWealth);
 
+        // Mensaje principal
         let mensajePrincipal = `💰 *DINERO DE [${escapeMarkdownV2(nombreGrupo)}](${escapeMarkdownV2(grupoUrl)})*\n\n`;
         mensajePrincipal += `*Estadísticas Generales:*\n`;
         mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
@@ -712,7 +751,28 @@ async function procesarDineroGrupo(chatId, args, tipo) {
             disable_web_page_preview: true 
         });
 
-        // Enviar lista de jugadores en chunks
+        // Generar y enviar archivo Excel
+        try {
+            const progressExcelMsg = await bot.sendMessage(chatId, `📊 Generando archivo Excel...`);
+            
+            const excelBuffer = generarExcelBuffer(resultados, nombreGrupo);
+            const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.xlsx`;
+            
+            // Enviar el archivo Excel
+            await bot.sendDocument(chatId, excelBuffer, {}, {
+                filename: nombreArchivo,
+                contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            
+            // Eliminar mensaje de progreso del Excel
+            await bot.deleteMessage(chatId, progressExcelMsg.message_id);
+            
+        } catch (error) {
+            console.error('Error generando Excel:', error);
+            await bot.sendMessage(chatId, '⚠️ No se pudo generar el archivo Excel, pero aquí están los datos:');
+        }
+
+        // Enviar lista de jugadores en chunks (opcional - puedes quitarlo si prefieres solo el Excel)
         const chunkSize = 10;
         for (let i = 0; i < resultados.length; i += chunkSize) {
             const chunk = resultados.slice(i, i + chunkSize);
