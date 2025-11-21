@@ -373,12 +373,19 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
     try {
         let items = [];
         let nombreGrupo = "Sin nombre";
+        let grupoUrl = `https://app.warera.io/${tipo}/${id}`;
 
         if (tipo === 'pais') {
             const countryData = await getCountryUsers(id);
             items = countryData?.items || [];
-            const countryInfo = await getCountryData(id);
-            nombreGrupo = countryInfo?.name || "País Desconocido";
+            
+            try {
+                const countryInfo = await getCountryData(id);
+                nombreGrupo = countryInfo?.name || "País Desconocido";
+            } catch (error) {
+                console.error(`No se pudo obtener nombre del país ${id}:`, error.message);
+                nombreGrupo = "País Desconocido";
+            }
         } else {
             const muData = await getMUData(id);
             if (!muData?.members?.length) {
@@ -389,10 +396,13 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             nombreGrupo = muData.name || "MU Sin nombre";
         }
 
-        let progressMsg;
-        if (items.length > 50) {
-            progressMsg = await bot.sendMessage(chatId, `📊 Procesando ${items.length} jugadores...`);
+        if (items.length === 0) {
+            bot.sendMessage(chatId, `No se encontraron jugadores en el ${tipo === 'pais' ? 'país' : 'MU'} especificado.`);
+            return;
         }
+
+        // Mensaje de progreso
+        const progressMsg = await bot.sendMessage(chatId, `📊 Procesando ${items.length} jugadores...`);
 
         const usuarios = [];
 
@@ -413,7 +423,8 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
                     nivel
                 });
 
-                if (items.length > 50 && index % 20 === 0) {
+                // Actualizar progreso cada 20 jugadores
+                if (index % 20 === 0) {
                     await bot.editMessageText(`📊 Procesando ${index + 1}/${items.length} jugadores...`, {
                         chat_id: chatId,
                         message_id: progressMsg.message_id
@@ -424,8 +435,12 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             }
         }
 
-        if (items.length > 50) {
-            await bot.deleteMessage(chatId, progressMsg.message_id);
+        // Eliminar mensaje de progreso
+        await bot.deleteMessage(chatId, progressMsg.message_id);
+
+        if (usuarios.length === 0) {
+            bot.sendMessage(chatId, "No se pudieron procesar los datos de ningún jugador.");
+            return;
         }
 
         const pvp = usuarios.filter(u => u.build === "PVP").sort((a, b) => b.nivel - a.nivel);
@@ -436,6 +451,16 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
         const activas = usuarios.filter(u => u.icono === "💊").length;
         const debuffs = usuarios.filter(u => u.icono === "⛔").length;
 
+        // Función para dividir arrays en chunks
+        function dividirEnChunks(array, chunkSize) {
+            const chunks = [];
+            for (let i = 0; i < array.length; i += chunkSize) {
+                chunks.push(array.slice(i, i + chunkSize));
+            }
+            return chunks;
+        }
+
+        // Función para formatear usuario
         const formatUsuario = u => {
             const username = escapeMarkdownV2(u.username);
             const url = escapeMarkdownV2(`https://app.warera.io/user/${u._id}`);
@@ -445,27 +470,68 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             return line;
         };
 
-        let mensaje = tipo === 'pais' 
-            ? `*${escapeMarkdownV2("PASTILLAS")}*\n`
-            : `*${escapeMarkdownV2("MU")}: ${escapeMarkdownV2(nombreGrupo)}*\n*${escapeMarkdownV2("PASTILLAS")}*\n`;
-        
-        mensaje += `${escapeMarkdownV2("Disponibles:")} ${disponibles}, ${escapeMarkdownV2("Activas:")} ${activas}, ${escapeMarkdownV2("Debuff:")} ${debuffs}\n\n`;
+        // Mensaje de resumen inicial
+        const mensajeResumen = [
+            `*${tipo === 'pais' ? 'PAÍS' : 'MU'}: ${escapeMarkdownV2(nombreGrupo)}*`,
+            `${escapeMarkdownV2("URL:")} ${escapeMarkdownV2(grupoUrl)}`,
+            `${escapeMarkdownV2("Pastillas disponibles:")} ${disponibles}`,
+            `${escapeMarkdownV2("Pastillas activas:")} ${activas}`,
+            `${escapeMarkdownV2("Debuffs:")} ${debuffs}`,
+            `${escapeMarkdownV2("Total jugadores:")} ${usuarios.length}`,
+            `${escapeMarkdownV2("PVP:")} ${pvp.length} | ${escapeMarkdownV2("Híbridos:")} ${hibridos.length} | ${escapeMarkdownV2("ECO:")} ${eco.length}`
+        ].join('\n');
 
-        mensaje += `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("-")} ${pvp.length}*\n`;
-        mensaje += pvp.length ? pvp.map(formatUsuario).join('\n') : escapeMarkdownV2("(ninguno)");
-        mensaje += `\n\n`;
+        await bot.sendMessage(chatId, mensajeResumen, { parse_mode: "MarkdownV2" });
+        await delay(500);
 
-        mensaje += `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("-")} ${hibridos.length}*\n`;
-        mensaje += hibridos.length ? hibridos.map(formatUsuario).join('\n') : escapeMarkdownV2("(ninguno)");
-        mensaje += `\n\n`;
+        // Enviar PVP en chunks si hay muchos
+        if (pvp.length > 0) {
+            const pvpChunks = dividirEnChunks(pvp, 15); // 15 jugadores por mensaje
+            for (let i = 0; i < pvpChunks.length; i++) {
+                const chunk = pvpChunks[i];
+                let mensajePVP = `*${escapeMarkdownV2("PVP")} - Parte ${i + 1}/${pvpChunks.length}*\n`;
+                mensajePVP += chunk.map(formatUsuario).join('\n');
+                await bot.sendMessage(chatId, mensajePVP, { parse_mode: "MarkdownV2" });
+                await delay(300);
+            }
+        }
 
-        mensaje += `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("-")} ${eco.length}*\n`;
-        mensaje += eco.length ? eco.map(formatUsuario).join('\n') : escapeMarkdownV2("(ninguno)");
+        // Enviar Híbridos en chunks si hay muchos
+        if (hibridos.length > 0) {
+            const hibridosChunks = dividirEnChunks(hibridos, 15);
+            for (let i = 0; i < hibridosChunks.length; i++) {
+                const chunk = hibridosChunks[i];
+                let mensajeHibridos = `*${escapeMarkdownV2("HIBRIDA")} - Parte ${i + 1}/${hibridosChunks.length}*\n`;
+                mensajeHibridos += chunk.map(formatUsuario).join('\n');
+                await bot.sendMessage(chatId, mensajeHibridos, { parse_mode: "MarkdownV2" });
+                await delay(300);
+            }
+        }
 
-        bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+        // Enviar ECO en chunks si hay muchos
+        if (eco.length > 0) {
+            const ecoChunks = dividirEnChunks(eco, 15);
+            for (let i = 0; i < ecoChunks.length; i++) {
+                const chunk = ecoChunks[i];
+                let mensajeECO = `*${escapeMarkdownV2("ECO")} - Parte ${i + 1}/${ecoChunks.length}*\n`;
+                mensajeECO += chunk.map(formatUsuario).join('\n');
+                await bot.sendMessage(chatId, mensajeECO, { parse_mode: "MarkdownV2" });
+                await delay(300);
+            }
+        }
+
+        // Mensaje final si no hay jugadores en alguna categoría
+        const categoriasVacias = [];
+        if (pvp.length === 0) categoriasVacias.push("PVP");
+        if (hibridos.length === 0) categoriasVacias.push("Híbridos");
+        if (eco.length === 0) categoriasVacias.push("ECO");
+
+        if (categoriasVacias.length > 0) {
+            await bot.sendMessage(chatId, `📝 Categorías vacías: ${categoriasVacias.join(', ')}`);
+        }
 
     } catch (error) {
-        console.error(error);
+        console.error(`Error en procesarJugadoresGrupo:`, error);
         bot.sendMessage(chatId, "Error al procesar el comando.");
     }
 }
