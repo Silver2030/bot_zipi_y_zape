@@ -401,7 +401,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             return;
         }
 
-        // Mensaje de progreso
+        // Mensaje de progreso (sin Markdown para evitar problemas)
         const progressMsg = await bot.sendMessage(chatId, `📊 Procesando ${items.length} jugadores...`);
 
         const usuarios = [];
@@ -460,28 +460,26 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             return chunks;
         }
 
-        // Función para formatear usuario
-        const formatUsuario = u => {
-            const username = escapeMarkdownV2(u.username);
-            const url = escapeMarkdownV2(`https://app.warera.io/user/${u._id}`);
-            let line = `${u.nivel}\\) [${username}](${url})`;
-            if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
-            if (u.fecha) line += ` ${escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}))}`;
+        // Función para formatear usuario SIN Markdown
+        const formatUsuarioSimple = u => {
+            let line = `${u.nivel}) ${u.username} - https://app.warera.io/user/${u._id}`;
+            if (u.icono) line += ` ${u.icono}`;
+            if (u.fecha) line += ` ${u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'})}`;
             return line;
         };
 
-        // Mensaje de resumen inicial - ESCAPANDO EL CARÁCTER |
+        // Mensaje de resumen inicial SIN Markdown
         const mensajeResumen = [
-            `*${tipo === 'pais' ? 'PAÍS' : 'MU'}: ${escapeMarkdownV2(nombreGrupo)}*`,
-            `${escapeMarkdownV2("URL:")} ${escapeMarkdownV2(grupoUrl)}`,
-            `${escapeMarkdownV2("Pastillas disponibles:")} ${disponibles}`,
-            `${escapeMarkdownV2("Pastillas activas:")} ${activas}`,
-            `${escapeMarkdownV2("Debuffs:")} ${debuffs}`,
-            `${escapeMarkdownV2("Total jugadores:")} ${usuarios.length}`,
-            `${escapeMarkdownV2("PVP:")} ${pvp.length} ${escapeMarkdownV2("\\|")} ${escapeMarkdownV2("Híbridos:")} ${hibridos.length} ${escapeMarkdownV2("\\|")} ${escapeMarkdownV2("ECO:")} ${eco.length}`
+            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: ${nombreGrupo}`,
+            `🔗 URL: ${grupoUrl}`,
+            `💊 Pastillas disponibles: ${disponibles}`,
+            `💊 Pastillas activas: ${activas}`,
+            `⛔ Debuffs: ${debuffs}`,
+            `👥 Total jugadores: ${usuarios.length}`,
+            `⚔️ PVP: ${pvp.length} | 🎯 Híbridos: ${hibridos.length} | 💰 ECO: ${eco.length}`
         ].join('\n');
 
-        await bot.sendMessage(chatId, mensajeResumen, { parse_mode: "MarkdownV2" });
+        await bot.sendMessage(chatId, mensajeResumen);
         await delay(500);
 
         // Enviar PVP en chunks si hay muchos
@@ -489,9 +487,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const pvpChunks = dividirEnChunks(pvp, 15);
             for (let i = 0; i < pvpChunks.length; i++) {
                 const chunk = pvpChunks[i];
-                let mensajePVP = `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${pvpChunks.length}*\n`;
-                mensajePVP += chunk.map(formatUsuario).join('\n');
-                await bot.sendMessage(chatId, mensajePVP, { parse_mode: "MarkdownV2" });
+                let mensajePVP = `⚔️ PVP - Parte ${i + 1}/${pvpChunks.length}:\n\n`;
+                mensajePVP += chunk.map(formatUsuarioSimple).join('\n');
+                await bot.sendMessage(chatId, mensajePVP);
                 await delay(300);
             }
         }
@@ -501,9 +499,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const hibridosChunks = dividirEnChunks(hibridos, 15);
             for (let i = 0; i < hibridosChunks.length; i++) {
                 const chunk = hibridosChunks[i];
-                let mensajeHibridos = `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${hibridosChunks.length}*\n`;
-                mensajeHibridos += chunk.map(formatUsuario).join('\n');
-                await bot.sendMessage(chatId, mensajeHibridos, { parse_mode: "MarkdownV2" });
+                let mensajeHibridos = `🎯 HIBRIDA - Parte ${i + 1}/${hibridosChunks.length}:\n\n`;
+                mensajeHibridos += chunk.map(formatUsuarioSimple).join('\n');
+                await bot.sendMessage(chatId, mensajeHibridos);
                 await delay(300);
             }
         }
@@ -513,9 +511,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const ecoChunks = dividirEnChunks(eco, 15);
             for (let i = 0; i < ecoChunks.length; i++) {
                 const chunk = ecoChunks[i];
-                let mensajeECO = `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${ecoChunks.length}*\n`;
-                mensajeECO += chunk.map(formatUsuario).join('\n');
-                await bot.sendMessage(chatId, mensajeECO, { parse_mode: "MarkdownV2" });
+                let mensajeECO = `💰 ECO - Parte ${i + 1}/${ecoChunks.length}:\n\n`;
+                mensajeECO += chunk.map(formatUsuarioSimple).join('\n');
+                await bot.sendMessage(chatId, mensajeECO);
                 await delay(300);
             }
         }
