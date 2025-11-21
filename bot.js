@@ -225,140 +225,6 @@ function calcularDanyo(userData, healFood) {
     };
 }
 
-// --- Procesamiento de grupos ---
-async function procesarGrupoDanyo(chatId, args, tipo) {
-    if (args.length < 2) {
-        const ejemplo = tipo === 'pais' 
-            ? "/paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO"
-            : "/muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PESCADO";
-        bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`);
-        return;
-    }
-
-    const id = args[0].split('/').pop();
-    const comida = args[1].toUpperCase();
-    const healFood = HEAL_FOOD_MAP[comida];
-
-    if (!healFood) {
-        bot.sendMessage(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
-        return;
-    }
-
-    try {
-        let items = [];
-        
-        if (tipo === 'pais') {
-            const countryData = await getCountryUsers(id);
-            items = countryData?.items || [];
-        } else {
-            const muData = await getMUData(id);
-            if (!muData?.members?.length) {
-                bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
-                return;
-            }
-            items = muData.members.map(userId => ({ _id: userId }));
-        }
-
-        // Mensaje de progreso
-        const progressMsg = await bot.sendMessage(chatId, `⚙️ Procesando ${items.length} jugadores...`);
-
-        const resultados = [];
-        let totalActual = 0;
-        let total24h = 0;
-
-        for (const [index, item] of items.entries()) {
-            try {
-                const userData = await getUserData(item._id);
-                if (!userData) continue;
-
-                const { danyoActual, danyo24h } = calcularDanyo(userData, healFood);
-                totalActual += danyoActual;
-                total24h += danyo24h;
-
-                resultados.push({
-                    username: userData.username,
-                    userId: userData._id,
-                    danyoActual,
-                    danyo24h
-                });
-
-                // Actualizar progreso cada 10 jugadores
-                if (index % 10 === 0) {
-                    await bot.editMessageText(`⚙️ Procesando ${index + 1}/${items.length} jugadores...`, {
-                        chat_id: chatId,
-                        message_id: progressMsg.message_id
-                    });
-                }
-            } catch (error) {
-                console.error(`Error usuario ${item._id}:`, error.message);
-            }
-        }
-
-        // Eliminar mensaje de progreso
-        await bot.deleteMessage(chatId, progressMsg.message_id);
-
-        resultados.sort((a, b) => b.danyoActual - a.danyoActual);
-
-        // Mensaje principal MUY resumido
-        const mensajeResumen = [
-            `🏛️ ${tipo === 'pais' ? 'País' : 'MU'}: https://app.warera.io/${tipo}/${id}`,
-            `🍖 Comida: ${comida}`,
-            `⚔️ Daño disponible: ${Math.round(totalActual).toLocaleString('es-ES')}`,
-            `🕐 Daño 24h: ${Math.round(total24h).toLocaleString('es-ES')}`,
-            `👥 Jugadores: ${resultados.length}`
-        ].join('\n');
-
-        await bot.sendMessage(chatId, mensajeResumen);
-
-        // Dividir en chunks más pequeños para evitar límite
-        const chunkSize = 10; // Reducido a 8 por mensaje
-        for (let i = 0; i < resultados.length; i += chunkSize) {
-            const chunk = resultados.slice(i, i + chunkSize);
-            
-            const mensajeChunk = chunk.map((u, index) => {
-                const globalIndex = i + index + 1;
-                return `${globalIndex}. ${u.username}: ${Math.round(u.danyoActual).toLocaleString('es-ES')} (24h: ${Math.round(u.danyo24h).toLocaleString('es-ES')})`;
-            }).join('\n');
-
-            const header = `📊 Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)}:\n\n`;
-            
-            await bot.sendMessage(chatId, header + mensajeChunk);
-            await delay(300); // Pequeña pausa entre mensajes
-        }
-
-    } catch (error) {
-        console.error(error);
-        bot.sendMessage(chatId, "Error al procesar el comando.");
-    }
-}
-
-function analizarBuild(userData) {
-    let pvpPoints = 0, ecoPoints = 0;
-    
-    PVP_SKILLS.forEach(skill => pvpPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
-    ECO_SKILLS.forEach(skill => ecoPoints += SKILL_COSTS[userData.skills[skill]?.level || 0]);
-
-    const total = pvpPoints + ecoPoints;
-    const pctPvp = total ? (pvpPoints / total) * 100 : 0;
-
-    let build = "HIBRIDA";
-    if (pctPvp > 65) build = "PVP";
-    else if (pctPvp < 35) build = "ECO";
-
-    return { build, nivel: userData.leveling?.level || 0 };
-}
-
-function obtenerEstadoPastilla(userData) {
-    const buffs = userData.buffs;
-    if (buffs?.buffCodes?.length) {
-        return { icono: "💊", fecha: new Date(buffs.buffEndAt) };
-    }
-    if (buffs?.debuffCodes?.length) {
-        return { icono: "⛔", fecha: new Date(buffs.debuffEndAt) };
-    }
-    return { icono: "", fecha: null };
-}
-
 async function procesarJugadoresGrupo(chatId, args, tipo) {
     if (args.length < 1) {
         const ejemplo = tipo === 'pais' 
@@ -460,26 +326,34 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             return chunks;
         }
 
-        // Función para formatear usuario SIN Markdown
-        const formatUsuarioSimple = u => {
-            let line = `${u.nivel}) ${u.username} - https://app.warera.io/user/${u._id}`;
-            if (u.icono) line += ` ${u.icono}`;
-            if (u.fecha) line += ` ${u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'})}`;
+        // Función para formatear usuario CON MarkdownV2 correctamente escapado
+        const formatUsuarioMarkdown = u => {
+            const usernameEscapado = escapeMarkdownV2(u.username);
+            const url = `https://app.warera.io/user/${u._id}`;
+            const urlEscapada = escapeMarkdownV2(url);
+            
+            // CORRECCIÓN: El escape va en el string, no en la variable
+            let line = `${u.nivel}\\) [${usernameEscapado}](${urlEscapada})`;
+            if (u.icono) line += ` ${escapeMarkdownV2(u.icono)}`;
+            if (u.fecha) {
+                const fechaEscapada = escapeMarkdownV2(u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'}));
+                line += ` ${fechaEscapada}`;
+            }
             return line;
         };
 
-        // Mensaje de resumen inicial SIN Markdown
+        // Mensaje de resumen inicial CON MarkdownV2
         const mensajeResumen = [
-            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: ${nombreGrupo}`,
-            `🔗 URL: ${grupoUrl}`,
-            `💊 Pastillas disponibles: ${disponibles}`,
-            `💊 Pastillas activas: ${activas}`,
-            `⛔ Debuffs: ${debuffs}`,
-            `👥 Total jugadores: ${usuarios.length}`,
-            `⚔️ PVP: ${pvp.length} | 🎯 Híbridos: ${hibridos.length} | 💰 ECO: ${eco.length}`
+            `*${escapeMarkdownV2(tipo === 'pais' ? 'PAÍS' : 'MU')}\\: ${escapeMarkdownV2(nombreGrupo)}*`,
+            `${escapeMarkdownV2("URL\\:")} ${escapeMarkdownV2(grupoUrl)}`,
+            `${escapeMarkdownV2("Pastillas disponibles\\:")} ${disponibles}`,
+            `${escapeMarkdownV2("Pastillas activas\\:")} ${activas}`,
+            `${escapeMarkdownV2("Debuffs\\:")} ${debuffs}`,
+            `${escapeMarkdownV2("Total jugadores\\:")} ${usuarios.length}`,
+            `${escapeMarkdownV2("PVP\\:")} ${pvp.length} ${escapeMarkdownV2("\\|")} ${escapeMarkdownV2("Híbridos\\:")} ${hibridos.length} ${escapeMarkdownV2("\\|")} ${escapeMarkdownV2("ECO\\:")} ${eco.length}`
         ].join('\n');
 
-        await bot.sendMessage(chatId, mensajeResumen);
+        await bot.sendMessage(chatId, mensajeResumen, { parse_mode: "MarkdownV2" });
         await delay(500);
 
         // Enviar PVP en chunks si hay muchos
@@ -487,9 +361,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const pvpChunks = dividirEnChunks(pvp, 15);
             for (let i = 0; i < pvpChunks.length; i++) {
                 const chunk = pvpChunks[i];
-                let mensajePVP = `⚔️ PVP - Parte ${i + 1}/${pvpChunks.length}:\n\n`;
-                mensajePVP += chunk.map(formatUsuarioSimple).join('\n');
-                await bot.sendMessage(chatId, mensajePVP);
+                let mensajePVP = `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${pvpChunks.length}*\n\n`;
+                mensajePVP += chunk.map(formatUsuarioMarkdown).join('\n');
+                await bot.sendMessage(chatId, mensajePVP, { parse_mode: "MarkdownV2" });
                 await delay(300);
             }
         }
@@ -499,9 +373,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const hibridosChunks = dividirEnChunks(hibridos, 15);
             for (let i = 0; i < hibridosChunks.length; i++) {
                 const chunk = hibridosChunks[i];
-                let mensajeHibridos = `🎯 HIBRIDA - Parte ${i + 1}/${hibridosChunks.length}:\n\n`;
-                mensajeHibridos += chunk.map(formatUsuarioSimple).join('\n');
-                await bot.sendMessage(chatId, mensajeHibridos);
+                let mensajeHibridos = `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${hibridosChunks.length}*\n\n`;
+                mensajeHibridos += chunk.map(formatUsuarioMarkdown).join('\n');
+                await bot.sendMessage(chatId, mensajeHibridos, { parse_mode: "MarkdownV2" });
                 await delay(300);
             }
         }
@@ -511,14 +385,14 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const ecoChunks = dividirEnChunks(eco, 15);
             for (let i = 0; i < ecoChunks.length; i++) {
                 const chunk = ecoChunks[i];
-                let mensajeECO = `💰 ECO - Parte ${i + 1}/${ecoChunks.length}:\n\n`;
-                mensajeECO += chunk.map(formatUsuarioSimple).join('\n');
-                await bot.sendMessage(chatId, mensajeECO);
+                let mensajeECO = `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${ecoChunks.length}*\n\n`;
+                mensajeECO += chunk.map(formatUsuarioMarkdown).join('\n');
+                await bot.sendMessage(chatId, mensajeECO, { parse_mode: "MarkdownV2" });
                 await delay(300);
             }
         }
 
-        // Mensaje final si no hay jugadores en alguna categoría
+        // Mensaje final si no hay jugadores en alguna categoría (sin Markdown)
         const categoriasVacias = [];
         if (pvp.length === 0) categoriasVacias.push("PVP");
         if (hibridos.length === 0) categoriasVacias.push("Híbridos");
