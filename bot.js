@@ -601,14 +601,17 @@ const comandos = {
                 if (searchData[key]?.length) {
                     mensaje += `*${nombre}*\n`;
                     searchData[key].forEach(id => {
-                        mensaje += `${escapeMarkdownV2(`https://app.warera.io/${url}/${id}`)}\n`;
+                        // SOLO escapar el texto del enlace, no la URL
+                        const urlCompleta = `https://app.warera.io/${url}/${id}`;
+                        const textoEnlace = urlCompleta.replace('https://', ''); // Texto más limpio
+                        mensaje += `[${escapeMarkdownV2(textoEnlace)}](${urlCompleta})\n`;
                     });
                     mensaje += `\n`;
                 }
             });
 
-            bot.sendMessage(chatId, mensaje,{ 
-                parse_mode: "Markdown",
+            bot.sendMessage(chatId, mensaje, { 
+                parse_mode: "MarkdownV2",
                 disable_web_page_preview: true 
             });
 
