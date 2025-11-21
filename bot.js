@@ -477,28 +477,36 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             return line;
         };
 
-        // Mensaje de resumen inicial CON MarkdownV2 - VERSIÓN SIMPLIFICADA
+        // Mensaje de resumen inicial SIN MarkdownV2 - TEXTO PLANO
         const mensajeResumen = [
-            `*${escapeMarkdownV2(tipo === 'pais' ? 'PAÍS' : 'MU')}: ${escapeMarkdownV2(nombreGrupo)}*`,
-            `${escapeMarkdownV2("URL:")} ${escapeMarkdownV2(grupoUrl)}`,
-            `${escapeMarkdownV2("Pastillas disponibles:")} ${disponibles}`,
-            `${escapeMarkdownV2("Pastillas activas:")} ${activas}`,
-            `${escapeMarkdownV2("Debuffs:")} ${debuffs}`,
-            `${escapeMarkdownV2("Total jugadores:")} ${usuarios.length}`,
-            `${escapeMarkdownV2("PVP:")} ${pvp.length} | ${escapeMarkdownV2("Híbridos:")} ${hibridos.length} | ${escapeMarkdownV2("ECO:")} ${eco.length}`
+            `🏛️ ${tipo === 'pais' ? 'PAÍS' : 'MU'}: ${nombreGrupo}`,
+            `🔗 URL: ${grupoUrl}`,
+            `💊 Pastillas disponibles: ${disponibles}`,
+            `💊 Pastillas activas: ${activas}`,
+            `⛔ Debuffs: ${debuffs}`,
+            `👥 Total jugadores: ${usuarios.length}`,
+            `⚔️ PVP: ${pvp.length} | 🎯 Híbridos: ${hibridos.length} | 💰 ECO: ${eco.length}`
         ].join('\n');
 
-        await bot.sendMessage(chatId, mensajeResumen, { parse_mode: "MarkdownV2" });
+        await bot.sendMessage(chatId, mensajeResumen); // SIN parse_mode
         await delay(500);
+
+        // Función para formatear usuario - VERSIÓN SIMPLIFICADA
+        const formatUsuarioSimple = u => {
+            let line = `${u.nivel}) [${u.username}](https://app.warera.io/user/${u._id})`;
+            if (u.icono) line += ` ${u.icono}`;
+            if (u.fecha) line += ` ${u.fecha.toLocaleString('es-ES',{timeZone:'Europe/Madrid'})}`;
+            return line;
+        };
 
         // Enviar PVP en chunks si hay muchos
         if (pvp.length > 0) {
             const pvpChunks = dividirEnChunks(pvp, 15);
             for (let i = 0; i < pvpChunks.length; i++) {
                 const chunk = pvpChunks[i];
-                let mensajePVP = `*${escapeMarkdownV2("PVP")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${pvpChunks.length}*\n\n`;
-                mensajePVP += chunk.map(formatUsuarioMarkdown).join('\n');
-                await bot.sendMessage(chatId, mensajePVP, { parse_mode: "MarkdownV2" });
+                let mensajePVP = `⚔️ PVP - Parte ${i + 1}/${pvpChunks.length}:\n\n`;
+                mensajePVP += chunk.map(formatUsuarioSimple).join('\n');
+                await bot.sendMessage(chatId, mensajePVP, { parse_mode: "Markdown" }); // Usar Markdown normal, no MarkdownV2
                 await delay(300);
             }
         }
@@ -508,9 +516,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const hibridosChunks = dividirEnChunks(hibridos, 15);
             for (let i = 0; i < hibridosChunks.length; i++) {
                 const chunk = hibridosChunks[i];
-                let mensajeHibridos = `*${escapeMarkdownV2("HIBRIDA")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${hibridosChunks.length}*\n\n`;
-                mensajeHibridos += chunk.map(formatUsuarioMarkdown).join('\n');
-                await bot.sendMessage(chatId, mensajeHibridos, { parse_mode: "MarkdownV2" });
+                let mensajeHibridos = `🎯 HIBRIDA - Parte ${i + 1}/${hibridosChunks.length}:\n\n`;
+                mensajeHibridos += chunk.map(formatUsuarioSimple).join('\n');
+                await bot.sendMessage(chatId, mensajeHibridos, { parse_mode: "Markdown" }); // Usar Markdown normal
                 await delay(300);
             }
         }
@@ -520,9 +528,9 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
             const ecoChunks = dividirEnChunks(eco, 15);
             for (let i = 0; i < ecoChunks.length; i++) {
                 const chunk = ecoChunks[i];
-                let mensajeECO = `*${escapeMarkdownV2("ECO")} ${escapeMarkdownV2("\\-")} ${escapeMarkdownV2("Parte")} ${i + 1}/${ecoChunks.length}*\n\n`;
-                mensajeECO += chunk.map(formatUsuarioMarkdown).join('\n');
-                await bot.sendMessage(chatId, mensajeECO, { parse_mode: "MarkdownV2" });
+                let mensajeECO = `💰 ECO - Parte ${i + 1}/${ecoChunks.length}:\n\n`;
+                mensajeECO += chunk.map(formatUsuarioSimple).join('\n');
+                await bot.sendMessage(chatId, mensajeECO, { parse_mode: "Markdown" }); // Usar Markdown normal
                 await delay(300);
             }
         }
