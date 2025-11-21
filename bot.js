@@ -180,8 +180,8 @@ function generarExcelBuffer(resultados, nombreGrupo) {
     
     // Preparar los datos para la hoja
     const datos = [
-        // Encabezados (agregamos "Nivel")
-        ['Posición', 'Usuario', 'Nivel', 'Wealth Total', 'Wealth Fábricas', 'Dinero/Almacén', 'Nº Fábricas', 'Fábricas Deshabilitadas', 'Enlace']
+        // Encabezados
+        ['Ranking Position', 'User', 'Lvl', 'Total Wealth', 'Factory Wealth', 'Money/Storage', 'Factory Number', 'Factory Disabled', 'Url']
     ];
     
     // Agregar los datos de cada jugador
@@ -189,7 +189,7 @@ function generarExcelBuffer(resultados, nombreGrupo) {
         datos.push([
             index + 1,
             jugador.username,
-            jugador.level || 'N/A', // Nivel del jugador
+            jugador.level || 'N/A',
             jugador.totalWealth,
             jugador.factoryWealth,
             jugador.liquidWealth,
@@ -202,50 +202,13 @@ function generarExcelBuffer(resultados, nombreGrupo) {
     // Crear la hoja de cálculo
     const worksheet = XLSX.utils.aoa_to_sheet(datos);
     
-    // Definir estilos para las celdas
-    const styles = {
-        // Estilo para encabezados
-        header: {
-            font: { bold: true, color: { rgb: "FFFFFF" } },
-            fill: { fgColor: { rgb: "4F81BD" } }, // Azul
-            alignment: { horizontal: "center", vertical: "center" },
-            border: {
-                top: { style: "thin", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                bottom: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } }
-            }
-        },
-        // Estilo para filas pares
-        evenRow: {
-            fill: { fgColor: { rgb: "DCE6F1" } }, // Azul claro
-            alignment: { horizontal: "center", vertical: "center" },
-            border: {
-                top: { style: "thin", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                bottom: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } }
-            }
-        },
-        // Estilo para filas impares
-        oddRow: {
-            fill: { fgColor: { rgb: "F2F2F2" } }, // Gris claro
-            alignment: { horizontal: "center", vertical: "center" },
-            border: {
-                top: { style: "thin", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                bottom: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } }
-            }
-        },
-        // Estilo para números (alineación derecha)
-        number: {
-            alignment: { horizontal: "right", vertical: "center" }
-        }
-    };
-    
-    // Aplicar estilos a las celdas
+    // Aplicar estilos con la aproximación de xlsx
     const range = XLSX.utils.decode_range(worksheet['!ref']);
+    
+    // Colores en formato hexadecimal que Google Drive podría reconocer
+    const headerColor = { rgb: "4F81BD" }; // Azul
+    const evenRowColor = { rgb: "DCE6F1" }; // Azul claro
+    const oddRowColor = { rgb: "F2F2F2" };  // Gris claro
     
     for (let R = range.s.r; R <= range.e.r; R++) {
         for (let C = range.s.c; C <= range.e.c; C++) {
@@ -254,60 +217,71 @@ function generarExcelBuffer(resultados, nombreGrupo) {
             
             if (!worksheet[cell_ref]) continue;
             
-            // Aplicar estilo según la fila
+            // Inicializar estilo si no existe
+            if (!worksheet[cell_ref].s) {
+                worksheet[cell_ref].s = {};
+            }
+            
+            // Aplicar colores según la fila
             if (R === 0) {
-                // Encabezados
-                worksheet[cell_ref].s = styles.header;
+                // Encabezados - azul
+                worksheet[cell_ref].s.fill = { fgColor: headerColor };
+                worksheet[cell_ref].s.font = { bold: true, color: { rgb: "FFFFFF" } };
             } else {
                 // Filas de datos - colores alternos
                 if (R % 2 === 0) {
-                    worksheet[cell_ref].s = styles.evenRow;
+                    // Filas pares - azul claro
+                    worksheet[cell_ref].s.fill = { fgColor: evenRowColor };
                 } else {
-                    worksheet[cell_ref].s = styles.oddRow;
-                }
-                
-                // Aplicar alineación derecha para columnas numéricas (columna 3-6)
-                if (C >= 3 && C <= 6) {
-                    worksheet[cell_ref].s = {
-                        ...worksheet[cell_ref].s,
-                        ...styles.number
-                    };
-                }
-                
-                // Aplicar alineación centrada para nivel (columna 2)
-                if (C === 2) {
-                    worksheet[cell_ref].s = {
-                        ...worksheet[cell_ref].s,
-                        alignment: { horizontal: "center", vertical: "center" }
-                    };
+                    // Filas impares - gris claro
+                    worksheet[cell_ref].s.fill = { fgColor: oddRowColor };
                 }
             }
+            
+            // Aplicar bordes básicos
+            worksheet[cell_ref].s.border = {
+                top: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+            };
+            
+            // Alineación centrada
+            worksheet[cell_ref].s.alignment = { 
+                horizontal: "center", 
+                vertical: "center" 
+            };
         }
     }
     
     // Ajustar anchos de columnas
     const colWidths = [
-        { wch: 10 },  // Posición
-        { wch: 20 },  // Usuario
-        { wch: 8 },   // Nivel
-        { wch: 15 },  // Wealth Total
-        { wch: 15 },  // Wealth Fábricas
-        { wch: 15 },  // Dinero/Almacén
-        { wch: 12 },  // Nº Fábricas
-        { wch: 20 },  // Fábricas Deshabilitadas
-        { wch: 40 }   // Enlace
+        { wch: 15 },  // Ranking Position
+        { wch: 20 },  // User
+        { wch: 8 },   // Lvl
+        { wch: 15 },  // Total Wealth
+        { wch: 15 },  // Factory Wealth
+        { wch: 15 },  // Money/Storage
+        { wch: 15 },  // Factory Number
+        { wch: 15 },  // Factory Disabled
+        { wch: 40 }   // Url
     ];
     
     worksheet['!cols'] = colWidths;
     
+    // Agregar filtros automáticos
+    worksheet['!autofilter'] = { ref: "A1:I1" };
+    
     // Agregar la hoja al workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos');
     
-    // Generar el buffer en lugar de guardar archivo
+    // Opciones de escritura para mejor compatibilidad
     const excelBuffer = XLSX.write(workbook, { 
         type: 'buffer', 
         bookType: 'xlsx',
-        cellStyles: true 
+        bookSST: false,
+        compression: false,
+        cellStyles: true  // ← ESTA LÍNEA ES IMPORTANTE
     });
     
     return excelBuffer;
