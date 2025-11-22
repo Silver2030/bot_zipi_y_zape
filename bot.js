@@ -104,6 +104,12 @@ function formatNumber(num) {
     return num.toLocaleString('es-ES');
 }
 
+function formatNumberMarkdown(num) {
+    // Formatear el número y luego escaparlo para MarkdownV2
+    const formatted = num.toLocaleString('es-ES');
+    return escapeMarkdownV2(formatted);
+}
+
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -811,14 +817,14 @@ async function procesarDineroGrupo(chatId, args, tipo) {
         let mensajePrincipal = `💰 *DINERO DE [${escapeMarkdownV2(nombreGrupo)}](${escapeMarkdownV2(grupoUrl)})*\n\n`;
         mensajePrincipal += `*Estadísticas Generales:*\n`;
         mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
-        mensajePrincipal += `💰 Wealth total: ${formatNumber(totalWealth)} monedas\n`;
-        mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(totalFactoryWealth)} monedas\n`;
-        mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(totalLiquidWealth)} monedas\n`;
+        mensajePrincipal += `💰 Wealth total: ${formatNumberMarkdown(totalWealth)} monedas\n`;
+        mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumberMarkdown(totalFactoryWealth)} monedas\n`;
+        mensajePrincipal += `💵 Dinero/Almacen: ${formatNumberMarkdown(totalLiquidWealth)} monedas\n`;
         mensajePrincipal += `🔧 Nº fábricas: ${totalFactories}\n\n`;
         mensajePrincipal += `*Promedios por Jugador:*\n`;
-        mensajePrincipal += `💰 Wealth: ${formatNumber(avgWealth)} monedas\n`;
-        mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumber(avgFactoryWealth)} monedas\n`;
-        mensajePrincipal += `💵 Dinero/Almacen: ${formatNumber(avgLiquidWealth)} monedas\n`;
+        mensajePrincipal += `💰 Wealth: ${formatNumberMarkdown(avgWealth)} monedas\n`;
+        mensajePrincipal += `🏭 Wealth Fábricas: ${formatNumberMarkdown(avgFactoryWealth)} monedas\n`;
+        mensajePrincipal += `💵 Dinero/Almacen: ${formatNumberMarkdown(avgLiquidWealth)} monedas\n`;
         mensajePrincipal += `🔧 Nº fábricas: ${escapeMarkdownV2(avgFactories.toFixed(1))}`;
 
         await bot.sendMessage(chatId, mensajePrincipal, { 
@@ -861,9 +867,9 @@ async function procesarDineroGrupo(chatId, args, tipo) {
                 mensajeChunk += `${globalIndex}\\) ${usernameEscapado}`;
                 if (jugador.hasDisabledFactories) mensajeChunk += ` ⚠️`;
                 mensajeChunk += `\nhttps://app\\.warera\\.io/user/${userIdEscapado}\n`;
-                mensajeChunk += `💰 Wealth: ${formatNumber(jugador.totalWealth)} \\| `;
-                mensajeChunk += `🏭 Fábricas: ${formatNumber(jugador.factoryWealth)}\n`;
-                mensajeChunk += `💵 Dinero/Almacen: ${formatNumber(jugador.liquidWealth)} \\| `;
+                mensajeChunk += `💰 Wealth: ${formatNumberMarkdown(jugador.totalWealth)} \\| `;
+                mensajeChunk += `🏭 Fábricas: ${formatNumberMarkdown(jugador.factoryWealth)}\n`;
+                mensajeChunk += `💵 Dinero/Almacen: ${formatNumberMarkdown(jugador.liquidWealth)} \\| `;
                 mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
             });
 
