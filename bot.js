@@ -49,13 +49,19 @@ const usuarios = [
     { userId: "6840b9945a2ea3f4a4819680", mention: "@flashmolox" },
     { userId: "684aba6474cdd09ff4bdb1c9", mention: "@kesta_pasando" },
     { userId: "68a090bcae3c1ce846baba17", mention: "@Atero3D" },
-    { userId: "68a090bcae3c1ce846baba17", mention: "@Hollow3EY35" },
     { userId: "683f624fc6294e3b6516c78e", mention: "@JoseManuelMaCa" },
     { userId: "686be039fb337713b29e172d", mention: "@Brayanorsini" },
     { userId: "686eb3bab7dc5cb1d7e3085b", mention: "@Brayanorsini" },
     { userId: "688fd7fe2d7fcdd226d90dbb", mention: "@Dafuju22" },
     { userId: "68a34a08d1c35b2e594c6ea6", mention: "@GosvagRR" },
-    { userId: "688fd7fe2d7fcdd226d90dbb", mention: "@apolo" }
+    { userId: "688fd7fe2d7fcdd226d90dbb", mention: "@apolo" },
+    { userId: "681ac8c17c71edf800cbef7a", mention: "@KyrosRR" },
+    { userId: "682a6a132b76380956602044", mention: "@Dopillo" },
+    { userId: "682bba892cae032763110f07", mention: "@Dopillo" },
+    { userId: "689a5f94f3c7e02ba2f2b981", mention: "@Dopillo" },
+    { userId: "689a5f3a5c3c40f764859813", mention: "@Dopillo" },
+    { userId: "683da442ca51017a7ae9ba9e", mention: "@Valthognir" },
+    { userId: "6838b4ab0d8cd8e990e918bf", mention: "@Abyssomniscience" }
 ];
 
 const guerraMundial1 = [
@@ -101,9 +107,7 @@ function escapeMarkdownV2(text) {
 }
 
 function formatNumber(num) {
-    // Formatear el número y luego escaparlo para MarkdownV2
-    const formatted = num.toLocaleString('es-ES');
-    return escapeMarkdownV2(formatted);
+    return num.toLocaleString('es-ES');
 }
 
 function delay(ms) {
