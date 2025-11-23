@@ -51,9 +51,7 @@ const usuarios = [
     { userId: "68a34a08d1c35b2e594c6ea6", mention: "@GosvagRR" },
     { userId: "681ac8c17c71edf800cbef7a", mention: "@KyrosRR" },
     { userId: "682a6a132b76380956602044", mention: "@Dopillo" },
-    { userId: "682bba892cae032763110f07", mention: "@Dopillo" },
-    { userId: "689a5f94f3c7e02ba2f2b981", mention: "@Dopillo" },
-    { userId: "689a5f3a5c3c40f764859813", mention: "@Dopillo" },
+    { userId: "682bba892cae032763110f07", mention: "@redbull001" },
     { userId: "683da442ca51017a7ae9ba9e", mention: "@Valthognir" },
     { userId: "6838b4ab0d8cd8e990e918bf", mention: "@Abyssomniscience" }
 ];
