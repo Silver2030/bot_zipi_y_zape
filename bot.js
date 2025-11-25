@@ -1372,6 +1372,182 @@ const comandos = {
             console.error("Error en comando /produccion:", error);
             bot.sendMessage(chatId, "Error al obtener los datos de producción.");
         }
+    },
+    
+    duracion : async (chatId, args) => {
+        if (args.length < 1) {
+            bot.sendMessage(chatId, "Ejemplo: /duracion https://app.warera.io/battle/6924dddcd9075fc1dbbaf2f9", {
+                parse_mode: "Markdown",
+                disable_web_page_preview: true
+            });
+            return;
+        }
+
+        const battleId = args[0].split('/').pop();
+        
+        try {
+            // Obtener datos de la batalla
+            const battleData = await apiCall('battle.getById', { battleId });
+            if (!battleData) {
+                bot.sendMessage(chatId, "No se pudo obtener la batalla.");
+                return;
+            }
+
+            const attackerWins = battleData.attacker.wonRoundsCount;
+            const defenderWins = battleData.defender.wonRoundsCount;
+            const roundsToWin = battleData.roundsToWin;
+            const currentRoundId = battleData.currentRound;
+            const isActive = battleData.isActive;
+
+            // Si la batalla no está activa
+            if (!isActive) {
+                bot.sendMessage(chatId, "Esta batalla ya ha finalizado.");
+                return;
+            }
+
+            // Obtener datos de la ronda actual
+            const roundData = await apiCall('round.getById', { roundId: currentRoundId });
+            if (!roundData) {
+                bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
+                return;
+            }
+
+            const attackerPoints = roundData.attacker.points;
+            const defenderPoints = roundData.defender.points;
+            const totalPoints = attackerPoints + defenderPoints;
+            const actualTickPoints = roundData.live.actualTickPoints;
+            const nextTickAt = new Date(roundData.live.nextTickAt);
+
+            // Función para calcular el tiempo necesario para alcanzar ciertos puntos
+            function calcularTiempoParaPuntos(puntosObjetivo, puntosActuales, puntosPorTick) {
+                let puntosRestantes = puntosObjetivo - puntosActuales;
+                if (puntosRestantes <= 0) return 0;
+
+                let tiempoTotal = 0;
+                let puntosAcumulados = 0;
+                let puntosTotalesAcumulados = totalPoints;
+
+                while (puntosAcumulados < puntosRestantes) {
+                    // Determinar cuántos puntos da el tick actual basado en los puntos totales acumulados
+                    let puntosTickActual = Math.min(Math.floor(puntosTotalesAcumulados / 100) + 1, 6);
+                    
+                    // El bando ganador recibe todos los puntos del tick
+                    puntosAcumulados += puntosTickActual;
+                    puntosTotalesAcumulados += puntosTickActual;
+                    tiempoTotal += 2; // Cada tick son 2 minutos
+                }
+
+                return tiempoTotal;
+            }
+
+            // Función para calcular escenario más rápido
+            function calcularEscenarioRapido() {
+                const rondasRestantesParaGanar = roundsToWin - Math.max(attackerWins, defenderWins);
+                
+                if (rondasRestantesParaGanar <= 0) {
+                    return { tiempo: 0, ganador: attackerWins > defenderWins ? "Atacante" : "Defensor" };
+                }
+
+                let tiempoTotal = 0;
+                let ganador = attackerPoints > defenderPoints ? "Atacante" : "Defensor";
+
+                // Para cada ronda restante, calcular el tiempo mínimo para ganarla
+                for (let i = 0; i < rondasRestantesParaGanar; i++) {
+                    const puntosActuales = (i === 0) ? 
+                        (ganador === "Atacante" ? attackerPoints : defenderPoints) : 0;
+                    
+                    tiempoTotal += calcularTiempoParaPuntos(300, puntosActuales, actualTickPoints);
+                }
+
+                return { tiempo: tiempoTotal, ganador };
+            }
+
+            // Función para calcular escenario más lento
+            function calcularEscenarioLento() {
+                const rondasRestantesParaGanar = roundsToWin - Math.max(attackerWins, defenderWins);
+                
+                if (rondasRestantesParaGanar <= 0) {
+                    return { tiempo: 0, ganador: attackerWins > defenderWins ? "Atacante" : "Defensor" };
+                }
+
+                let tiempoTotal = 0;
+                let ganador = attackerPoints > defenderPoints ? "Atacante" : "Defensor";
+                let perdedor = ganador === "Atacante" ? "Defensor" : "Atacante";
+
+                // Para el escenario más lento, asumimos que el perdedor llega a 299 puntos en cada ronda
+                for (let i = 0; i < rondasRestantesParaGanar; i++) {
+                    const puntosGanadorIniciales = (i === 0) ? 
+                        (ganador === "Atacante" ? attackerPoints : defenderPoints) : 0;
+                    const puntosPerdedorIniciales = (i === 0) ? 
+                        (perdedor === "Atacante" ? attackerPoints : defenderPoints) : 0;
+
+                    // Tiempo para que el perdedor llegue a 299 puntos
+                    const tiempoHasta299 = calcularTiempoParaPuntos(299, puntosPerdedorIniciales, actualTickPoints);
+                    
+                    // Tiempo adicional para que el ganador alcance 300 puntos (empezando desde sus puntos actuales)
+                    const tiempoPara300 = calcularTiempoParaPuntos(300, puntosGanadorIniciales, actualTickPoints);
+                    
+                    // El tiempo total de la ronda es el máximo entre ambos
+                    tiempoTotal += Math.max(tiempoHasta299, tiempoPara300);
+                }
+
+                return { tiempo: tiempoTotal, ganador };
+            }
+
+            // Calcular escenarios
+            const escenarioRapido = calcularEscenarioRapido();
+            const escenarioLento = calcularEscenarioLento();
+
+            // Función para formatear tiempo
+            function formatearTiempo(minutos) {
+                const horas = Math.floor(minutos / 60);
+                const mins = minutos % 60;
+                return `${horas}h ${mins}m`;
+            }
+
+            // Función para calcular hora de finalización
+            function calcularHoraFinalizacion(minutosExtra) {
+                const ahora = new Date();
+                const finalizacion = new Date(ahora.getTime() + minutosExtra * 60000);
+                
+                // Convertir a hora de España (UTC+1/+2)
+                const opciones = {
+                    timeZone: 'Europe/Madrid',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                };
+                
+                return finalizacion.toLocaleTimeString('es-ES', opciones);
+            }
+
+            // Construir mensaje
+            let mensaje = `⏰ *DURACIÓN ESTIMADA DE LA BATALLA*\n\n`;
+            mensaje += `🔗 [Batalla](https://app.warera.io/battle/${battleId})\n\n`;
+            mensaje += `📊 *Estado actual:*\n`;
+            mensaje += `⚔️ Atacante: ${attackerWins} rondas - ${attackerPoints} puntos\n`;
+            mensaje += `🛡️ Defensor: ${defenderWins} rondas - ${defenderPoints} puntos\n`;
+            mensaje += `🎯 Rondas para ganar: ${roundsToWin}\n\n`;
+            mensaje += `📈 *Puntos por tick:* ${actualTickPoints} cada 2 minutos\n\n`;
+            mensaje += `⚡ *Escenario más rápido:*\n`;
+            mensaje += `• Ganador: ${escenarioRapido.ganador}\n`;
+            mensaje += `• Tiempo: ${formatearTiempo(escenarioRapido.tiempo)}\n`;
+            mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioRapido.tiempo)}\n\n`;
+            mensaje += `🐌 *Escenario más lento:*\n`;
+            mensaje += `• Ganador: ${escenarioLento.ganador}\n`;
+            mensaje += `• Tiempo: ${formatearTiempo(escenarioLento.tiempo)}\n`;
+            mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioLento.tiempo)}\n\n`;
+            mensaje += `⏱️ *Próximo tick:* ${nextTickAt.toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid' })}`;
+
+            await bot.sendMessage(chatId, mensaje, {
+                parse_mode: "Markdown",
+                disable_web_page_preview: true
+            });
+
+        } catch (error) {
+            console.error("Error en /duracion:", error);
+            bot.sendMessage(chatId, "Error al calcular la duración de la batalla.");
+        }
     }
 };
 
