@@ -1449,8 +1449,7 @@ duracion: async (chatId, args) => {
             if (puntosTotales < 500) return 5;
             return 6;
         }
-
-        // Función SEGURA para calcular tiempo de una ronda
+        // Función SEGURA para calcular tiempo de una ronda - CORREGIDA
         function calcularTiempoRonda(puntosBandoActual, puntosTotalesActuales) {
             let puntosNecesarios = 300 - puntosBandoActual;
             let tiempo = 0;
@@ -1461,12 +1460,12 @@ duracion: async (chatId, args) => {
                 seguridad++;
                 const puntosPorTick = getPuntosPorTick(puntosTotales);
                 
-                // Calcular cuántos puntos quedan hasta el siguiente nivel
-                const puntosHastaSiguienteNivel = 100 - (puntosTotales % 100);
-                if (puntosHastaSiguienteNivel === 100) puntosHastaSiguienteNivel = 0;
+                // Calcular cuántos puntos quedan hasta el siguiente nivel - CORREGIDO
+                let puntosHastaSiguienteNivel = 100 - (puntosTotales % 100);
+                if (puntosHastaSiguienteNivel === 100) puntosHastaSiguienteNivel = puntosNecesarios;
                 
                 // Cuántos puntos podemos conseguir en este nivel
-                const puntosPosiblesEsteNivel = Math.min(puntosNecesarios, puntosHastaSiguienteNivel || puntosNecesarios);
+                const puntosPosiblesEsteNivel = Math.min(puntosNecesarios, puntosHastaSiguienteNivel);
                 
                 // Cuántos ticks necesitamos en este nivel
                 const ticksNecesarios = Math.ceil(puntosPosiblesEsteNivel / puntosPorTick);
