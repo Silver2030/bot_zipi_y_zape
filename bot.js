@@ -1442,19 +1442,21 @@ duracion: async (chatId, args) => {
             return 6;
         }
 
-        // Función para calcular tiempo para alcanzar puntos objetivo
+        // Cálculo MATEMÁTICO exacto
         function calcularTiempoParaPuntos(puntosIniciales, puntosObjetivo, puntosTotalesIniciales) {
             let puntosNecesarios = puntosObjetivo - puntosIniciales;
             let tiempo = 0;
             let puntosTotales = puntosTotalesIniciales;
             
             while (puntosNecesarios > 0) {
-                const puntosPorTick = getPuntosPorTick(puntosTotales);
-                const ticksNecesarios = Math.ceil(puntosNecesarios / puntosPorTick);
+                const nivelActual = Math.floor(puntosTotales / 100);
+                const puntosPorTick = Math.min(nivelActual + 1, 6);
+                const puntosHastaSiguienteNivel = 100 - (puntosTotales % 100);
                 
-                tiempo += ticksNecesarios * 2;
-                puntosNecesarios -= ticksNecesarios * puntosPorTick;
-                puntosTotales += ticksNecesarios * puntosPorTick;
+                const puntosEnEsteTick = Math.min(puntosNecesarios, puntosPorTick);
+                tiempo += 2;
+                puntosNecesarios -= puntosEnEsteTick;
+                puntosTotales += puntosEnEsteTick;
             }
             
             return tiempo;
