@@ -1411,7 +1411,6 @@ const comandos = {
                 }
             } catch (error) {
                 console.error("Error obteniendo nombres de países:", error);
-                // Si hay error, mantener los nombres por defecto
             }
 
             const attackerWins = battleData.attacker.wonRoundsCount;
@@ -1435,156 +1434,140 @@ const comandos = {
             const attackerPoints = roundData.attacker.points;
             const defenderPoints = roundData.defender.points;
             const totalPoints = attackerPoints + defenderPoints;
-            const actualTickPoints = roundData.live.actualTickPoints;
-            const nextTickAt = new Date(roundData.live.nextTickAt);
 
-            // Función para calcular puntos por tick basado en puntos totales
+            // Determinar quién está ganando actualmente
+            const ganadorActual = attackerPoints > defenderPoints ? "Atacante" : 
+                                defenderPoints > attackerPoints ? "Defensor" : "Empate";
+
+            // Función CORREGIDA para calcular puntos por tick
             function getPuntosPorTick(puntosTotales) {
                 const nivel = Math.floor(puntosTotales / 100);
                 return Math.min(nivel + 1, 6);
             }
 
-            // Función para calcular tiempo para que un bando alcance X puntos desde Y puntos
-            function calcularTiempoParaPuntos(puntosIniciales, puntosObjetivo, puntosTotalesIniciales) {
-                if (puntosIniciales >= puntosObjetivo) return 0;
+            // Función CORREGIDA para calcular tiempo para alcanzar puntos objetivo
+            function calcularTiempoParaPuntos(puntosActuales, puntosObjetivo, puntosTotalesActuales) {
+                if (puntosActuales >= puntosObjetivo) return 0;
                 
                 let tiempo = 0;
-                let puntosActuales = puntosIniciales;
-                let puntosTotales = puntosTotalesIniciales;
+                let puntos = puntosActuales;
+                let totalPuntos = puntosTotalesActuales;
 
-                while (puntosActuales < puntosObjetivo) {
-                    const puntosTick = getPuntosPorTick(puntosTotales);
-                    puntosActuales += puntosTick;
-                    puntosTotales += puntosTick;
-                    tiempo += 2;
+                while (puntos < puntosObjetivo) {
+                    const puntosTick = getPuntosPorTick(totalPuntos);
+                    puntos += puntosTick;
+                    totalPuntos += puntosTick;
+                    tiempo += 2; // 2 minutos por tick
                     
-                    if (puntosActuales >= puntosObjetivo) break;
+                    if (puntos >= puntosObjetivo) break;
                 }
 
                 return tiempo;
             }
 
-            // Función para calcular una ronda completa en escenario RÁPIDO
-            function calcularRondaRapida(puntosInicialesGanador, puntosTotalesIniciales) {
-                return calcularTiempoParaPuntos(puntosInicialesGanador, 300, puntosTotalesIniciales);
-            }
-
-            // Función CORREGIDA para calcular una ronda completa en escenario LENTO desde 0
-            function calcularRondaLentaDesdeCero() {
-                let tiempo = 0;
-                let puntosGanador = 0;
-                let puntosPerdedor = 0;
-                let puntosTotales = 0;
-
-                // FASE 1: Perdedor llega a 299 puntos
-                while (puntosPerdedor < 299) {
-                    const puntosTick = getPuntosPorTick(puntosTotales);
-                    puntosPerdedor += puntosTick;
-                    puntosTotales += puntosTick;
-                    tiempo += 2;
-                }
-
-                // FASE 2: Ganador llega a 300 puntos (empezando desde 0)
-                while (puntosGanador < 300) {
-                    const puntosTick = getPuntosPorTick(puntosTotales);
-                    puntosGanador += puntosTick;
-                    puntosTotales += puntosTick;
-                    tiempo += 2;
-                }
-
-                return tiempo;
-            }
-
-            // Función para calcular una ronda completa en escenario LENTO
-            function calcularRondaLenta(puntosInicialesGanador, puntosInicialesPerdedor, puntosTotalesIniciales) {
-                // Tiempo para que el perdedor llegue a 299
-                const tiempoPerdedor = calcularTiempoParaPuntos(puntosInicialesPerdedor, 299, puntosTotalesIniciales);
+            // Función para calcular ESCENARIO MÁS RÁPIDO
+            function calcularEscenarioRapido() {
+                let tiempoTotal = 0;
+                let puntosTotalesSimulados = totalPoints;
                 
-                // Puntos totales cuando el perdedor llega a 299
-                let puntosTotalesCuandoPerdedor299 = puntosTotalesIniciales;
-                let puntosPerdedorTemp = puntosInicialesPerdedor;
-                while (puntosPerdedorTemp < 299) {
-                    const puntosTick = getPuntosPorTick(puntosTotalesCuandoPerdedor299);
-                    puntosPerdedorTemp += puntosTick;
-                    puntosTotalesCuandoPerdedor299 += puntosTick;
+                // Ronda actual - el ganador actual gana rápidamente
+                const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
+                const tiempoRondaActual = calcularTiempoParaPuntos(puntosGanadorActual, 300, puntosTotalesSimulados);
+                tiempoTotal += tiempoRondaActual;
+                
+                // Actualizar puntos totales después de esta ronda
+                puntosTotalesSimulados += (300 - puntosGanadorActual);
+                
+                // Rondas adicionales si son necesarias (2-0, 2-1, etc.)
+                const rondasRestantes = roundsToWin - Math.max(attackerWins, defenderWins) - 1;
+                for (let i = 0; i < rondasRestantes; i++) {
+                    // En escenario rápido, el mismo ganador gana desde 0 puntos
+                    const tiempoRonda = calcularTiempoParaPuntos(0, 300, puntosTotalesSimulados);
+                    tiempoTotal += tiempoRonda;
+                    puntosTotalesSimulados += 300; // Cada ronda añade 300 puntos totales
                 }
                 
-                // Tiempo para que el ganador llegue a 300 desde donde está
-                const tiempoGanador = calcularTiempoParaPuntos(puntosInicialesGanador, 300, puntosTotalesCuandoPerdedor299);
-                
-                // El tiempo total es el máximo entre ambos
-                return Math.max(tiempoPerdedor, tiempoGanador);
-            }
-
-            // Calcular escenarios CORREGIDOS - versión final
-            function calcularEscenarios() {
-                const ganadorActual = attackerPoints > defenderPoints ? "Atacante" : "Defensor";
-                const perdedorActual = ganadorActual === "Atacante" ? "Defensor" : "Atacante";
-                
-                // Calcular rondas necesarias CORRECTAMENTE
-                const maxWins = Math.max(attackerWins, defenderWins);
-                const rondasNecesarias = roundsToWin - maxWins;
-                
-                console.log(`=== DEBUG CALCULO ===`);
-                console.log(`Rondas necesarias: ${rondasNecesarias}`);
-                console.log(`Ganador actual: ${ganadorActual}, Puntos: ${ganadorActual === "Atacante" ? attackerPoints : defenderPoints}`);
-                console.log(`Perdedor actual: ${perdedorActual}, Puntos: ${perdedorActual === "Atacante" ? attackerPoints : defenderPoints}`);
-                console.log(`Puntos totales: ${totalPoints}`);
-                
-                function calcularEscenarioRapido() {
-                    let tiempoTotal = 0;
-                    const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
-                    
-                    console.log(`--- Escenario Rápido ---`);
-                    for (let i = 0; i < rondasNecesarias; i++) {
-                        if (i === 0) {
-                            const tiempoRonda = calcularRondaRapida(puntosGanadorActual, totalPoints);
-                            console.log(`Ronda ${i+1} rápida: ${tiempoRonda} min`);
-                            tiempoTotal += tiempoRonda;
-                        } else {
-                            const tiempoRonda = calcularRondaRapida(0, 0);
-                            console.log(`Ronda ${i+1} rápida: ${tiempoRonda} min`);
-                            tiempoTotal += tiempoRonda;
-                        }
-                    }
-                    console.log(`Total rápido: ${tiempoTotal} min`);
-                    return tiempoTotal;
-                }
-                
-                function calcularEscenarioLento() {
-                    let tiempoTotal = 0;
-                    const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
-                    const puntosPerdedorActual = perdedorActual === "Atacante" ? attackerPoints : defenderPoints;
-                    
-                    console.log(`--- Escenario Lento ---`);
-                    for (let i = 0; i < rondasNecesarias; i++) {
-                        if (i === 0) {
-                            const tiempoRonda = calcularRondaLenta(puntosGanadorActual, puntosPerdedorActual, totalPoints);
-                            console.log(`Ronda ${i+1} lenta: ${tiempoRonda} min`);
-                            tiempoTotal += tiempoRonda;
-                        } else {
-                            const tiempoRonda = calcularRondaLentaDesdeCero();
-                            console.log(`Ronda ${i+1} lenta: ${tiempoRonda} min`);
-                            tiempoTotal += tiempoRonda;
-                        }
-                    }
-                    console.log(`Total lento: ${tiempoTotal} min`);
-                    return tiempoTotal;
-                }
-
                 return {
-                    rapido: { tiempo: calcularEscenarioRapido(), ganador: ganadorActual },
-                    lento: { tiempo: calcularEscenarioLento(), ganador: ganadorActual }
+                    tiempo: tiempoTotal,
+                    ganador: ganadorActual
                 };
             }
 
-            const escenarios = calcularEscenarios();
+            // Función para calcular ESCENARIO MÁS LENTO
+            function calcularEscenarioLento() {
+                let tiempoTotal = 0;
+                let puntosTotalesSimulados = totalPoints;
+                
+                const rondasRestantes = roundsToWin - Math.max(attackerWins, defenderWins);
+                
+                for (let i = 0; i < rondasRestantes; i++) {
+                    if (i === 0 && ganadorActual !== "Empate") {
+                        // Ronda actual - escenario lento: perdedor llega a 299 primero
+                        const puntosPerdedorActual = ganadorActual === "Atacante" ? defenderPoints : attackerPoints;
+                        
+                        // Tiempo para que perdedor llegue a 299
+                        const tiempoHasta299 = calcularTiempoParaPuntos(puntosPerdedorActual, 299, puntosTotalesSimulados);
+                        
+                        // Puntos totales cuando perdedor llega a 299
+                        let puntosTotalesTemp = puntosTotalesSimulados;
+                        let puntosPerdedorTemp = puntosPerdedorActual;
+                        while (puntosPerdedorTemp < 299) {
+                            const puntosTick = getPuntosPorTick(puntosTotalesTemp);
+                            puntosPerdedorTemp += puntosTick;
+                            puntosTotalesTemp += puntosTick;
+                        }
+                        
+                        // Tiempo para que ganador llegue a 300 desde donde está
+                        const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
+                        const tiempoHasta300 = calcularTiempoParaPuntos(puntosGanadorActual, 300, puntosTotalesTemp);
+                        
+                        tiempoTotal += Math.max(tiempoHasta299, tiempoHasta300);
+                        puntosTotalesSimulados = puntosTotalesTemp + (300 - puntosGanadorActual);
+                    } else {
+                        // Rondas siguientes - escenario más lento posible
+                        // Perdedor llega a 299, luego ganador a 300
+                        let tiempoRonda = 0;
+                        let puntosTotalesRonda = puntosTotalesSimulados;
+                        let puntosPerdedor = 0;
+                        let puntosGanador = 0;
+                        
+                        // Perdedor llega a 299
+                        while (puntosPerdedor < 299) {
+                            const puntosTick = getPuntosPorTick(puntosTotalesRonda);
+                            puntosPerdedor += puntosTick;
+                            puntosTotalesRonda += puntosTick;
+                            tiempoRonda += 2;
+                        }
+                        
+                        // Ganador llega a 300
+                        while (puntosGanador < 300) {
+                            const puntosTick = getPuntosPorTick(puntosTotalesRonda);
+                            puntosGanador += puntosTick;
+                            puntosTotalesRonda += puntosTick;
+                            tiempoRonda += 2;
+                        }
+                        
+                        tiempoTotal += tiempoRonda;
+                        puntosTotalesSimulados = puntosTotalesRonda;
+                    }
+                }
+                
+                return {
+                    tiempo: tiempoTotal,
+                    ganador: ganadorActual
+                };
+            }
+
+            // Calcular ambos escenarios
+            const escenarioRapido = calcularEscenarioRapido();
+            const escenarioLento = calcularEscenarioLento();
 
             // Función para formatear tiempo
             function formatearTiempo(minutos) {
                 const horas = Math.floor(minutos / 60);
                 const mins = minutos % 60;
                 if (horas === 0) return `${mins}m`;
+                if (mins === 0) return `${horas}h`;
                 return `${horas}h ${mins}m`;
             }
 
@@ -1601,32 +1584,41 @@ const comandos = {
 
             // Función para determinar la nomenclatura correcta
             function getNomenclatura(ganador) {
-                const nuevoAtacanteWins = ganador === "Atacante" ? attackerWins + 1 : attackerWins;
-                const nuevoDefensorWins = ganador === "Defensor" ? defenderWins + 1 : defenderWins;
+                if (ganador === "Empate") return "(?-?)";
+                
+                const nuevoAtacanteWins = ganador === "Atacante" ? 
+                    attackerWins + (roundsToWin - Math.max(attackerWins, defenderWins)) : 
+                    attackerWins;
+                    
+                const nuevoDefensorWins = ganador === "Defensor" ? 
+                    defenderWins + (roundsToWin - Math.max(attackerWins, defenderWins)) : 
+                    defenderWins;
+                    
                 return `(${nuevoAtacanteWins}-${nuevoDefensorWins})`;
             }
 
-            const ganadorActual = attackerPoints > defenderPoints ? "Atacante" : 
-                                defenderPoints > attackerPoints ? "Defensor" : "Empate";
-
-            const puntosParaGanarAtacante = 300 - attackerPoints;
-            const puntosParaGanarDefensor = 300 - defenderPoints;
-
-            // Construir mensaje CON LOS NOMBRES DE LOS PAÍSES
+            // Construir mensaje
             let mensaje = `⏰ *DURACIÓN ESTIMADA DE LA BATALLA*\n\n`;
             mensaje += `🔗 [${defenderCountryName} vs ${attackerCountryName}](https://app.warera.io/battle/${battleId})\n\n`;
             mensaje += `📊 *Estado actual:*\n`;
             mensaje += `🛡️ ${defenderCountryName}: ${defenderWins} rondas ganadas - ${defenderPoints} puntos\n`;
             mensaje += `⚔️ ${attackerCountryName}: ${attackerWins} rondas ganadas - ${attackerPoints} puntos\n`;
-            mensaje += `📈 *Puntos por tick actual:* ${actualTickPoints} (total: ${totalPoints} pts)\n\n`;
-            mensaje += `⚡ *Escenario más rápido ${getNomenclatura(escenarios.rapido.ganador)}:*\n`;
-            mensaje += `• Ganador: ${escenarios.rapido.ganador === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
-            mensaje += `• Tiempo: ${formatearTiempo(escenarios.rapido.tiempo)}\n`;
-            mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarios.rapido.tiempo)}\n\n`;
-            mensaje += `🐌 *Escenario más lento ${getNomenclatura(escenarios.lento.ganador)}:*\n`;
-            mensaje += `• Ganador: ${escenarios.lento.ganador === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
-            mensaje += `• Tiempo: ${formatearTiempo(escenarios.lento.tiempo)}\n`;
-            mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarios.lento.tiempo)}\n\n`;
+            mensaje += `📈 *Puntos por tick actual:* ${getPuntosPorTick(totalPoints)} (total: ${totalPoints} pts)\n\n`;
+
+            if (ganadorActual === "Empate") {
+                mensaje += `⚖️ *La ronda actual está empatada*\n`;
+                mensaje += `Los escenarios asumen que un bando tomará la delantera.\n\n`;
+            }
+
+            mensaje += `⚡ *Escenario más rápido ${getNomenclatura(escenarioRapido.ganador)}:*\n`;
+            mensaje += `• Ganador: ${escenarioRapido.ganador === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
+            mensaje += `• Tiempo: ${formatearTiempo(escenarioRapido.tiempo)}\n`;
+            mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioRapido.tiempo)}\n\n`;
+
+            mensaje += `🐌 *Escenario más lento ${getNomenclatura(escenarioLento.ganador)}:*\n`;
+            mensaje += `• Ganador: ${escenarioLento.ganador === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
+            mensaje += `• Tiempo: ${formatearTiempo(escenarioLento.tiempo)}\n`;
+            mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioLento.tiempo)}`;
 
             await bot.sendMessage(chatId, mensaje, {
                 parse_mode: "Markdown",
