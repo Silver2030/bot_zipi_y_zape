@@ -1374,7 +1374,6 @@ const comandos = {
             bot.sendMessage(chatId, "Error al obtener los datos de producción.");
         }
     },
-    
     duracion: async (chatId, args) => {
         if (args.length < 1) {
             bot.sendMessage(chatId, "Ejemplo: /duracion https://app.warera.io/battle/6924dddcd9075fc1dbbaf2f9", {
@@ -1392,6 +1391,27 @@ const comandos = {
             if (!battleData) {
                 bot.sendMessage(chatId, "No se pudo obtener la batalla.");
                 return;
+            }
+
+            // Obtener nombres de los países
+            let defenderCountryName = "Desconocido";
+            let attackerCountryName = "Desconocido";
+
+            try {
+                // Obtener nombre del país defensor
+                if (battleData.defender.country) {
+                    const defenderCountryData = await getCountryData(battleData.defender.country);
+                    defenderCountryName = defenderCountryData?.name || "Desconocido";
+                }
+
+                // Obtener nombre del país atacante
+                if (battleData.attacker.country) {
+                    const attackerCountryData = await getCountryData(battleData.attacker.country);
+                    attackerCountryName = attackerCountryData?.name || "Desconocido";
+                }
+            } catch (error) {
+                console.error("Error obteniendo nombres de países:", error);
+                // Si hay error, mantener los nombres por defecto
             }
 
             const attackerWins = battleData.attacker.wonRoundsCount;
@@ -1582,19 +1602,19 @@ const comandos = {
             const puntosParaGanarAtacante = 300 - attackerPoints;
             const puntosParaGanarDefensor = 300 - defenderPoints;
 
-            // Construir mensaje
+            // Construir mensaje CON LOS NOMBRES DE LOS PAÍSES
             let mensaje = `⏰ *DURACIÓN ESTIMADA DE LA BATALLA*\n\n`;
-            mensaje += `🔗 [Batalla](https://app.warera.io/battle/${battleId})\n\n`;
+            mensaje += `🔗 [${defenderCountryName} vs ${attackerCountryName}](https://app.warera.io/battle/${battleId})\n\n`;
             mensaje += `📊 *Estado actual:*\n`;
-            mensaje += `⚔️ Atacante: ${attackerWins} rondas ganadas - ${attackerPoints} puntos\n`;
-            mensaje += `🛡️ Defensor: ${defenderWins} rondas ganadas - ${defenderPoints} puntos\n`;
+            mensaje += `🛡️ ${defenderCountryName}: ${defenderWins} rondas ganadas - ${defenderPoints} puntos\n`;
+            mensaje += `⚔️ ${attackerCountryName}: ${attackerWins} rondas ganadas - ${attackerPoints} puntos\n`;
             mensaje += `📈 *Puntos por tick actual:* ${actualTickPoints} (total: ${totalPoints} pts)\n\n`;
             mensaje += `⚡ *Escenario más rápido ${getNomenclatura(escenarios.rapido.ganador)}:*\n`;
-            mensaje += `• Ganador: ${escenarios.rapido.ganador}\n`;
+            mensaje += `• Ganador: ${escenarios.rapido.ganador === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
             mensaje += `• Tiempo: ${formatearTiempo(escenarios.rapido.tiempo)}\n`;
             mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarios.rapido.tiempo)}\n\n`;
             mensaje += `🐌 *Escenario más lento ${getNomenclatura(escenarios.lento.ganador)}:*\n`;
-            mensaje += `• Ganador: ${escenarios.lento.ganador}\n`;
+            mensaje += `• Ganador: ${escenarios.lento.ganador === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
             mensaje += `• Tiempo: ${formatearTiempo(escenarios.lento.tiempo)}\n`;
             mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarios.lento.tiempo)}\n\n`;
 
