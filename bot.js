@@ -1568,6 +1568,13 @@ const comandos = {
                 });
             }
 
+            // Función para determinar la nomenclatura correcta
+            function getNomenclatura(ganador) {
+                const nuevoAtacanteWins = ganador === "Atacante" ? attackerWins + 1 : attackerWins;
+                const nuevoDefensorWins = ganador === "Defensor" ? defenderWins + 1 : defenderWins;
+                return `(${nuevoAtacanteWins}-${nuevoDefensorWins})`;
+            }
+
             const ganadorActual = attackerPoints > defenderPoints ? "Atacante" : 
                                 defenderPoints > attackerPoints ? "Defensor" : "Empate";
 
