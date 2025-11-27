@@ -1502,6 +1502,11 @@ const comandos = {
                     puntosTotalesLento = lentoRonda.puntosTotalesFinal;
                 }
 
+                // Dentro de calcularEscenarios(), agregar:
+                console.log(`Rondas necesarias: ${rondasNecesarias}`);
+                console.log(`Ronda ${i + 1} - Tiempo rápido: ${rapidoRonda.tiempo}min`);
+                console.log(`Ronda ${i + 1} - Tiempo lento: ${lentoRonda.tiempo}min`);
+
                 return {
                     rapido: { tiempo: tiempoRapido, ganador: ganadorActual },
                     lento: { tiempo: tiempoLento, ganador: ganadorActual }
