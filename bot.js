@@ -1525,22 +1525,29 @@ const comandos = {
                 const maxWins = Math.max(attackerWins, defenderWins);
                 const rondasNecesarias = roundsToWin - maxWins;
                 
-                console.log(`Rondas necesarias: ${rondasNecesarias} (attackerWins: ${attackerWins}, defenderWins: ${defenderWins}, roundsToWin: ${roundsToWin})`);
+                console.log(`=== DEBUG CALCULO ===`);
+                console.log(`Rondas necesarias: ${rondasNecesarias}`);
+                console.log(`Ganador actual: ${ganadorActual}, Puntos: ${ganadorActual === "Atacante" ? attackerPoints : defenderPoints}`);
+                console.log(`Perdedor actual: ${perdedorActual}, Puntos: ${perdedorActual === "Atacante" ? attackerPoints : defenderPoints}`);
+                console.log(`Puntos totales: ${totalPoints}`);
                 
                 function calcularEscenarioRapido() {
                     let tiempoTotal = 0;
                     const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
                     
-                    // Solo las rondas necesarias
+                    console.log(`--- Escenario Rápido ---`);
                     for (let i = 0; i < rondasNecesarias; i++) {
                         if (i === 0) {
-                            // Ronda actual
-                            tiempoTotal += calcularRondaRapida(puntosGanadorActual, totalPoints);
+                            const tiempoRonda = calcularRondaRapida(puntosGanadorActual, totalPoints);
+                            console.log(`Ronda ${i+1} rápida: ${tiempoRonda} min`);
+                            tiempoTotal += tiempoRonda;
                         } else {
-                            // Rondas nuevas desde 0
-                            tiempoTotal += calcularRondaRapida(0, 0);
+                            const tiempoRonda = calcularRondaRapida(0, 0);
+                            console.log(`Ronda ${i+1} rápida: ${tiempoRonda} min`);
+                            tiempoTotal += tiempoRonda;
                         }
                     }
+                    console.log(`Total rápido: ${tiempoTotal} min`);
                     return tiempoTotal;
                 }
                 
@@ -1549,16 +1556,19 @@ const comandos = {
                     const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
                     const puntosPerdedorActual = perdedorActual === "Atacante" ? attackerPoints : defenderPoints;
                     
-                    // Solo las rondas necesarias
+                    console.log(`--- Escenario Lento ---`);
                     for (let i = 0; i < rondasNecesarias; i++) {
                         if (i === 0) {
-                            // Ronda actual (lenta)
-                            tiempoTotal += calcularRondaLenta(puntosGanadorActual, puntosPerdedorActual, totalPoints);
+                            const tiempoRonda = calcularRondaLenta(puntosGanadorActual, puntosPerdedorActual, totalPoints);
+                            console.log(`Ronda ${i+1} lenta: ${tiempoRonda} min`);
+                            tiempoTotal += tiempoRonda;
                         } else {
-                            // Rondas nuevas desde 0 (lentas)
-                            tiempoTotal += calcularRondaLentaDesdeCero();
+                            const tiempoRonda = calcularRondaLentaDesdeCero();
+                            console.log(`Ronda ${i+1} lenta: ${tiempoRonda} min`);
+                            tiempoTotal += tiempoRonda;
                         }
                     }
+                    console.log(`Total lento: ${tiempoTotal} min`);
                     return tiempoTotal;
                 }
 
