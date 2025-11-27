@@ -899,6 +899,7 @@ const comandos = {
 /dineromu <ID_MU> - Riqueza de la MU
 /danyosemanal - Ranking de daño semanal
 /guerras <GUERRA> - Daño en conflictos
+/duracion <GUERRA> - Duración restante de una guerra
 /all - Menciona al grupo
 /produccion - Ranking productivo`;
         bot.sendMessage(chatId, mensaje);
@@ -1585,14 +1586,9 @@ const comandos = {
             let mensaje = `⏰ *DURACIÓN ESTIMADA DE LA BATALLA*\n\n`;
             mensaje += `🔗 [Batalla](https://app.warera.io/battle/${battleId})\n\n`;
             mensaje += `📊 *Estado actual:*\n`;
-            mensaje += `⚔️ Atacante: ${attackerWins} rondas - ${attackerPoints} puntos\n`;
-            mensaje += `🛡️ Defensor: ${defenderWins} rondas - ${defenderPoints} puntos\n`;
-            mensaje += `🎯 Rondas para ganar: ${roundsToWin}\n`;
-            mensaje += `👑 Lleva ventaja: ${ganadorActual}\n\n`;
+            mensaje += `⚔️ Atacante: ${attackerWins} rondas ganadas - ${attackerPoints} puntos\n`;
+            mensaje += `🛡️ Defensor: ${defenderWins} rondas ganadas - ${defenderPoints} puntos\n`;
             mensaje += `📈 *Puntos por tick actual:* ${actualTickPoints} (total: ${totalPoints} pts)\n\n`;
-            mensaje += `🎯 *Puntos para ganar ronda:*\n`;
-            mensaje += `• Atacante necesita: ${puntosParaGanarAtacante} puntos\n`;
-            mensaje += `• Defensor necesita: ${puntosParaGanarDefensor} puntos\n\n`;
             mensaje += `⚡ *Escenario más rápido ${getNomenclatura(escenarios.rapido.ganador)}:*\n`;
             mensaje += `• Ganador: ${escenarios.rapido.ganador}\n`;
             mensaje += `• Tiempo: ${formatearTiempo(escenarios.rapido.tiempo)}\n`;
