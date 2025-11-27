@@ -1487,7 +1487,8 @@ duracion: async (chatId, args) => {
             
             return {
                 tiempo: tiempoRondaActual + tiempoRondaSiguiente,
-                ganador: "Defensor", // Venezuela gana al final
+                ganadorRondaActual: "Atacante", // Burkina Faso gana ESTA ronda
+                ganadorFinal: "Defensor", // Venezuela gana al final
                 marcador: `(${defenderWins + 1}-${attackerWins + 1})` // 2-1
             };
         }
@@ -1529,8 +1530,10 @@ duracion: async (chatId, args) => {
         mensaje += `• Tiempo: ${formatearTiempo(escenarioRapido.tiempo)}\n`;
         mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioRapido.tiempo)}\n\n`;
 
+        // En la construcción del mensaje, cambiar la parte del escenario lento:
         mensaje += `🐌 *Escenario más lento ${escenarioLento.marcador}:*\n`;
-        mensaje += `• Ganador: ${defenderCountryName}\n`;
+        mensaje += `• Ganador ronda actual: ${escenarioLento.ganadorRondaActual === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
+        mensaje += `• Ganador final: ${escenarioLento.ganadorFinal === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
         mensaje += `• Tiempo: ${formatearTiempo(escenarioLento.tiempo)}\n`;
         mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioLento.tiempo)}`;
 
