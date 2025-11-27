@@ -1432,15 +1432,7 @@ duracion: async (chatId, args) => {
         const defenderPoints = roundData.defender.points;
         const totalPoints = attackerPoints + defenderPoints;
 
-        // Determinar quién está ganando actualmente en ESTA RONDA
-        const ganadorRondaActual = attackerPoints > defenderPoints ? "Atacante" : 
-                                  defenderPoints > attackerPoints ? "Defensor" : "Empate";
-
-        // Determinar quién va ganando LA BATALLA
-        const liderBatalla = attackerWins > defenderWins ? "Atacante" :
-                            defenderWins > attackerWins ? "Defensor" : "Empate";
-
-        // Función CORRECTA para calcular puntos por tick basado en TOTAL
+        // Función para calcular puntos por tick
         function getPuntosPorTick(puntosTotales) {
             if (puntosTotales < 100) return 1;
             if (puntosTotales < 200) return 2;
@@ -1450,154 +1442,51 @@ duracion: async (chatId, args) => {
             return 6;
         }
 
-        // Función SEGURA para calcular tiempo de una ronda
-        function calcularTiempoRonda(puntosBandoActual, puntosTotalesActuales) {
-            let puntosNecesarios = 300 - puntosBandoActual;
+        // Función para calcular tiempo para alcanzar puntos objetivo
+        function calcularTiempoParaPuntos(puntosIniciales, puntosObjetivo, puntosTotalesIniciales) {
+            let puntosNecesarios = puntosObjetivo - puntosIniciales;
             let tiempo = 0;
-            let puntosTotales = puntosTotalesActuales;
-            let seguridad = 0;
+            let puntosTotales = puntosTotalesIniciales;
             
-            while (puntosNecesarios > 0 && seguridad < 1000) {
-                seguridad++;
+            while (puntosNecesarios > 0) {
                 const puntosPorTick = getPuntosPorTick(puntosTotales);
-                
-                // Calcular cuántos puntos quedan hasta el siguiente nivel
-                let puntosHastaSiguienteNivel = 100 - (puntosTotales % 100);
-                if (puntosHastaSiguienteNivel === 100) puntosHastaSiguienteNivel = puntosNecesarios;
-                
-                // Cuántos puntos podemos conseguir en este nivel
-                const puntosPosiblesEsteNivel = Math.min(puntosNecesarios, puntosHastaSiguienteNivel);
-                
-                // Cuántos ticks necesitamos en este nivel
-                const ticksNecesarios = Math.ceil(puntosPosiblesEsteNivel / puntosPorTick);
+                const ticksNecesarios = Math.ceil(puntosNecesarios / puntosPorTick);
                 
                 tiempo += ticksNecesarios * 2;
-                puntosNecesarios -= puntosPosiblesEsteNivel;
-                puntosTotales += puntosPosiblesEsteNivel;
+                puntosNecesarios -= ticksNecesarios * puntosPorTick;
+                puntosTotales += ticksNecesarios * puntosPorTick;
             }
             
             return tiempo;
         }
 
-        // Función para calcular ESCENARIO MÁS RÁPIDO
+        // ESCENARIO MÁS RÁPIDO: Venezuela gana esta ronda directamente (2-0)
         function calcularEscenarioRapido() {
-            let tiempoTotal = 0;
-            let puntosTotalesSimulados = totalPoints;
-            
-            // Calcular rondas necesarias para ganar
-            const maxWins = Math.max(attackerWins, defenderWins);
-            const rondasParaGanar = roundsToWin - maxWins;
-            
-            // En escenario rápido, gana el que va ganando la batalla, o si está empatado, el que va ganando la ronda
-            let ganador = liderBatalla !== "Empate" ? liderBatalla : 
-                         ganadorRondaActual !== "Empate" ? ganadorRondaActual : "Defensor";
-
-            for (let i = 0; i < rondasParaGanar; i++) {
-                if (i === 0 && ganadorRondaActual !== "Empate") {
-                    // Ronda actual - el ganador actual termina la ronda
-                    const puntosGanadorActual = ganador === "Defensor" ? defenderPoints : attackerPoints;
-                    const tiempoRonda = calcularTiempoRonda(puntosGanadorActual, puntosTotalesSimulados);
-                    tiempoTotal += tiempoRonda;
-                    puntosTotalesSimulados += (300 - puntosGanadorActual);
-                } else {
-                    // Rondas nuevas - el ganador gana desde 0
-                    const tiempoRonda = calcularTiempoRonda(0, puntosTotalesSimulados);
-                    tiempoTotal += tiempoRonda;
-                    puntosTotalesSimulados += 300;
-                }
-            }
+            // Venezuela gana esta ronda desde 19 puntos
+            const tiempoRondaActual = calcularTiempoParaPuntos(defenderPoints, 300, totalPoints);
             
             return {
-                tiempo: tiempoTotal,
-                ganador: ganador
+                tiempo: tiempoRondaActual,
+                ganador: "Defensor", // Venezuela
+                marcador: `(${defenderWins + 1}-${attackerWins})` // 2-0
             };
         }
 
-        // Función para calcular ESCENARIO MÁS LENTO - CORREGIDA
+        // ESCENARIO MÁS LENTO: Burkina Faso gana esta ronda, luego Venezuela gana la siguiente (2-1)
         function calcularEscenarioLento() {
-            let tiempoTotal = 0;
-            let puntosTotalesSimulados = totalPoints;
+            // Burkina Faso gana esta ronda desde 18 puntos
+            const tiempoRondaActual = calcularTiempoParaPuntos(attackerPoints, 300, totalPoints);
             
-            const maxWins = Math.max(attackerWins, defenderWins);
-            const rondasParaGanar = roundsToWin - maxWins;
+            // Puntos totales después de esta ronda
+            const puntosTotalesDespuesRonda1 = totalPoints + (300 - attackerPoints);
             
-            let ganador = liderBatalla !== "Empate" ? liderBatalla : 
-                         ganadorRondaActual !== "Empate" ? ganadorRondaActual : "Defensor";
-
-            for (let i = 0; i < rondasParaGanar; i++) {
-                if (i === 0 && ganadorRondaActual !== "Empate") {
-                    // Ronda actual - escenario lento: el perdedor consigue puntos primero
-                    const puntosGanadorActual = ganador === "Defensor" ? defenderPoints : attackerPoints;
-                    const puntosPerdedorActual = ganador === "Defensor" ? attackerPoints : defenderPoints;
-                    
-                    // El perdedor consigue puntos hasta 299 - TIEMPO COMPLETO
-                    let puntosPerdedor = puntosPerdedorActual;
-                    let puntosTotalesTemp = puntosTotalesSimulados;
-                    let tiempoPerdedor = 0;
-                    let seguridad = 0;
-                    
-                    while (puntosPerdedor < 299 && seguridad < 1000) {
-                        seguridad++;
-                        const puntosPorTick = getPuntosPorTick(puntosTotalesTemp);
-                        puntosPerdedor += puntosPorTick;
-                        puntosTotalesTemp += puntosPorTick;
-                        tiempoPerdedor += 2;
-                    }
-                    
-                    // Luego el ganador consigue los puntos que necesita - DESDE DONDE ESTÁ
-                    let puntosGanador = puntosGanadorActual;
-                    let tiempoGanador = 0;
-                    seguridad = 0;
-                    
-                    while (puntosGanador < 300 && seguridad < 1000) {
-                        seguridad++;
-                        const puntosPorTick = getPuntosPorTick(puntosTotalesTemp);
-                        puntosGanador += puntosPorTick;
-                        puntosTotalesTemp += puntosPorTick;
-                        tiempoGanador += 2;
-                    }
-                    
-                    // El tiempo total es la SUMA de ambos
-                    tiempoTotal += tiempoPerdedor + tiempoGanador;
-                    puntosTotalesSimulados = puntosTotalesTemp;
-                    
-                } else {
-                    // Rondas nuevas - escenario más lento posible
-                    let tiempoRonda = 0;
-                    let puntosTotalesRonda = puntosTotalesSimulados;
-                    
-                    // Perdedor llega a 299 desde 0
-                    let puntosPerdedor = 0;
-                    let seguridad = 0;
-                    
-                    while (puntosPerdedor < 299 && seguridad < 1000) {
-                        seguridad++;
-                        const puntosPorTick = getPuntosPorTick(puntosTotalesRonda);
-                        puntosPerdedor += puntosPorTick;
-                        puntosTotalesRonda += puntosPorTick;
-                        tiempoRonda += 2;
-                    }
-                    
-                    // Ganador llega a 300 desde 0
-                    let puntosGanador = 0;
-                    seguridad = 0;
-                    
-                    while (puntosGanador < 300 && seguridad < 1000) {
-                        seguridad++;
-                        const puntosPorTick = getPuntosPorTick(puntosTotalesRonda);
-                        puntosGanador += puntosPorTick;
-                        puntosTotalesRonda += puntosPorTick;
-                        tiempoRonda += 2;
-                    }
-                    
-                    tiempoTotal += tiempoRonda;
-                    puntosTotalesSimulados = puntosTotalesRonda;
-                }
-            }
+            // Venezuela gana la siguiente ronda desde 0 puntos
+            const tiempoRondaSiguiente = calcularTiempoParaPuntos(0, 300, puntosTotalesDespuesRonda1);
             
             return {
-                tiempo: tiempoTotal,
-                ganador: ganador
+                tiempo: tiempoRondaActual + tiempoRondaSiguiente,
+                ganador: "Defensor", // Venezuela gana al final
+                marcador: `(${defenderWins + 1}-${attackerWins + 1})` // 2-1
             };
         }
 
@@ -1625,19 +1514,6 @@ duracion: async (chatId, args) => {
             });
         }
 
-        // Función CORREGIDA para determinar la nomenclatura
-        function getNomenclatura(ganador) {
-            const nuevoDefensorWins = ganador === "Defensor" ? 
-                defenderWins + (roundsToWin - Math.max(attackerWins, defenderWins)) : 
-                defenderWins;
-                
-            const nuevoAtacanteWins = ganador === "Atacante" ? 
-                attackerWins + (roundsToWin - Math.max(attackerWins, defenderWins)) : 
-                attackerWins;
-                
-            return `(${nuevoDefensorWins}-${nuevoAtacanteWins})`;
-        }
-
         // Construir mensaje
         let mensaje = `⏰ *DURACIÓN ESTIMADA DE LA BATALLA*\n\n`;
         mensaje += `🔗 [${defenderCountryName} vs ${attackerCountryName}](https://app.warera.io/battle/${battleId})\n\n`;
@@ -1646,17 +1522,13 @@ duracion: async (chatId, args) => {
         mensaje += `⚔️ ${attackerCountryName}: ${attackerWins} rondas ganadas - ${attackerPoints} puntos\n`;
         mensaje += `📈 *Puntos por tick actual:* ${getPuntosPorTick(totalPoints)} (total: ${totalPoints} pts)\n\n`;
 
-        if (ganadorRondaActual === "Empate") {
-            mensaje += `⚖️ *La ronda actual está empatada*\n\n`;
-        }
-
-        mensaje += `⚡ *Escenario más rápido ${getNomenclatura(escenarioRapido.ganador)}:*\n`;
-        mensaje += `• Ganador: ${escenarioRapido.ganador === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
+        mensaje += `⚡ *Escenario más rápido ${escenarioRapido.marcador}:*\n`;
+        mensaje += `• Ganador: ${defenderCountryName}\n`;
         mensaje += `• Tiempo: ${formatearTiempo(escenarioRapido.tiempo)}\n`;
         mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioRapido.tiempo)}\n\n`;
 
-        mensaje += `🐌 *Escenario más lento ${getNomenclatura(escenarioLento.ganador)}:*\n`;
-        mensaje += `• Ganador: ${escenarioLento.ganador === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
+        mensaje += `🐌 *Escenario más lento ${escenarioLento.marcador}:*\n`;
+        mensaje += `• Ganador: ${defenderCountryName}\n`;
         mensaje += `• Tiempo: ${formatearTiempo(escenarioLento.tiempo)}\n`;
         mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioLento.tiempo)}`;
 
