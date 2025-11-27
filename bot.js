@@ -1474,19 +1474,36 @@ duracion: async (chatId, args) => {
             };
         }
 
-        // ESCENARIO MÁS LENTO: Burkina Faso gana esta ronda, luego Venezuela gana la siguiente (2-1)
+        // ESCENARIO MÁS LENTO: Burkina Faso gana esta ronda, luego MÁXIMO tiempo en la siguiente (2-1)
         function calcularEscenarioLento() {
-            // Burkina Faso gana esta ronda desde 18 puntos
-            const tiempoRondaActual = calcularTiempoParaPuntos(attackerPoints, 300, totalPoints);
-            
-            // Puntos totales después de esta ronda
+            // Ronda 1: Burkina Faso gana normalmente desde 18 puntos
+            const tiempoRonda1 = calcularTiempoParaPuntos(attackerPoints, 300, totalPoints);
             const puntosTotalesDespuesRonda1 = totalPoints + (300 - attackerPoints);
             
-            // Venezuela gana la siguiente ronda desde 0 puntos
-            const tiempoRondaSiguiente = calcularTiempoParaPuntos(0, 300, puntosTotalesDespuesRonda1);
+            // Ronda 2: MÁXIMO tiempo posible - Burkina Faso llega a 299, luego Venezuela a 300
+            let tiempoRonda2 = 0;
+            let puntosTotalesRonda2 = puntosTotalesDespuesRonda1;
+            let puntosBurkina = 0;
+            let puntosVenezuela = 0;
+            
+            // Burkina Faso llega a 299 puntos
+            while (puntosBurkina < 299) {
+                const puntosPorTick = getPuntosPorTick(puntosTotalesRonda2);
+                puntosBurkina += puntosPorTick;
+                puntosTotalesRonda2 += puntosPorTick;
+                tiempoRonda2 += 2;
+            }
+            
+            // Venezuela llega a 300 puntos desde 0
+            while (puntosVenezuela < 300) {
+                const puntosPorTick = getPuntosPorTick(puntosTotalesRonda2);
+                puntosVenezuela += puntosPorTick;
+                puntosTotalesRonda2 += puntosPorTick;
+                tiempoRonda2 += 2;
+            }
             
             return {
-                tiempo: tiempoRondaActual + tiempoRondaSiguiente,
+                tiempo: tiempoRonda1 + tiempoRonda2,
                 ganadorRondaActual: "Atacante", // Burkina Faso gana ESTA ronda
                 ganadorFinal: "Defensor", // Venezuela gana al final
                 marcador: `(${defenderWins + 1}-${attackerWins + 1})` // 2-1
