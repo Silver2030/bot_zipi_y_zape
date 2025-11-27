@@ -1494,27 +1494,32 @@ const comandos = {
                 // El tiempo total es el máximo entre ambos
                 return Math.max(tiempoPerdedor, tiempoGanador);
             }
-
-            // Calcular escenarios CORREGIDOS
+            
+            // Calcular escenarios CORREGIDOS - versión final
             function calcularEscenarios() {
                 const ganadorActual = attackerPoints > defenderPoints ? "Atacante" : "Defensor";
                 const perdedorActual = ganadorActual === "Atacante" ? "Defensor" : "Atacante";
+                
+                // Calcular rondas necesarias CORRECTAMENTE
+                const maxWins = Math.max(attackerWins, defenderWins);
+                const rondasNecesarias = roundsToWin - maxWins;
+                
+                console.log(`Rondas necesarias: ${rondasNecesarias} (attackerWins: ${attackerWins}, defenderWins: ${defenderWins}, roundsToWin: ${roundsToWin})`);
                 
                 function calcularEscenarioRapido() {
                     let tiempoTotal = 0;
                     const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
                     
-                    // Ronda 1: Actual (rápida)
-                    const ronda1 = calcularRondaRapida(puntosGanadorActual, totalPoints);
-                    console.log(`Ronda 1 rápida: ${ronda1} min`);
-                    tiempoTotal += ronda1;
-                    
-                    // Ronda 2: Nueva desde 0 (rápida)
-                    const ronda2 = calcularRondaRapida(0, 0);
-                    console.log(`Ronda 2 rápida: ${ronda2} min`);
-                    tiempoTotal += ronda2;
-                    
-                    console.log(`Total rápido: ${tiempoTotal} min = ${formatearTiempo(tiempoTotal)}`);
+                    // Solo las rondas necesarias
+                    for (let i = 0; i < rondasNecesarias; i++) {
+                        if (i === 0) {
+                            // Ronda actual
+                            tiempoTotal += calcularRondaRapida(puntosGanadorActual, totalPoints);
+                        } else {
+                            // Rondas nuevas desde 0
+                            tiempoTotal += calcularRondaRapida(0, 0);
+                        }
+                    }
                     return tiempoTotal;
                 }
                 
@@ -1523,22 +1528,16 @@ const comandos = {
                     const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
                     const puntosPerdedorActual = perdedorActual === "Atacante" ? attackerPoints : defenderPoints;
                     
-                    // Ronda 1: Actual (lenta)
-                    const ronda1 = calcularRondaLenta(puntosGanadorActual, puntosPerdedorActual, totalPoints);
-                    console.log(`Ronda 1 lenta: ${ronda1} min`);
-                    tiempoTotal += ronda1;
-                    
-                    // Ronda 2: Nueva desde 0 (lenta)
-                    const ronda2 = calcularRondaLentaDesdeCero();
-                    console.log(`Ronda 2 lenta: ${ronda2} min`);
-                    tiempoTotal += ronda2;
-                    
-                    // Ronda 3: Nueva desde 0 (lenta)
-                    const ronda3 = calcularRondaLentaDesdeCero();
-                    console.log(`Ronda 3 lenta: ${ronda3} min`);
-                    tiempoTotal += ronda3;
-                    
-                    console.log(`Total lento: ${tiempoTotal} min = ${formatearTiempo(tiempoTotal)}`);
+                    // Solo las rondas necesarias
+                    for (let i = 0; i < rondasNecesarias; i++) {
+                        if (i === 0) {
+                            // Ronda actual (lenta)
+                            tiempoTotal += calcularRondaLenta(puntosGanadorActual, puntosPerdedorActual, totalPoints);
+                        } else {
+                            // Rondas nuevas desde 0 (lentas)
+                            tiempoTotal += calcularRondaLentaDesdeCero();
+                        }
+                    }
                     return tiempoTotal;
                 }
 
