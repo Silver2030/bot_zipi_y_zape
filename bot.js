@@ -1346,7 +1346,7 @@ const comandos = {
                         });
                     }
                 }
-            }
+            } 
 
             const resultadosValidos = resultados.filter(item => 
                 item.productividad !== undefined && 
