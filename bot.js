@@ -1476,34 +1476,34 @@ duracion: async (chatId, args) => {
 
         // ESCENARIO MÁS LENTO: Burkina Faso gana esta ronda, luego MÁXIMO tiempo en la siguiente (2-1)
         function calcularEscenarioLento() {
-            // Ronda 1: Burkina Faso gana normalmente desde 18 puntos
-            const tiempoRonda1 = calcularTiempoParaPuntos(attackerPoints, 300, totalPoints);
-            const puntosTotalesDespuesRonda1 = totalPoints + (300 - attackerPoints);
+            // RONDA ACTUAL: Burkina Faso gana desde 18 puntos (1-1)
+            const tiempoRondaActual = calcularTiempoParaPuntos(attackerPoints, 300, totalPoints);
+            const puntosTotalesDespuesRondaActual = totalPoints + (300 - attackerPoints);
             
-            // Ronda 2: MÁXIMO tiempo posible - Burkina Faso llega a 299, luego Venezuela a 300
-            let tiempoRonda2 = 0;
-            let puntosTotalesRonda2 = puntosTotalesDespuesRonda1;
+            // RONDA SIGUIENTE: MÁXIMO tiempo posible - Burkina Faso llega a 299, luego Venezuela a 300 (2-1)
+            let tiempoRondaSiguiente = 0;
+            let puntosTotalesRondaSiguiente = puntosTotalesDespuesRondaActual;
             let puntosBurkina = 0;
             let puntosVenezuela = 0;
             
             // Burkina Faso llega a 299 puntos
             while (puntosBurkina < 299) {
-                const puntosPorTick = getPuntosPorTick(puntosTotalesRonda2);
+                const puntosPorTick = getPuntosPorTick(puntosTotalesRondaSiguiente);
                 puntosBurkina += puntosPorTick;
-                puntosTotalesRonda2 += puntosPorTick;
-                tiempoRonda2 += 2;
+                puntosTotalesRondaSiguiente += puntosPorTick;
+                tiempoRondaSiguiente += 2;
             }
             
             // Venezuela llega a 300 puntos desde 0
             while (puntosVenezuela < 300) {
-                const puntosPorTick = getPuntosPorTick(puntosTotalesRonda2);
+                const puntosPorTick = getPuntosPorTick(puntosTotalesRondaSiguiente);
                 puntosVenezuela += puntosPorTick;
-                puntosTotalesRonda2 += puntosPorTick;
-                tiempoRonda2 += 2;
+                puntosTotalesRondaSiguiente += puntosPorTick;
+                tiempoRondaSiguiente += 2;
             }
             
             return {
-                tiempo: tiempoRonda1 + tiempoRonda2,
+                tiempo: tiempoRondaActual + tiempoRondaSiguiente,
                 ganadorRondaActual: "Atacante", // Burkina Faso gana ESTA ronda
                 ganadorFinal: "Defensor", // Venezuela gana al final
                 marcador: `(${defenderWins + 1}-${attackerWins + 1})` // 2-1
