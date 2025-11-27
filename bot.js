@@ -1448,32 +1448,30 @@ const comandos = {
                 return calcularTiempoParaPuntos(puntosInicialesGanador, 300, puntosTotalesIniciales);
             }
 
-            // Función para calcular una ronda completa en escenario LENTO desde 0
+            // Función CORREGIDA para calcular una ronda completa en escenario LENTO desde 0
             function calcularRondaLentaDesdeCero() {
-                // Perdedor llega a 299 puntos desde 0
-                let tiempoPerdedor = 0;
+                let tiempo = 0;
+                let puntosGanador = 0;
                 let puntosPerdedor = 0;
                 let puntosTotales = 0;
-                
+
+                // FASE 1: Perdedor llega a 299 puntos
                 while (puntosPerdedor < 299) {
                     const puntosTick = getPuntosPorTick(puntosTotales);
                     puntosPerdedor += puntosTick;
                     puntosTotales += puntosTick;
-                    tiempoPerdedor += 2;
+                    tiempo += 2;
                 }
-                
-                // Ganador llega a 300 puntos desde 0 (con los puntos totales acumulados)
-                let tiempoGanador = 0;
-                let puntosGanador = 0;
-                
+
+                // FASE 2: Ganador llega a 300 puntos (empezando desde 0)
                 while (puntosGanador < 300) {
                     const puntosTick = getPuntosPorTick(puntosTotales);
                     puntosGanador += puntosTick;
                     puntosTotales += puntosTick;
-                    tiempoGanador += 2;
+                    tiempo += 2;
                 }
-                
-                return Math.max(tiempoPerdedor, tiempoGanador);
+
+                return tiempo;
             }
 
             // Función para calcular una ronda completa en escenario LENTO
@@ -1507,29 +1505,40 @@ const comandos = {
                     const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
                     
                     // Ronda 1: Actual (rápida)
-                    tiempoTotal += calcularRondaRapida(puntosGanadorActual, totalPoints);
+                    const ronda1 = calcularRondaRapida(puntosGanadorActual, totalPoints);
+                    console.log(`Ronda 1 rápida: ${ronda1} min`);
+                    tiempoTotal += ronda1;
                     
                     // Ronda 2: Nueva desde 0 (rápida)
-                    tiempoTotal += calcularRondaRapida(0, 0);
+                    const ronda2 = calcularRondaRapida(0, 0);
+                    console.log(`Ronda 2 rápida: ${ronda2} min`);
+                    tiempoTotal += ronda2;
                     
+                    console.log(`Total rápido: ${tiempoTotal} min = ${formatearTiempo(tiempoTotal)}`);
                     return tiempoTotal;
                 }
                 
-                // En calcularEscenarios():
                 function calcularEscenarioLento() {
                     let tiempoTotal = 0;
                     const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
                     const puntosPerdedorActual = perdedorActual === "Atacante" ? attackerPoints : defenderPoints;
                     
                     // Ronda 1: Actual (lenta)
-                    tiempoTotal += calcularRondaLenta(puntosGanadorActual, puntosPerdedorActual, totalPoints);
+                    const ronda1 = calcularRondaLenta(puntosGanadorActual, puntosPerdedorActual, totalPoints);
+                    console.log(`Ronda 1 lenta: ${ronda1} min`);
+                    tiempoTotal += ronda1;
                     
                     // Ronda 2: Nueva desde 0 (lenta)
-                    tiempoTotal += calcularRondaLentaDesdeCero();
+                    const ronda2 = calcularRondaLentaDesdeCero();
+                    console.log(`Ronda 2 lenta: ${ronda2} min`);
+                    tiempoTotal += ronda2;
                     
-                    // Ronda 3: Nueva desde 0 (lenta) - ¡TODAS las rondas lentas en escenario más lento!
-                    tiempoTotal += calcularRondaLentaDesdeCero();
+                    // Ronda 3: Nueva desde 0 (lenta)
+                    const ronda3 = calcularRondaLentaDesdeCero();
+                    console.log(`Ronda 3 lenta: ${ronda3} min`);
+                    tiempoTotal += ronda3;
                     
+                    console.log(`Total lento: ${tiempoTotal} min = ${formatearTiempo(tiempoTotal)}`);
                     return tiempoTotal;
                 }
 
