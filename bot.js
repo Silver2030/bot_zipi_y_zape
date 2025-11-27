@@ -1494,7 +1494,7 @@ const comandos = {
                 // El tiempo total es el máximo entre ambos
                 return Math.max(tiempoPerdedor, tiempoGanador);
             }
-            
+
             // Calcular escenarios CORREGIDOS - versión final
             function calcularEscenarios() {
                 const ganadorActual = attackerPoints > defenderPoints ? "Atacante" : "Defensor";
@@ -1586,15 +1586,14 @@ const comandos = {
             mensaje += `🎯 *Puntos para ganar ronda:*\n`;
             mensaje += `• Atacante necesita: ${puntosParaGanarAtacante} puntos\n`;
             mensaje += `• Defensor necesita: ${puntosParaGanarDefensor} puntos\n\n`;
-            mensaje += `⚡ *Escenario más rápido (2-0):*\n`;
+            mensaje += `⚡ *Escenario más rápido ${getNomenclatura(escenarios.rapido.ganador)}:*\n`;
             mensaje += `• Ganador: ${escenarios.rapido.ganador}\n`;
             mensaje += `• Tiempo: ${formatearTiempo(escenarios.rapido.tiempo)}\n`;
             mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarios.rapido.tiempo)}\n\n`;
-            mensaje += `🐌 *Escenario más lento (2-1):*\n`;
+            mensaje += `🐌 *Escenario más lento ${getNomenclatura(escenarios.lento.ganador)}:*\n`;
             mensaje += `• Ganador: ${escenarios.lento.ganador}\n`;
             mensaje += `• Tiempo: ${formatearTiempo(escenarios.lento.tiempo)}\n`;
             mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarios.lento.tiempo)}\n\n`;
-            mensaje += `⏱️ *Próximo tick:* ${nextTickAt.toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid' })}`;
 
             await bot.sendMessage(chatId, mensaje, {
                 parse_mode: "Markdown",
