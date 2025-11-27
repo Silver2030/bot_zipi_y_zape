@@ -1424,30 +1424,7 @@ const comandos = {
                 return Math.min(nivel + 1, 6);
             }
 
-            // Función para calcular tiempo para alcanzar puntos objetivo
-            function calcularTiempoParaPuntos(puntosIniciales, puntosObjetivo, puntosTotalesIniciales) {
-                if (puntosIniciales >= puntosObjetivo) return 0;
-                
-                let tiempo = 0;
-                let puntosActuales = puntosIniciales;
-                let puntosTotales = puntosTotalesIniciales;
-
-                while (puntosActuales < puntosObjetivo) {
-                    const puntosTick = getPuntosPorTick(puntosTotales);
-                    puntosActuales += puntosTick;
-                    puntosTotales += puntosTick;
-                    tiempo += 2; // 2 minutos por tick
-                    
-                    // Si supera el objetivo, ajustar
-                    if (puntosActuales >= puntosObjetivo) {
-                        break;
-                    }
-                }
-
-                return tiempo;
-            }
-
-            // Función para calcular escenario más rápido
+            // Función para calcular tiempo en escenario rápido (un bando gana todos los ticks)
             function calcularEscenarioRapido() {
                 const rondasNecesarias = roundsToWin - Math.max(attackerWins, defenderWins);
                 if (rondasNecesarias <= 0) return { tiempo: 0, ganador: attackerWins > defenderWins ? "Atacante" : "Defensor" };
@@ -1455,32 +1432,30 @@ const comandos = {
                 let ganadorActual = attackerPoints > defenderPoints ? "Atacante" : "Defensor";
                 let tiempoTotal = 0;
                 let puntosTotalesAcumulados = totalPoints;
-
-                // Ronda actual
-                const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
-                const puntosNecesariosRondaActual = 300 - puntosGanadorActual;
                 
-                if (puntosNecesariosRondaActual > 0) {
-                    tiempoTotal += calcularTiempoParaPuntos(
-                        puntosGanadorActual, 
-                        300, 
-                        puntosTotalesAcumulados
-                    );
-                    
-                    // Actualizar puntos totales acumulados para siguiente ronda
-                    puntosTotalesAcumulados += (300 - puntosGanadorActual);
-                }
+                // Para cada ronda necesaria
+                for (let i = 0; i < rondasNecesarias; i++) {
+                    const puntosIniciales = i === 0 ? 
+                        (ganadorActual === "Atacante" ? attackerPoints : defenderPoints) : 0;
+                    let puntosActuales = puntosIniciales;
+                    let puntosTotalesRonda = i === 0 ? puntosTotalesAcumulados : puntosTotalesAcumulados;
 
-                // Rondas adicionales si son necesarias
-                for (let i = 1; i < rondasNecesarias; i++) {
-                    tiempoTotal += calcularTiempoParaPuntos(0, 300, puntosTotalesAcumulados);
-                    puntosTotalesAcumulados += 300;
+                    while (puntosActuales < 300) {
+                        const puntosTick = getPuntosPorTick(puntosTotalesRonda);
+                        puntosActuales += puntosTick;
+                        puntosTotalesRonda += puntosTick;
+                        tiempoTotal += 2;
+                        
+                        if (puntosActuales >= 300) break;
+                    }
+                    
+                    puntosTotalesAcumulados = puntosTotalesRonda;
                 }
 
                 return { tiempo: tiempoTotal, ganador: ganadorActual };
             }
 
-            // Función para calcular escenario más lento
+            // Función para calcular tiempo en escenario lento (rondas muy reñidas)
             function calcularEscenarioLento() {
                 const rondasNecesarias = roundsToWin - Math.max(attackerWins, defenderWins);
                 if (rondasNecesarias <= 0) return { tiempo: 0, ganador: attackerWins > defenderWins ? "Atacante" : "Defensor" };
@@ -1492,42 +1467,31 @@ const comandos = {
 
                 // Para cada ronda necesaria
                 for (let i = 0; i < rondasNecesarias; i++) {
-                    const puntosGanadorInicial = i === 0 ? 
+                    let puntosGanador = i === 0 ? 
                         (ganadorActual === "Atacante" ? attackerPoints : defenderPoints) : 0;
-                    const puntosPerdedorInicial = i === 0 ? 
+                    let puntosPerdedor = i === 0 ? 
                         (perdedorActual === "Atacante" ? attackerPoints : defenderPoints) : 0;
+                    let puntosTotalesRonda = puntosTotalesAcumulados;
 
-                    // Calcular tiempo para que el perdedor llegue a 299
-                    let tiempoPerdedor = 0;
-                    let puntosPerdedor = puntosPerdedorInicial;
-                    let puntosTotalesTemp = puntosTotalesAcumulados;
-
-                    while (puntosPerdedor < 299) {
-                        const puntosTick = getPuntosPorTick(puntosTotalesTemp);
-                        puntosPerdedor += puntosTick;
-                        puntosTotalesTemp += puntosTick;
-                        tiempoPerdedor += 2;
+                    // Simular ticks hasta que alguien gane
+                    while (puntosGanador < 300 && puntosPerdedor < 300) {
+                        const puntosTick = getPuntosPorTick(puntosTotalesRonda);
                         
-                        if (puntosPerdedor >= 299) break;
+                        // En el escenario lento, alternamos quién gana el tick para maximizar el tiempo
+                        // pero asegurando que el ganador final llegue a 300 primero
+                        if (puntosPerdedor < 299) {
+                            // El perdedor gana el tick hasta llegar a 299
+                            puntosPerdedor += puntosTick;
+                        } else {
+                            // Una vez que el perdedor llega a 299, el ganador empieza a ganar ticks
+                            puntosGanador += puntosTick;
+                        }
+                        
+                        puntosTotalesRonda += puntosTick;
+                        tiempoTotal += 2;
                     }
 
-                    // Calcular tiempo para que el ganador llegue a 300
-                    let tiempoGanador = 0;
-                    let puntosGanador = puntosGanadorInicial;
-                    puntosTotalesTemp = puntosTotalesAcumulados;
-
-                    while (puntosGanador < 300) {
-                        const puntosTick = getPuntosPorTick(puntosTotalesTemp);
-                        puntosGanador += puntosTick;
-                        puntosTotalesTemp += puntosTick;
-                        tiempoGanador += 2;
-                        
-                        if (puntosGanador >= 300) break;
-                    }
-
-                    // El tiempo de la ronda es el máximo entre ambos
-                    tiempoTotal += Math.max(tiempoPerdedor, tiempoGanador);
-                    puntosTotalesAcumulados = puntosTotalesTemp;
+                    puntosTotalesAcumulados = puntosTotalesRonda;
                 }
 
                 return { tiempo: tiempoTotal, ganador: ganadorActual };
@@ -1562,6 +1526,10 @@ const comandos = {
             const ganadorActual = attackerPoints > defenderPoints ? "Atacante" : 
                                 defenderPoints > attackerPoints ? "Defensor" : "Empate";
 
+            // Calcular puntos necesarios para ganar la ronda actual
+            const puntosParaGanarAtacante = 300 - attackerPoints;
+            const puntosParaGanarDefensor = 300 - defenderPoints;
+
             // Construir mensaje
             let mensaje = `⏰ *DURACIÓN ESTIMADA DE LA BATALLA*\n\n`;
             mensaje += `🔗 [Batalla](https://app.warera.io/battle/${battleId})\n\n`;
@@ -1570,7 +1538,10 @@ const comandos = {
             mensaje += `🛡️ Defensor: ${defenderWins} rondas - ${defenderPoints} puntos\n`;
             mensaje += `🎯 Rondas para ganar: ${roundsToWin}\n`;
             mensaje += `👑 Lleva ventaja: ${ganadorActual}\n\n`;
-            mensaje += `📈 *Puntos por tick actual:* ${actualTickPoints} cada 2 minutos\n\n`;
+            mensaje += `📈 *Puntos por tick actual:* ${actualTickPoints} (total: ${totalPoints} pts)\n\n`;
+            mensaje += `🎯 *Puntos para ganar ronda:*\n`;
+            mensaje += `• Atacante necesita: ${puntosParaGanarAtacante} puntos\n`;
+            mensaje += `• Defensor necesita: ${puntosParaGanarDefensor} puntos\n\n`;
             mensaje += `⚡ *Escenario más rápido:*\n`;
             mensaje += `• Ganador: ${escenarioRapido.ganador}\n`;
             mensaje += `• Tiempo: ${formatearTiempo(escenarioRapido.tiempo)}\n`;
