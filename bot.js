@@ -1474,36 +1474,33 @@ const comandos = {
                 const ganadorActual = attackerPoints > defenderPoints ? "Atacante" : "Defensor";
                 const perdedorActual = ganadorActual === "Atacante" ? "Defensor" : "Atacante";
                 
-                // ESCENARIO MÁS RÁPIDO: Ganador gana 2 rondas seguidas (2-0)
                 function calcularEscenarioRapido() {
                     let tiempoTotal = 0;
-                    
-                    // Ronda actual
                     const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
+                    
+                    // Ronda 1: Actual (rápida)
                     tiempoTotal += calcularRondaRapida(puntosGanadorActual, totalPoints);
                     
-                    // Segunda ronda (nueva, desde 0 puntos totales)
+                    // Ronda 2: Nueva desde 0 (rápida)
                     tiempoTotal += calcularRondaRapida(0, 0);
                     
                     return tiempoTotal;
                 }
                 
-                // ESCENARIO MÁS LENTO: 2-1 (3 rondas en total)
+                // En calcularEscenarios():
                 function calcularEscenarioLento() {
                     let tiempoTotal = 0;
                     const puntosGanadorActual = ganadorActual === "Atacante" ? attackerPoints : defenderPoints;
                     const puntosPerdedorActual = perdedorActual === "Atacante" ? attackerPoints : defenderPoints;
                     
-                    // Escenario: Ganador gana, Perdedor gana, Ganador gana
-                    
-                    // Ronda 1: Ganador gana la actual (lento)
+                    // Ronda 1: Actual (lenta)
                     tiempoTotal += calcularRondaLenta(puntosGanadorActual, puntosPerdedorActual, totalPoints);
                     
-                    // Ronda 2: Perdedor gana (ronda nueva desde 0, lento)
-                    tiempoTotal += calcularRondaLenta(0, 0, 0);
+                    // Ronda 2: Nueva desde 0 (lenta)
+                    tiempoTotal += calcularRondaLentaDesdeCero();
                     
-                    // Ronda 3: Ganador gana (ronda nueva desde 0, rápido)
-                    tiempoTotal += calcularRondaRapida(0, 0);
+                    // Ronda 3: Nueva desde 0 (lenta) - ¡TODAS las rondas lentas en escenario más lento!
+                    tiempoTotal += calcularRondaLentaDesdeCero();
                     
                     return tiempoTotal;
                 }
