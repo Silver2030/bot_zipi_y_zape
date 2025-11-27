@@ -1448,6 +1448,34 @@ const comandos = {
                 return calcularTiempoParaPuntos(puntosInicialesGanador, 300, puntosTotalesIniciales);
             }
 
+            // Función para calcular una ronda completa en escenario LENTO desde 0
+            function calcularRondaLentaDesdeCero() {
+                // Perdedor llega a 299 puntos desde 0
+                let tiempoPerdedor = 0;
+                let puntosPerdedor = 0;
+                let puntosTotales = 0;
+                
+                while (puntosPerdedor < 299) {
+                    const puntosTick = getPuntosPorTick(puntosTotales);
+                    puntosPerdedor += puntosTick;
+                    puntosTotales += puntosTick;
+                    tiempoPerdedor += 2;
+                }
+                
+                // Ganador llega a 300 puntos desde 0 (con los puntos totales acumulados)
+                let tiempoGanador = 0;
+                let puntosGanador = 0;
+                
+                while (puntosGanador < 300) {
+                    const puntosTick = getPuntosPorTick(puntosTotales);
+                    puntosGanador += puntosTick;
+                    puntosTotales += puntosTick;
+                    tiempoGanador += 2;
+                }
+                
+                return Math.max(tiempoPerdedor, tiempoGanador);
+            }
+
             // Función para calcular una ronda completa en escenario LENTO
             function calcularRondaLenta(puntosInicialesGanador, puntosInicialesPerdedor, puntosTotalesIniciales) {
                 // Tiempo para que el perdedor llegue a 299
