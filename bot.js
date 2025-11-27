@@ -1478,31 +1478,85 @@ duracion: async (chatId, args) => {
             return tiempo;
         }
 
-        // Función para calcular ESCENARIO MÁS RÁPIDO
-        function calcularEscenarioRapido() {
+        // Función para calcular ESCENARIO MÁS LENTO - CORREGIDA
+        function calcularEscenarioLento() {
             let tiempoTotal = 0;
             let puntosTotalesSimulados = totalPoints;
             
-            // Calcular rondas necesarias para ganar
             const maxWins = Math.max(attackerWins, defenderWins);
             const rondasParaGanar = roundsToWin - maxWins;
             
-            // En escenario rápido, gana el que va ganando la batalla, o si está empatado, el que va ganando la ronda
             let ganador = liderBatalla !== "Empate" ? liderBatalla : 
-                         ganadorRondaActual !== "Empate" ? ganadorRondaActual : "Defensor";
+                        ganadorRondaActual !== "Empate" ? ganadorRondaActual : "Defensor";
 
             for (let i = 0; i < rondasParaGanar; i++) {
                 if (i === 0 && ganadorRondaActual !== "Empate") {
-                    // Ronda actual - el ganador actual termina la ronda
+                    // Ronda actual - escenario lento: el perdedor consigue puntos primero
                     const puntosGanadorActual = ganador === "Defensor" ? defenderPoints : attackerPoints;
-                    const tiempoRonda = calcularTiempoRonda(puntosGanadorActual, puntosTotalesSimulados);
-                    tiempoTotal += tiempoRonda;
-                    puntosTotalesSimulados += (300 - puntosGanadorActual);
+                    const puntosPerdedorActual = ganador === "Defensor" ? attackerPoints : defenderPoints;
+                    
+                    // El perdedor consigue puntos hasta 299 - TIEMPO COMPLETO
+                    let puntosPerdedor = puntosPerdedorActual;
+                    let puntosTotalesTemp = puntosTotalesSimulados;
+                    let tiempoPerdedor = 0;
+                    let seguridad = 0;
+                    
+                    while (puntosPerdedor < 299 && seguridad < 1000) {
+                        seguridad++;
+                        const puntosPorTick = getPuntosPorTick(puntosTotalesTemp);
+                        puntosPerdedor += puntosPorTick;
+                        puntosTotalesTemp += puntosPorTick;
+                        tiempoPerdedor += 2;
+                    }
+                    
+                    // Luego el ganador consigue los puntos que necesita - DESDE DONDE ESTÁ
+                    let puntosGanador = puntosGanadorActual;
+                    let tiempoGanador = 0;
+                    seguridad = 0;
+                    
+                    while (puntosGanador < 300 && seguridad < 1000) {
+                        seguridad++;
+                        const puntosPorTick = getPuntosPorTick(puntosTotalesTemp);
+                        puntosGanador += puntosPorTick;
+                        puntosTotalesTemp += puntosPorTick;
+                        tiempoGanador += 2;
+                    }
+                    
+                    // El tiempo total es la SUMA de ambos, no el máximo
+                    tiempoTotal += tiempoPerdedor + tiempoGanador;
+                    puntosTotalesSimulados = puntosTotalesTemp;
+                    
                 } else {
-                    // Rondas nuevas - el ganador gana desde 0
-                    const tiempoRonda = calcularTiempoRonda(0, puntosTotalesSimulados);
+                    // Rondas nuevas - escenario más lento posible
+                    let tiempoRonda = 0;
+                    let puntosTotalesRonda = puntosTotalesSimulados;
+                    
+                    // Perdedor llega a 299 desde 0
+                    let puntosPerdedor = 0;
+                    let seguridad = 0;
+                    
+                    while (puntosPerdedor < 299 && seguridad < 1000) {
+                        seguridad++;
+                        const puntosPorTick = getPuntosPorTick(puntosTotalesRonda);
+                        puntosPerdedor += puntosPorTick;
+                        puntosTotalesRonda += puntosPorTick;
+                        tiempoRonda += 2;
+                    }
+                    
+                    // Ganador llega a 300 desde 0
+                    let puntosGanador = 0;
+                    seguridad = 0;
+                    
+                    while (puntosGanador < 300 && seguridad < 1000) {
+                        seguridad++;
+                        const puntosPorTick = getPuntosPorTick(puntosTotalesRonda);
+                        puntosGanador += puntosPorTick;
+                        puntosTotalesRonda += puntosPorTick;
+                        tiempoRonda += 2;
+                    }
+                    
                     tiempoTotal += tiempoRonda;
-                    puntosTotalesSimulados += 300;
+                    puntosTotalesSimulados = puntosTotalesRonda;
                 }
             }
             
