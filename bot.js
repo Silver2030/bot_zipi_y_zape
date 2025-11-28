@@ -53,7 +53,8 @@ const usuarios = [
     { userId: "682a6a132b76380956602044", mention: "@Dopillo" },
     { userId: "682bba892cae032763110f07", mention: "@redbull001" },
     { userId: "683da442ca51017a7ae9ba9e", mention: "@Valthognir" },
-    { userId: "6838b4ab0d8cd8e990e918bf", mention: "@Abyssomniscience" }
+    { userId: "6838b4ab0d8cd8e990e918bf", mention: "@Abyssomniscience" },
+    { userId: "6825722c88c14b2abd8e19ed", mention: "@ReyDelHandroll" }
 ];
 
 const guerraMundial1 = [
