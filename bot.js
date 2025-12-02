@@ -1376,6 +1376,11 @@ const comandos = {
         }
     },
 duracion: async (chatId, args) => {
+     bot.sendMessage(chatId, "Comando en mantenimiento", {
+            parse_mode: "Markdown",
+            disable_web_page_preview: true
+        });
+        /*
     if (args.length < 1) {
         bot.sendMessage(chatId, "Ejemplo: /duracion https://app.warera.io/battle/6924dddcd9075fc1dbbaf2f9", {
             parse_mode: "Markdown",
@@ -1564,7 +1569,8 @@ duracion: async (chatId, args) => {
         console.error("Error en /duracion:", error);
         bot.sendMessage(chatId, "Error al calcular la duración de la batalla.");
     }
-}
+        */
+    }
 };
 
 // --- Listener principal ---
