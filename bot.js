@@ -1580,12 +1580,12 @@ bot.on('message', async (msg) => {
         }
     }
 
+    if (!text?.startsWith('/')) return;
+
     if (allowedChats.length > 0 && !allowedChats.includes(chatId)) {
         bot.sendMessage(chatId, 'Bot no autorizado en este chat.');
         return;
     }
-
-    if (!text?.startsWith('/')) return;
 
     const [cmdRaw, ...args] = text.slice(1).split(' ');
     const cmd = cmdRaw.split('@')[0].toLowerCase();
