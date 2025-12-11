@@ -8,7 +8,6 @@ const bot = new TelegramBot(token, { polling: true });
 
 // --- Configuraciones y constantes ---
 const GROUP_ID = -1002840225634;
-const GROUP_PRUEBAS_ID = -1003246477704;
 const CHAT_ID = 696082291;
 
 const HEAL_FOOD_MAP = { PAN: 10, FILETE: 20, PESCADO: 30 };
@@ -1572,8 +1571,9 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    const allowedChats = [GROUP_ID, GROUP_PRUEBAS_ID, CHAT_ID].filter(id => id);
+    const allowedChats = [GROUP_ID, CHAT_ID].filter(id => id);
     if (allowedChats.length > 0 && !allowedChats.includes(chatId)) {
+        bot.sendMessage(chatId, 'Bot no autorizado en este chat.');
         return;
     }
 
