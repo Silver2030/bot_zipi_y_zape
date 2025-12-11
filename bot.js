@@ -1572,17 +1572,17 @@ bot.on('message', async (msg) => {
     const text = msg.text;
 
     const allowedChats = [GROUP_ID, CHAT_ID].filter(id => id);
-    if (allowedChats.length > 0 && !allowedChats.includes(chatId)) {
-        bot.sendMessage(chatId, 'Bot no autorizado en este chat.');
-        return;
-    }
-
     if (text) {
         const palabras = text.toLowerCase().split(/\s+/);
         const variantesOtto = ['otto', 'oto', 'oton', 'otón'];
         if (variantesOtto.some(variant => palabras.includes(variant))) {
             bot.sendMessage(chatId, 'Putero');
         }
+    }
+
+    if (allowedChats.length > 0 && !allowedChats.includes(chatId)) {
+        bot.sendMessage(chatId, 'Bot no autorizado en este chat.');
+        return;
     }
 
     if (!text?.startsWith('/')) return;
