@@ -7,7 +7,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 // --- Configuraciones y constantes ---
-const GROUP_ID = 696082291; // Pendiente actualizar
+const GROUP_ID = -1003341630162;
 const GROUP_PRUEBAS_ID = -1003246477704;
 const CHAT_ID = 696082291;
 
