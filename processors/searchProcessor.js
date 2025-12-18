@@ -67,7 +67,7 @@ async function buscar(botQueue, chatId, searchText) {
             if (datos.length) {
                 mensaje += `*${nombre}*\n`;
                 datos.forEach(item => {
-                    mensaje += `[${escapeMarkdownV2(item.nombre)}](${item.url}) - ${escapeMarkdownV2(item.id.replace(/-/g,'\\-'))}\n`;
+                    mensaje += `[${escapeMarkdownV2(item.nombre)}](${item.url}) \\- ${escapeMarkdownV2(item.id)}\n`;
                 });
                 mensaje += '\n';
             }
