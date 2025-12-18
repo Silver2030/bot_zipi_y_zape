@@ -31,8 +31,28 @@ async function generarExcelBuffer(data, sheetName = 'Sheet1') {
 }
 
 function analizarBuild(userData) {
-    const build = userData.build || userData.skills?.build || "UNKNOWN";
-    return { build };
+    const SKILL_COSTS = [0,1,3,6,10,15,21,28,36,45,55];
+    const PVP_SKILLS = ["health","hunger","attack","criticalChance","criticalDamages","armor","precision","dodge"];
+    const ECO_SKILLS = ["energy","companies","entrepreneurship","production","lootChance"];
+
+    let pvpPoints = 0, ecoPoints = 0;
+
+    PVP_SKILLS.forEach(skill => {
+        pvpPoints += SKILL_COSTS[userData.skills[skill]?.level || 0];
+    });
+
+    ECO_SKILLS.forEach(skill => {
+        ecoPoints += SKILL_COSTS[userData.skills[skill]?.level || 0];
+    });
+
+    const total = pvpPoints + ecoPoints;
+    const pctPvp = total ? (pvpPoints / total) * 100 : 0;
+
+    let build = "HIBRIDA";
+    if (pctPvp > 65) build = "PVP";
+    else if (pctPvp < 35) build = "ECO";
+
+    return { build, nivel: userData.leveling?.level || 0 };
 }
 
 module.exports = { 

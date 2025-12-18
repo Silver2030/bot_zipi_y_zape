@@ -1,5 +1,6 @@
 const { getUserData } = require('../services/apiService');
 const { analizarBuild } = require('../utils/helpers');
+const { escapeMarkdownV2 } = require('../utils/helpers');
 
 async function hambre(botQueue, chatId, args, usuarios) {
     if (!args[0]) {
@@ -8,7 +9,10 @@ async function hambre(botQueue, chatId, args, usuarios) {
         });
     }
 
-    const urlBattle = args[0];
+    let urlBattle = args[0];
+    if (!urlBattle.startsWith('http')) {
+        urlBattle = `https://app.warera.io/battle/${urlBattle}`;
+    }
     const mensajeExtra = args.slice(1).join(' ');
     const menciones = [];
 
@@ -23,7 +27,8 @@ async function hambre(botQueue, chatId, args, usuarios) {
 
             const hunger = userData.skills?.hunger;
             if (hunger && hunger.currentBarValue >= 0.3 * hunger.total) {
-                menciones.push(`${usuario.mention} (${userData.username})`);
+                const mention = `[${escapeMarkdownV2(userData.username)}](${urlBattle})`;
+                menciones.push(mention);
             }
         } catch (error) {
             console.error(`Error con usuario ${usuario.userId}:`, error.message);
