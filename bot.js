@@ -1420,7 +1420,7 @@ const comandos = {
             OBTENER BATALLA
             ======================== */
             const resBattle = await apiCall("battle.getById", { battleId });
-            const battle = resBattle?.result?.data;
+            const battle = resBattle.data?.result?.data;
 
             if (!battle) {
                 return bot.sendMessage(chatId, "No se pudo obtener la batalla.");
@@ -1441,7 +1441,7 @@ const comandos = {
             RONDA ACTUAL
             ======================== */
             const resRound = await apiCall("round.getById", { roundId: battle.currentRound });
-            const round = resRound?.result?.data;
+            const round = resRound.data?.result?.data;
 
             if (!round || !round.isActive) {
                 return bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
