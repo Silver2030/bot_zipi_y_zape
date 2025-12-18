@@ -1430,8 +1430,8 @@ const comandos = {
             }
 
             const roundsToWin = battle.roundsToWin;
-            const defenderWins = battle.defender.wonRoundsCount;
-            const attackerWins = battle.attacker.wonRoundsCount;
+            let defenderWins = battle.defender.wonRoundsCount;
+            let attackerWins = battle.attacker.wonRoundsCount;
 
             const defenderCountry = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
             const attackerCountry = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
@@ -1517,8 +1517,8 @@ const comandos = {
                 perdedorInicial: rondaActualPerdedor === defenderCountry ? attPoints : defPoints,
                 modo: "lento"
             });
-
-            const winsTrasRondaLenta = rondaActualGanador === defenderCountry ? defenderWins + 1 : attackerWins + 1;
+            
+            let winsTrasRondaLenta = rondaActualGanador === defenderCountry ? defenderWins + 1 : attackerWins + 1;
 
             if (winsTrasRondaLenta < roundsToWin) {
                 if(defenderWins === 0){
