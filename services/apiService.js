@@ -24,11 +24,11 @@ async function apiCall(method, params = {}) {
 }
 
 async function getUserData(userId) {
-    return apiCall('user.getById', { userId });
+    return apiCall('user.getUserLite', { userId });
 }
 
 async function getCountryData(countryId) {
-    return apiCall('country.getById', { countryId });
+    return apiCall('country.getCountryById', { countryId });
 }
 
 async function getMUData(muId) {
