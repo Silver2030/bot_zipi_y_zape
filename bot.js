@@ -1509,7 +1509,6 @@ const comandos = {
                 perdedorInicial: rondaActualPerdedor,
                 modo: "lento"
             });
-            msg += `⚔️ ${tiempoLento}: TIEMPO LENTO 1\n\n`;
 
             if(rondaActualGanador === defPoints ){
                 defenderWins += 1;
