@@ -1,4 +1,4 @@
-const { delay } = require('../utils/helpers');
+const { delay } = require('./helpers');
 
 class TelegramQueue {
     constructor(bot, minDelay = 500) {
