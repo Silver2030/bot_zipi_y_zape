@@ -1416,9 +1416,6 @@ const comandos = {
         const battleId = args[0].split("/").pop();
 
         try {
-            /* =======================
-            OBTENER BATALLA
-            ======================== */
             const battle = await apiCall("battle.getById", { battleId });
 
             if (!battle) {
@@ -1433,19 +1430,14 @@ const comandos = {
             let defenderWins = battle.defender.wonRoundsCount;
             let attackerWins = battle.attacker.wonRoundsCount;
 
-            /* =======================
-            MENSAJE
-            ======================== */
+            
+            const defenderCountry = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
+            const attackerCountry = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
+
             let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
             msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
             msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
 
-            const defenderCountry = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
-            const attackerCountry = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
-
-            /* =======================
-            RONDA ACTUAL
-            ======================== */
             const round = await apiCall("round.getById", { roundId: battle.currentRound });
 
             if (!round || !round.isActive) {
@@ -1455,9 +1447,6 @@ const comandos = {
             const defPoints = round.defender.points;
             const attPoints = round.attacker.points;
 
-            /* =======================
-            PUNTOS POR TICK
-            ======================== */
             function puntosPorTick(total) {
                 if (total < 100) return 2;
                 if (total < 200) return 1;
@@ -1467,9 +1456,6 @@ const comandos = {
                 return 0.33;
             }
 
-            /* =======================
-            SIMULAR RONDA
-            ======================== */
             function simularRonda({ ganadorInicial, perdedorInicial, modo }) {
                 let ganador = ganadorInicial;
                 let perdedor = perdedorInicial;
@@ -1489,15 +1475,12 @@ const comandos = {
                         }
                     }
 
-                    tiempo += 2; // Cada tick = 2 min
+                    tiempo += 2;
                 }
 
                 return tiempo;
             }
 
-            /* =======================
-            ESCENARIO RÁPIDO
-            ======================== */
             const defensorVaGanando = defenderWins >= attackerWins && defPoints >= attPoints;
             const ganadorRapido = defensorVaGanando ? defenderCountry : attackerCountry;
 
@@ -1512,9 +1495,6 @@ const comandos = {
                 tiempoRapido += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "rapido" });
             }
 
-            /* =======================
-            ESCENARIO LENTO
-            ======================== */
             let tiempoLento = 0;
             let rondaActualGanador = defenderWins > attackerWins && defPoints >= attPoints ? defenderCountry : attackerCountry;
             let rondaActualPerdedor = rondaActualGanador === defenderCountry ? attackerCountry : defenderCountry;
@@ -1549,9 +1529,6 @@ const comandos = {
                 winsTrasRondaLenta += 1;
             }
 
-            /* =======================
-            FORMATO TIEMPO
-            ======================== */
             const formatTiempo = (m) => {
                 const h = Math.floor(m / 60);
                 const mm = Math.round(m % 60);
