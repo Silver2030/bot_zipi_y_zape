@@ -1,6 +1,5 @@
 const { getUserData, getCountryData, getMUData, apiCall } = require('../services/apiService');
 const { escapeMarkdownV2, delay } = require('../utils/helpers');
-const pLimit = require('p-limit');
 
 async function buscar(botQueue, chatId, searchText) {
     if (!searchText) return botQueue.sendMessage(chatId, "Ejemplo: /buscar Silver");

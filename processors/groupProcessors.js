@@ -1,4 +1,4 @@
-const { getUserData, getCountryData, getMUData, apiCall } = require('../services/apiService');
+const { getUserData, apiCall } = require('../services/apiService');
 const { escapeMarkdownV2, formatNumberMarkdown, generarExcelBuffer, delay } = require('../utils/helpers');
 
 async function procesarJugadoresGrupo(botQueue, args, tipo) {

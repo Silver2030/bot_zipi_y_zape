@@ -1,6 +1,5 @@
 const { getUserData } = require('../services/apiService');
 const { formatNumber } = require('../utils/helpers');
-const pLimit = require('p-limit');
 
 async function danyoSemanal(botQueue, chatId, usuarios){
     try{

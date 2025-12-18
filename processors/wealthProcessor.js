@@ -1,6 +1,5 @@
 const { getUserData } = require('../services/apiService');
 const { generarExcelBuffer, escapeMarkdownV2, formatNumberMarkdown, delay } = require('../utils/helpers');
-const pLimit = require('p-limit');
 
 async function procesarDineroGrupo(botQueue, chatId, items, tipo) {
     try {

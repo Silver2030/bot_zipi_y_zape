@@ -1,6 +1,5 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const pLimit = require('p-limit');
 
 const { TelegramQueue } = require('./utils/telegramQueue');
 
@@ -11,11 +10,11 @@ const { procesarDineroGrupo, procesarJugadoresGrupo, procesarGrupoDanyo } = requ
 const { produccion } = require('./processors/productionProcessor');
 const { all } = require('./processors/allProcessor');
 const { danyoSemanal } = require('./processors/weeklyDamageProcessor');
+const { delay } = require('./utils/helpers');
 
 const TOKEN_TELEGRAM = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(TOKEN_TELEGRAM, { polling: true });
 const botQueue = new TelegramQueue(bot, 500);
-const limit = pLimit(5);
 
 const allowedChats = [process.env.GROUP_ID, process.env.GROUP_PRUEBAS_ID, process.env.CHAT_ID].filter(id => id);
 const usuarios = [
@@ -28,6 +27,9 @@ const usuarios = [
     { userId: "68979dcdd2bf43cdb31abb9f", mention: "@XBrotherX" },
     { userId: "69264c4ccc751d7f45f2f8f4", mention: "@Kaiado" },
 ];
+
+let commandQueue = Promise.resolve();
+const COMMAND_DELAY = 300;
 
 const comandos = {
     help: async (chatId) => {
@@ -78,7 +80,14 @@ bot.on('message', async (msg) => {
     const cmd = cmdRaw.split('@')[0].toLowerCase();
 
     if (comandos[cmd]) {
-        await limit(() => comandos[cmd](chatId, args));
+        commandQueue = commandQueue
+            .then(() => comandos[cmd](chatId, args))
+            .catch(err => {
+                console.error(`Error en comando /${cmd}:`, err);
+            })
+            .then(() => delay(COMMAND_DELAY));
+
+        await commandQueue;
     }
 });
 
