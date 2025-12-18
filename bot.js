@@ -51,7 +51,7 @@ const comandos = {
         await botQueue.sendMessage(chatId, mensaje);
     },
     buscar: async (chatId, args) => buscar(botQueue, chatId, args.join(' ')),
-    hambre: async (chatId, args) => hambre(botQueue, chatId, args),
+    hambre: async (chatId, args) => hambre(botQueue, chatId, args, usuarios),
     jugadorespais: async (chatId, args) => procesarJugadoresGrupo(botQueue, chatId, args, 'pais'),
     jugadoresmu: async (chatId, args) => procesarJugadoresGrupo(botQueue, chatId, args, 'mu'),
     paisesdanyo: async (chatId, args) => procesarGrupoDanyo(botQueue, chatId, args, 'pais'),
