@@ -1434,10 +1434,6 @@ const comandos = {
             const defenderCountry = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
             const attackerCountry = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
 
-            let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
-            msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
-            msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
-
             const round = await apiCall("round.getById", { roundId: battle.currentRound });
 
             if (!round || !round.isActive) {
@@ -1446,6 +1442,10 @@ const comandos = {
 
             const defPoints = round.defender.points;
             const attPoints = round.attacker.points;
+            
+            let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
+            msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
+            msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
 
             function puntosPorTick(total) {
                 if (total < 100) return 2;
