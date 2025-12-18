@@ -1433,6 +1433,13 @@ const comandos = {
             let defenderWins = battle.defender.wonRoundsCount;
             let attackerWins = battle.attacker.wonRoundsCount;
 
+            /* =======================
+            MENSAJE
+            ======================== */
+            let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
+            msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
+            msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
+
             const defenderCountry = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
             const attackerCountry = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
 
@@ -1463,7 +1470,7 @@ const comandos = {
             /* =======================
             SIMULAR RONDA
             ======================== */
-            function simularRonda({ ganadorInicial, perdedorInicial, modo = "rapido" }) {
+            function simularRonda({ ganadorInicial, perdedorInicial, modo }) {
                 let ganador = ganadorInicial;
                 let perdedor = perdedorInicial;
                 let tiempo = 0;
@@ -1491,7 +1498,7 @@ const comandos = {
             /* =======================
             ESCENARIO RÁPIDO
             ======================== */
-            const defensorVaGanando = defenderWins > attackerWins && defPoints >= attPoints;
+            const defensorVaGanando = defenderWins >= attackerWins && defPoints >= attPoints;
             const ganadorRapido = defensorVaGanando ? defenderCountry : attackerCountry;
 
             let tiempoRapido = simularRonda({
@@ -1517,7 +1524,7 @@ const comandos = {
                 perdedorInicial: rondaActualPerdedor === defenderCountry ? attPoints : defPoints,
                 modo: "lento"
             });
-            
+
             let winsTrasRondaLenta = rondaActualGanador === defenderCountry ? defenderWins + 1 : attackerWins + 1;
 
             if (winsTrasRondaLenta < roundsToWin) {
@@ -1560,13 +1567,6 @@ const comandos = {
                     hour12: false,
                     timeZone: "Europe/Madrid"
                 });
-
-            /* =======================
-            MENSAJE
-            ======================== */
-            let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
-            msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
-            msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
 
             msg += `⚡ *Escenario más rápido:*\n`;
             msg += `• Ganador: ${ganadorRapido}\n`;
