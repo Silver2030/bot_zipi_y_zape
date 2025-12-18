@@ -24,7 +24,7 @@ const usuarios = [
     { userId: "68f8f5ad5dc34ed689e1784c", mention: "@maromaromero" },
     { userId: "686bca33b7dc5cb1d7710a47", mention: "@BZ_033" },
     { userId: "68979dcdd2bf43cdb31abb9f", mention: "@XBrotherX" },
-    { userId: "688fc8522d7fcdd226cda5ee", mention: "@gonchiii1" },
+    { userId: "69264c4ccc751d7f45f2f8f4", mention: "@Kaiado" },
 ];
 
 // --- Funciones de utilidad ---
