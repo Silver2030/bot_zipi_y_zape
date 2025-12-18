@@ -1462,19 +1462,19 @@ const comandos = {
                 tiempoRapido += duracionRondaRapida();
             }
 
-            /* =======================
-            ESCENARIO LENTO (3 RONDAS)
-            ======================== */
             let tiempoLento = 0;
 
-            // Ronda actual → forzar empate
-            tiempoLento += duracionRondaLenta(defPts, attPts);
+            // 1️⃣ Ronda actual (desde puntos reales)
+            tiempoLento += duracionRondaLenta(defPoints, attPoints);
 
-            // Ronda 2
-            tiempoLento += duracionRondaLenta();
+            // 2️⃣ ¿Habrá ronda decisiva?
+            const defensorPuedeGanar = defenderWins + 1 < roundsToWin;
+            const atacantePuedeGanar = attackerWins + 1 < roundsToWin;
 
-            // Ronda 3 (decisiva)
-            tiempoLento += duracionRondaLenta();
+            if (defensorPuedeGanar || atacantePuedeGanar) {
+                // 3️⃣ Ronda final completa (0–0)
+                tiempoLento += duracionRondaLenta(0, 0);
+            }
 
             /* =======================
             FORMATO
