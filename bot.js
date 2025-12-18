@@ -1497,23 +1497,23 @@ const comandos = {
 
             let tiempoLento = 0;
             if((defenderWins > 0 && attackerWins === 0) || (defenderWins === attackerWins && attPoints > defPoints)){
-                rondaActualGanador = attackerCountry;
+                rondaActualGanador = attPoints;
                 console.log("ENTRA EN EL PRIMER IF ", rondaActualGanador);
             }else{
-                rondaActualGanador = defenderCountry;
+                rondaActualGanador = defPoints;
                 console.log("ENTRA EN EL SEGUNDO IF ", rondaActualGanador);
             }
 
-            let rondaActualPerdedor = rondaActualGanador === defenderCountry ? attackerCountry : defenderCountry;
+            let rondaActualPerdedor = rondaActualGanador === defPoints ? attPoints : defPoints;
             console.log("VALOR DEL PERDEDOR ", rondaActualPerdedor);
 
             tiempoLento += simularRonda({
-                ganadorInicial: rondaActualGanador === defenderCountry ? defPoints : attPoints,
-                perdedorInicial: rondaActualPerdedor === defenderCountry ? attPoints : defPoints,
+                ganadorInicial: rondaActualGanador,
+                perdedorInicial: rondaActualPerdedor,
                 modo: "lento"
             });
-            console.log("Ganador Inicial:", rondaActualGanador === defenderCountry ? defPoints : attPoints);
-            console.log("Perdedor Inicial:", rondaActualPerdedor === defenderCountry ? attPoints : defPoints);
+            console.log("Ganador Inicial:", rondaActualGanador);
+            console.log("Perdedor Inicial:", rondaActualPerdedor);
             msg += `⚔️ ${tiempoLento}: TIEMPO LENTO 1\n\n`;
 
             if(rondaActualGanador === defenderCountry ){
