@@ -1,7 +1,7 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 
-const { TelegramQueue } = require('./utils/telegramQueue');
+const TelegramQueue = require('./utils/telegramQueue');
 
 const { duracion } = require('./processors/durationProcessor');
 const { buscar } = require('./processors/searchProcessor');
