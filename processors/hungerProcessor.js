@@ -26,7 +26,8 @@ async function hambre(botQueue, chatId, args, usuarios) {
 
             const hunger = userData.skills?.hunger;
             if (hunger && hunger.currentBarValue >= 0.3 * hunger.total) {
-                menciones.push(`${usuario.mention} (${userData.username})`);
+                const mention = `[${escapeMarkdownV2(userData.username)}](${urlBattle})`;
+                menciones.push(mention);
             }
         } catch (error) {
             console.error(`Error con usuario ${usuario.userId}:`, error.message);
