@@ -12,7 +12,7 @@ const { all } = require('./processors/allProcessor');
 const { danyoSemanal } = require('./processors/weeklyDamageProcessor');
 const { delay } = require('./utils/helpers');
 
-const TOKEN_TELEGRAM = process.env.TELEGRAM_TOKEN;
+const TOKEN_TELEGRAM = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(TOKEN_TELEGRAM, { polling: true });
 const botQueue = new TelegramQueue(bot, 500);
 
