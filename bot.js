@@ -1448,12 +1448,12 @@ const comandos = {
             msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
 
             function puntosPorTick(total) {
-                if (total < 100) return 2;
-                if (total < 200) return 1;
-                if (total < 300) return 0.66;
-                if (total < 400) return 0.5;
-                if (total < 500) return 0.4;
-                return 0.33;
+                if (total < 100) return 1;
+                if (total < 200) return 2;
+                if (total < 300) return 3;
+                if (total < 400) return 4;
+                if (total < 500) return 5;
+                return 6;
             }
 
             function simularRonda({ ganadorInicial, perdedorInicial, modo}) {
