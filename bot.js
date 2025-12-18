@@ -1345,196 +1345,182 @@ const comandos = {
             bot.sendMessage(chatId, "Error al obtener los datos de producción.");
         }
     },
-duracion: async (chatId, args) => {
-    if (args.length < 1) {
-        bot.sendMessage(chatId, "Ejemplo: /duracion https://app.warera.io/battle/6924dddcd9075fc1dbbaf2f9", {
-            parse_mode: "Markdown",
-            disable_web_page_preview: true
-        });
-        return;
-    }
-
-    const battleId = args[0].split('/').pop();
-    
-    try {
-        // Obtener datos de la batalla
-        const battleData = await apiCall('battle.getById', { battleId });
-        if (!battleData) {
-            bot.sendMessage(chatId, "No se pudo obtener la batalla.");
-            return;
+    duracion: async (chatId, args) => {
+        if (args.length < 1) {
+            return bot.sendMessage(
+                chatId,
+                "Ejemplo: /duracion https://app.warera.io/battle/XXXXXXXX",
+                { disable_web_page_preview: true }
+            );
         }
 
-        // Obtener nombres de los países
-        let defenderCountryName = "Desconocido";
-        let attackerCountryName = "Desconocido";
+        const battleId = args[0].split("/").pop();
 
         try {
-            if (battleData.defender.country) {
-                const defenderCountryData = await getCountryData(battleData.defender.country);
-                defenderCountryName = defenderCountryData?.name || "Desconocido";
+            /* =======================
+            OBTENER BATALLA
+            ======================== */
+            const battle = await apiCall("battle.getById", { battleId });
+            if (!battle || !battle.isActive) {
+                return bot.sendMessage(chatId, "La batalla ya ha finalizado.");
             }
-            if (battleData.attacker.country) {
-                const attackerCountryData = await getCountryData(battleData.attacker.country);
-                attackerCountryName = attackerCountryData?.name || "Desconocido";
+
+            const defenderWins = battle.defender.wonRoundsCount;
+            const attackerWins = battle.attacker.wonRoundsCount;
+            const roundsToWin = battle.roundsToWin;
+
+            /* =======================
+            NOMBRES DE PAÍSES
+            ======================== */
+            const defenderCountry = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
+            const attackerCountry = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
+
+            /* =======================
+            RONDA ACTUAL
+            ======================== */
+            const round = await apiCall("round.getById", { roundId: battle.currentRound });
+            if (!round || !round.isActive) {
+                return bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
             }
-        } catch (error) {
-            console.error("Error obteniendo nombres de países:", error);
-        }
 
-        const attackerWins = battleData.attacker.wonRoundsCount;
-        const defenderWins = battleData.defender.wonRoundsCount;
-        const roundsToWin = battleData.roundsToWin;
-        const currentRoundId = battleData.currentRound;
-        const isActive = battleData.isActive;
+            const defPoints = round.defender.points;
+            const attPoints = round.attacker.points;
 
-        if (!isActive) {
-            bot.sendMessage(chatId, "Esta batalla ya ha finalizado.");
-            return;
-        }
-
-        // Obtener datos de la ronda actual
-        const roundData = await apiCall('round.getById', { roundId: currentRoundId });
-        if (!roundData) {
-            bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
-            return;
-        }
-
-        const attackerPoints = roundData.attacker.points;
-        const defenderPoints = roundData.defender.points;
-        const totalPoints = attackerPoints + defenderPoints;
-
-        // Función para calcular puntos por tick
-        function getPuntosPorTick(puntosTotales) {
-            if (puntosTotales < 100) return 1;
-            if (puntosTotales < 200) return 2;
-            if (puntosTotales < 300) return 3;
-            if (puntosTotales < 400) return 4;
-            if (puntosTotales < 500) return 5;
-            return 6;
-        }
-
-        // Cálculo MATEMÁTICO exacto
-        function calcularTiempoParaPuntos(puntosIniciales, puntosObjetivo, puntosTotalesIniciales) {
-            let puntosNecesarios = puntosObjetivo - puntosIniciales;
-            let tiempo = 0;
-            let puntosTotales = puntosTotalesIniciales;
-            
-            while (puntosNecesarios > 0) {
-                const nivelActual = Math.floor(puntosTotales / 100);
-                const puntosPorTick = Math.min(nivelActual + 1, 6);
-                const puntosHastaSiguienteNivel = 100 - (puntosTotales % 100);
-                
-                const puntosEnEsteTick = Math.min(puntosNecesarios, puntosPorTick);
-                tiempo += 2;
-                puntosNecesarios -= puntosEnEsteTick;
-                puntosTotales += puntosEnEsteTick;
+            /* =======================
+            PUNTOS POR TICK
+            ======================== */
+            function puntosPorTick(total) {
+                if (total < 100) return 1;
+                if (total < 200) return 2;
+                if (total < 300) return 3;
+                if (total < 400) return 4;
+                if (total < 500) return 5;
+                return 6;
             }
-            
-            return tiempo;
-        }
 
-        // ESCENARIO MÁS RÁPIDO: Venezuela gana esta ronda directamente (2-0)
-        function calcularEscenarioRapido() {
-            // Venezuela gana esta ronda desde 19 puntos
-            const tiempoRondaActual = calcularTiempoParaPuntos(defenderPoints, 300, totalPoints);
-            
-            return {
-                tiempo: tiempoRondaActual,
-                ganador: "Defensor", // Venezuela
-                marcador: `(${defenderWins + 1}-${attackerWins})` // 2-0
-            };
-        }
+            /* =======================
+            SIMULAR UNA RONDA
+            modo:
+            - rapido → un bando gana directo
+            - lento  → perdedor llega a 299 primero
+            ======================== */
+            function simularRonda({
+                ganadorInicial = 0,
+                perdedorInicial = 0,
+                modo = "rapido"
+            }) {
+                let ganador = ganadorInicial;
+                let perdedor = perdedorInicial;
+                let total = ganador + perdedor;
+                let tiempo = 0;
 
-        // ESCENARIO MÁS LENTO: Burkina Faso gana esta ronda, luego MÁXIMO tiempo en la siguiente (2-1)
-        function calcularEscenarioLento() {
-            // RONDA ACTUAL: Burkina Faso gana desde 18 puntos (1-1)
-            const tiempoRondaActual = calcularTiempoParaPuntos(attackerPoints, 300, totalPoints);
-            const puntosTotalesDespuesRondaActual = totalPoints + (300 - attackerPoints);
-            
-            // RONDA SIGUIENTE: MÁXIMO tiempo posible - Burkina Faso llega a 299, luego Venezuela a 300 (2-1)
-            let tiempoRondaSiguiente = 0;
-            let puntosTotalesRondaSiguiente = puntosTotalesDespuesRondaActual;
-            let puntosBurkina = 0;
-            let puntosVenezuela = 0;
-            
-            // Burkina Faso llega a 299 puntos
-            while (puntosBurkina < 299) {
-                const puntosPorTick = getPuntosPorTick(puntosTotalesRondaSiguiente);
-                puntosBurkina += puntosPorTick;
-                puntosTotalesRondaSiguiente += puntosPorTick;
-                tiempoRondaSiguiente += 2;
+                while (ganador < 300) {
+                    const ppt = puntosPorTick(total);
+
+                    if (modo === "rapido") {
+                        ganador += ppt;
+                    } else {
+                        if (perdedor < 299) {
+                            perdedor += ppt;
+                        } else {
+                            ganador += ppt;
+                        }
+                    }
+
+                    total += ppt;
+                    tiempo += 2;
+                }
+
+                return tiempo;
             }
-            
-            // Venezuela llega a 300 puntos desde 0
-            while (puntosVenezuela < 300) {
-                const puntosPorTick = getPuntosPorTick(puntosTotalesRondaSiguiente);
-                puntosVenezuela += puntosPorTick;
-                puntosTotalesRondaSiguiente += puntosPorTick;
-                tiempoRondaSiguiente += 2;
-            }
-            
-            return {
-                tiempo: tiempoRondaActual + tiempoRondaSiguiente,
-                ganadorRondaActual: "Atacante", // Burkina Faso gana ESTA ronda
-                ganadorFinal: "Defensor", // Venezuela gana al final
-                marcador: `(${defenderWins + 1}-${attackerWins + 1})` // 2-1
-            };
-        }
 
-        // Calcular ambos escenarios
-        const escenarioRapido = calcularEscenarioRapido();
-        const escenarioLento = calcularEscenarioLento();
+            /* =======================
+            ESCENARIO RÁPIDO
+            ======================== */
+            let tiempoRapido = 0;
+            let ganadorRapido;
 
-        // Función para formatear tiempo
-        function formatearTiempo(minutos) {
-            const horas = Math.floor(minutos / 60);
-            const mins = minutos % 60;
-            if (horas === 0) return `${mins}m`;
-            if (mins === 0) return `${horas}h`;
-            return `${horas}h ${mins}m`;
-        }
+            const defenderVaGanando = defPoints >= attPoints;
+            ganadorRapido = defenderVaGanando ? defenderCountry : attackerCountry;
 
-        function calcularHoraFinalizacion(minutosExtra) {
-            const ahora = new Date();
-            const finalizacion = new Date(ahora.getTime() + minutosExtra * 60000);
-            return finalizacion.toLocaleTimeString('es-ES', {
-                timeZone: 'Europe/Madrid',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
+            tiempoRapido += simularRonda({
+                ganadorInicial: defenderVaGanando ? defPoints : attPoints,
+                perdedorInicial: defenderVaGanando ? attPoints : defPoints,
+                modo: "rapido"
             });
+
+            const winsTrasRondaRapida = defenderVaGanando
+                ? defenderWins + 1
+                : attackerWins + 1;
+
+            if (winsTrasRondaRapida < roundsToWin) {
+                tiempoRapido += simularRonda({ modo: "rapido" });
+            }
+
+            /* =======================
+            ESCENARIO LENTO (FORZAR 3 RONDAS)
+            ======================== */
+            let tiempoLento = 0;
+
+            // 1️⃣ RONDA ACTUAL → pierde el que VA GANANDO POR MARCADOR
+            const defensorLideraBatalla = defenderWins > attackerWins;
+
+            tiempoLento += simularRonda({
+                ganadorInicial: defensorLideraBatalla ? attPoints : defPoints,
+                perdedorInicial: defensorLideraBatalla ? defPoints : attPoints,
+                modo: "lento"
+            });
+
+            // 2️⃣ RONDA DECISIVA (siempre lenta)
+            tiempoLento += simularRonda({ modo: "lento" });
+
+            /* =======================
+            FORMATO TIEMPO
+            ======================== */
+            const formatTiempo = (m) => {
+                const h = Math.floor(m / 60);
+                const mm = m % 60;
+                if (!h) return `${mm}m`;
+                if (!mm) return `${h}h`;
+                return `${h}h ${mm}m`;
+            };
+
+            const horaFinal = (min) =>
+                new Date(Date.now() + min * 60000)
+                    .toLocaleTimeString("es-ES", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                        timeZone: "Europe/Madrid"
+                    });
+
+            /* =======================
+            MENSAJE
+            ======================== */
+            let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
+            msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
+            msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
+
+            msg += `⚡ *Escenario más rápido:*\n`;
+            msg += `• Ganador: ${ganadorRapido}\n`;
+            msg += `• Tiempo: ${formatTiempo(tiempoRapido)}\n`;
+            msg += `• Finaliza: ${horaFinal(tiempoRapido)}\n\n`;
+
+            msg += `🐌 *Escenario más lento (3 rondas):*\n`;
+            msg += `• Tiempo: ${formatTiempo(tiempoLento)}\n`;
+            msg += `• Finaliza: ${horaFinal(tiempoLento)}`;
+
+            await bot.sendMessage(chatId, msg, {
+                parse_mode: "Markdown",
+                disable_web_page_preview: true
+            });
+
+        } catch (err) {
+            console.error("/duracion error:", err);
+            bot.sendMessage(chatId, "Error calculando la duración.");
         }
-
-        // Construir mensaje
-        let mensaje = `⏰ *DURACIÓN ESTIMADA DE LA BATALLA*\n\n`;
-        mensaje += `🔗 [${defenderCountryName} vs ${attackerCountryName}](https://app.warera.io/battle/${battleId})\n\n`;
-        mensaje += `📊 *Estado actual:*\n`;
-        mensaje += `🛡️ ${defenderCountryName}: ${defenderWins} rondas ganadas - ${defenderPoints} puntos\n`;
-        mensaje += `⚔️ ${attackerCountryName}: ${attackerWins} rondas ganadas - ${attackerPoints} puntos\n`;
-        mensaje += `📈 *Puntos por tick actual:* ${getPuntosPorTick(totalPoints)} (total: ${totalPoints} pts)\n\n`;
-
-        mensaje += `⚡ *Escenario más rápido ${escenarioRapido.marcador}:*\n`;
-        mensaje += `• Ganador: ${defenderCountryName}\n`;
-        mensaje += `• Tiempo: ${formatearTiempo(escenarioRapido.tiempo)}\n`;
-        mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioRapido.tiempo)}\n\n`;
-
-        // En la construcción del mensaje, cambiar la parte del escenario lento:
-        mensaje += `🐌 *Escenario más lento ${escenarioLento.marcador}:*\n`;
-        mensaje += `• Ganador ronda actual: ${escenarioLento.ganadorRondaActual === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
-        mensaje += `• Ganador final: ${escenarioLento.ganadorFinal === "Defensor" ? defenderCountryName : attackerCountryName}\n`;
-        mensaje += `• Tiempo: ${formatearTiempo(escenarioLento.tiempo)}\n`;
-        mensaje += `• Finaliza: ${calcularHoraFinalizacion(escenarioLento.tiempo)}`;
-
-        await bot.sendMessage(chatId, mensaje, {
-            parse_mode: "Markdown",
-            disable_web_page_preview: true
-        });
-
-    } catch (error) {
-        console.error("Error en /duracion:", error);
-        bot.sendMessage(chatId, "Error al calcular la duración de la batalla.");
     }
-    }
+
 };
 
 // --- Listener principal ---
