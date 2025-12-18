@@ -1420,15 +1420,10 @@ const comandos = {
             // OBTENER DATOS DE LA BATALLA
             // =======================
             const battleResp = await apiCall("battle.getById", { battleId });
-            if (!battleResp?.result?.data) {
-                return bot.sendMessage(chatId, "No se pudo obtener la batalla.");
-            }
+            const battleData = battleResp?.result?.data;
 
-            const battleData = battleResp.result.data;
-
-            if (!battleData.isActive) {
-                return bot.sendMessage(chatId, "La batalla ya ha finalizado.");
-            }
+            if (!battleData) return bot.sendMessage(chatId, "No se pudo obtener la batalla.");
+            if (!battleData.isActive) return bot.sendMessage(chatId, "La batalla ya ha finalizado.");
 
             const defenderWins = battleData.defender.wonRoundsCount;
             const attackerWins = battleData.attacker.wonRoundsCount;
@@ -1444,14 +1439,12 @@ const comandos = {
             // RONDA ACTUAL
             // =======================
             const roundResp = await apiCall("round.getById", { roundId: battleData.currentRound });
-            if (!roundResp?.result?.data) {
-                return bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
-            }
-            const round = roundResp.result.data;
+            const round = roundResp?.result?.data;
+
+            if (!round) return bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
 
             const defPoints = round.defender.points;
             const attPoints = round.attacker.points;
-            let totalPoints = defPoints + attPoints;
 
             // =======================
             // PUNTOS POR TICK
@@ -1466,36 +1459,29 @@ const comandos = {
             };
 
             // =======================
-            // FUNCION PARA CALCULAR TIEMPO RESTANTE DE UNA RONDA
+            // CALCULAR TIEMPO DE UNA RONDA
             // =======================
-            function calcularTiempoRonda(puntosActualesGanador, puntosActualesPerdedor, modo = "rapido") {
-                let ganador = puntosActualesGanador;
-                let perdedor = puntosActualesPerdedor;
+            function calcularTiempoRonda(puntosGanador, puntosPerdedor, modo = "rapido") {
+                let ganador = puntosGanador;
+                let perdedor = puntosPerdedor;
                 let total = ganador + perdedor;
                 let tiempo = 0;
 
                 while (ganador < 300) {
                     const ppt = puntosPorTick(total);
-
-                    if (modo === "rapido") {
-                        ganador += ppt;
-                    } else {
-                        if (perdedor < 299) {
-                            perdedor += ppt;
-                        } else {
-                            ganador += ppt;
-                        }
+                    if (modo === "rapido") ganador += ppt;
+                    else {
+                        if (perdedor < 299) perdedor += ppt;
+                        else ganador += ppt;
                     }
-
                     total += ppt;
-                    tiempo += 2; // cada tick son 2 minutos
+                    tiempo += 2; // minutos por tick
                 }
-
                 return tiempo;
             }
 
             // =======================
-            // ESCENARIO MÁS RÁPIDO
+            // ESCENARIO RÁPIDO
             // =======================
             const defensorVaGanando = defPoints >= attPoints;
             let tiempoRapido = calcularTiempoRonda(
@@ -1509,19 +1495,18 @@ const comandos = {
 
             if (defensorVaGanando) rondasDef++; else rondasAtt++;
 
-            // Si no ganó la batalla aún, sumar otra ronda rápida
             if (rondasDef < roundsToWin && rondasAtt < roundsToWin) {
                 tiempoRapido += calcularTiempoRonda(0, 0, "rapido");
             }
 
             // =======================
-            // ESCENARIO MÁS LENTO
+            // ESCENARIO LENTO
             // =======================
             let tiempoLento = 0;
             let rondasDefLento = defenderWins;
             let rondasAttLento = attackerWins;
 
-            // 1️⃣ Completar la ronda actual al revés del marcador actual
+            // Completar la ronda actual al revés del marcador
             const defensorLideraPuntos = defPoints >= attPoints;
             tiempoLento += calcularTiempoRonda(
                 defensorLideraPuntos ? attPoints : defPoints,
@@ -1531,13 +1516,12 @@ const comandos = {
 
             if (defensorLideraPuntos) rondasAttLento++; else rondasDefLento++;
 
-            // 2️⃣ Si aún no hay ganador, simular siguiente ronda al máximo
             if (rondasDefLento < roundsToWin && rondasAttLento < roundsToWin) {
                 tiempoLento += calcularTiempoRonda(0, 0, "lento");
             }
 
             // =======================
-            // FORMATEAR TIEMPO
+            // FORMATEO TIEMPO
             // =======================
             const formatTiempo = (m) => {
                 const h = Math.floor(m / 60);
@@ -1556,7 +1540,7 @@ const comandos = {
                 });
 
             // =======================
-            // CONSTRUIR MENSAJE
+            // MENSAJE
             // =======================
             let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
             msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
@@ -1575,6 +1559,7 @@ const comandos = {
                 parse_mode: "Markdown",
                 disable_web_page_preview: true
             });
+
         } catch (err) {
             console.error("/duracion error:", err);
             bot.sendMessage(chatId, "Error calculando la duración.");
