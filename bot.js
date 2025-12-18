@@ -1498,11 +1498,14 @@ const comandos = {
             let tiempoLento = 0;
             if((defenderWins > 0 && attackerWins === 0) || (defenderWins === attackerWins && attPoints > defPoints)){
                 rondaActualGanador = attackerCountry;
+                console.log("ENTRA EN EL PRIMER IF ", rondaActualGanador);
             }else{
                 rondaActualGanador = defenderCountry;
+                onsole.log("ENTRA EN EL SEGUNDO IF ", rondaActualGanador);
             }
 
             let rondaActualPerdedor = rondaActualGanador === defenderCountry ? attackerCountry : defenderCountry;
+            onsole.log("VALOR DEL PERDEDOR ", rondaActualPerdedor);
 
             tiempoLento += simularRonda({
                 ganadorInicial: rondaActualGanador === defenderCountry ? defPoints : attPoints,
