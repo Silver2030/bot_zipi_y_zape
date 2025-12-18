@@ -12,9 +12,8 @@ async function apiCall(method, params = {}) {
     }
 
     try {
-        const res = await axios.get(`https://api2.warera.io/trpc/${method}`, {
-            params: { input: JSON.stringify(params) }
-        });
+        const url = `https://api2.warera.io/trpc/${method}?input=${encodeURIComponent(JSON.stringify(params))}`;
+        const res = await axios.get(url);
         lastCall = Date.now();
         return res.data?.result?.data ?? null;
     } catch (error) {
