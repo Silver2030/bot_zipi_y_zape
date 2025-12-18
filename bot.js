@@ -1416,10 +1416,11 @@ const comandos = {
         const battleId = args[0].split("/").pop();
 
         try {
-            // =======================
-            // OBTENER BATALLA
-            // =======================
-            const battle = await apiCall("battle.getById", { battleId });
+            /* =======================
+            OBTENER BATALLA
+            ======================== */
+            const battleResp = await apiCall("battle.getById", { battleId });
+            const battle = battleResp?.result?.data;
             if (!battle || !battle.isActive) {
                 return bot.sendMessage(chatId, "La batalla ya ha finalizado.");
             }
@@ -1428,26 +1429,25 @@ const comandos = {
             const attackerWins = battle.attacker.wonRoundsCount;
             const roundsToWin = battle.roundsToWin;
 
-            // =======================
-            // NOMBRES DE PAÍSES
-            // =======================
             const defenderCountry = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
             const attackerCountry = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
 
-            // =======================
-            // RONDA ACTUAL
-            // =======================
-            const round = await apiCall("round.getById", { roundId: battle.currentRound });
+            /* =======================
+            RONDA ACTUAL
+            ======================== */
+            const roundResp = await apiCall("round.getById", { roundId: battle.currentRound });
+            const round = roundResp?.result?.data;
             if (!round) {
                 return bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
             }
 
-            const defPoints = round.defender.points;
-            const attPoints = round.attacker.points;
+            let defPoints = round.defender.points;
+            let attPoints = round.attacker.points;
+            let totalPoints = defPoints + attPoints;
 
-            // =======================
-            // PUNTOS POR TICK
-            // =======================
+            /* =======================
+            FUNCIONES AUX
+            ======================== */
             function puntosPorTick(total) {
                 if (total < 100) return 1;
                 if (total < 200) return 2;
@@ -1457,79 +1457,88 @@ const comandos = {
                 return 6;
             }
 
-            // =======================
-            // CALCULAR DURACION DE RONDA LENTA
-            // =======================
-            function duracionRondaLenta(puntosGanador, puntosPerdedor) {
+            function simularRonda({ ganadorInicial, perdedorInicial, modo }) {
+                let ganador = ganadorInicial;
+                let perdedor = perdedorInicial;
+                let total = ganador + perdedor;
                 let tiempo = 0;
-                let total = puntosGanador + puntosPerdedor;
-                let pg = puntosGanador;
-                let pp = puntosPerdedor;
 
-                while (pg < 300) {
+                while (ganador < 300) {
                     const ppt = puntosPorTick(total);
-                    if (pp < 299) {
-                        // perder alcanza 299 primero en escenario lento
-                        const avance = Math.min(ppt, 299 - pp);
-                        pp += avance;
-                        total += avance;
-                        tiempo += 2;
+                    if (modo === "rapido") {
+                        ganador += ppt;
                     } else {
-                        const avance = Math.min(ppt, 300 - pg);
-                        pg += avance;
-                        total += avance;
-                        tiempo += 2;
+                        if (perdedor < 299) {
+                            perdedor += ppt;
+                        } else {
+                            ganador += ppt;
+                        }
                     }
+                    total += ppt;
+                    tiempo += 2;
                 }
                 return tiempo;
             }
 
-            // =======================
-            // ESCENARIO RAPIDO
-            // =======================
-            const defensorVaGanando = defPoints >= attPoints;
-            const ganadorRapido = defensorVaGanando ? defenderCountry : attackerCountry;
-
+            /* =======================
+            ESCENARIO RÁPIDO
+            ======================== */
             let tiempoRapido = 0;
+            let defensorVaGanando = defPoints >= attPoints;
+            let ganadorRapido = defensorVaGanando ? defenderCountry : attackerCountry;
+            let roundsRapido = [...Array(3)]; // hasta 3 rondas
 
-            // 1️⃣ Ronda actual
-            tiempoRapido += duracionRondaLenta(
-                defensorVaGanando ? defPoints : attPoints,
-                defensorVaGanando ? attPoints : defPoints
-            );
+            // Ronda actual
+            tiempoRapido += simularRonda({
+                ganadorInicial: defensorVaGanando ? defPoints : attPoints,
+                perdedorInicial: defensorVaGanando ? attPoints : defPoints,
+                modo: "rapido"
+            });
 
-            // 2️⃣ ¿Faltan rondas para ganar la batalla?
-            const winsTrasRondaRapida = defensorVaGanando
-                ? defenderWins + 1
-                : attackerWins + 1;
+            let winsDef = defenderWins;
+            let winsAtt = attackerWins;
+            if (defensorVaGanando) winsDef++; else winsAtt++;
 
-            if (winsTrasRondaRapida < roundsToWin) {
-                // Ronda extra, bando ganador directo
-                tiempoRapido += duracionRondaLenta(0, 0);
+            // Rondas adicionales necesarias
+            while (winsDef < roundsToWin && winsAtt < roundsToWin) {
+                tiempoRapido += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "rapido" });
+                if (defensorVaGanando) winsDef++; else winsAtt++;
             }
 
-            // =======================
-            // ESCENARIO LENTO
-            // =======================
+            /* =======================
+            ESCENARIO LENTO
+            ======================== */
             let tiempoLento = 0;
+            let winsDefL = defenderWins;
+            let winsAttL = attackerWins;
 
-            // 1️⃣ Ronda actual, el que va perdiendo primero alcanza 299
-            const defensorLidera = defenderWins > attackerWins;
-            tiempoLento += duracionRondaLenta(
-                defensorLidera ? attPoints : defPoints,
-                defensorLidera ? defPoints : attPoints
-            );
-
-            // 2️⃣ ¿Se necesita ronda final?
-            const winsTrasRondaActual = defensorLidera ? defenderWins : attackerWins;
-            if (Math.max(defenderWins, attackerWins) + 1 < roundsToWin) {
-                // ronda decisiva completa
-                tiempoLento += duracionRondaLenta(0, 0);
+            // Ronda actual: que pierda quien va ganando por puntos
+            let rondaGanadorInicial = attPoints;
+            let rondaPerdedorInicial = defPoints;
+            if (defPoints > attPoints) {
+                rondaGanadorInicial = defPoints;
+                rondaPerdedorInicial = attPoints;
             }
 
-            // =======================
-            // FORMATO DE TIEMPO
-            // =======================
+            tiempoLento += simularRonda({
+                ganadorInicial: rondaGanadorInicial,
+                perdedorInicial: rondaPerdedorInicial,
+                modo: "lento"
+            });
+
+            // Actualizar rondas tras esta ronda lenta
+            if (rondaGanadorInicial === defPoints) winsDefL++; else winsAttL++;
+
+            // Sumar rondas adicionales necesarias
+            while (winsDefL < roundsToWin && winsAttL < roundsToWin) {
+                tiempoLento += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "lento" });
+                // Asumimos que el defensor siempre gana la última ronda
+                if (winsDefL <= winsAttL) winsDefL++; else winsAttL++;
+            }
+
+            /* =======================
+            FORMATO TIEMPO
+            ======================== */
             const formatTiempo = (m) => {
                 const h = Math.floor(m / 60);
                 const mm = m % 60;
@@ -1539,17 +1548,18 @@ const comandos = {
             };
 
             const horaFinal = (min) =>
-                new Date(Date.now() + min * 60000).toLocaleTimeString("es-ES", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                    timeZone: "Europe/Madrid",
-                });
+                new Date(Date.now() + min * 60000)
+                    .toLocaleTimeString("es-ES", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                        timeZone: "Europe/Madrid"
+                    });
 
-            // =======================
-            // MENSAJE
-            // =======================
-            let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
+            /* =======================
+            MENSAJE
+            ======================== */
+            let msg = `⏰ *DURACIÓN ESTIMADA DE LA BATALLA*\n\n`;
             msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
             msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
 
@@ -1564,7 +1574,7 @@ const comandos = {
 
             await bot.sendMessage(chatId, msg, {
                 parse_mode: "Markdown",
-                disable_web_page_preview: true,
+                disable_web_page_preview: true
             });
 
         } catch (err) {
