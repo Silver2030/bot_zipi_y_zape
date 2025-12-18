@@ -1496,7 +1496,7 @@ const comandos = {
             }
 
             let tiempoLento = 0;
-            let rondaActualGanador = defenderWins > attackerWins && defPoints >= attPoints ? defenderCountry : attackerCountry;
+            let rondaActualGanador = defenderWins >= attackerWins && defPoints >= attPoints ? defenderCountry : attackerCountry;
             let rondaActualPerdedor = rondaActualGanador === defenderCountry ? attackerCountry : defenderCountry;
 
             tiempoLento += simularRonda({
@@ -1505,28 +1505,23 @@ const comandos = {
                 modo: "lento"
             });
 
-            let winsTrasRondaLenta = rondaActualGanador === defenderCountry ? defenderWins + 1 : attackerWins + 1;
+            if(rondaActualGanador === defenderCountry ){
+                defenderWins += 1;
+                winsTrasRondaLenta = defenderWins;
+            }else{
+                attackerWins += 1;
+                winsTrasRondaLenta = attackerWins;
+            }
 
             if (winsTrasRondaLenta < roundsToWin) {
-                if(defenderWins === 0){
+                if(defenderWins === 0 || attackerWins === 0){
                     tiempoLento += simularRonda({
                         perdedorInicial: 0,
                         ganadorInicial: 0,
                         modo: "lento"
                     });
-                    defenderWins += 1;
-                }
-                    
-                if(attackerWins === 0){
-                    tiempoLento += simularRonda({
-                        perdedorInicial: 0,
-                        ganadorInicial: 0,
-                        modo: "lento"
-                    });
-                    attackerWins += 1;
                 }
                 tiempoLento += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "lento" });
-                winsTrasRondaLenta += 1;
             }
 
             const formatTiempo = (m) => {
