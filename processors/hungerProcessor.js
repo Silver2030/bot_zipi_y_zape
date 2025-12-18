@@ -1,6 +1,5 @@
 const { getUserData } = require('../services/apiService');
-const { analizarBuild } = require('../utils/helpers');
-const { escapeMarkdownV2 } = require('../utils/helpers');
+const { analizarBuild, escapeMarkdownV2 } = require('../utils/helpers');
 
 async function hambre(botQueue, chatId, args, usuarios) {
     if (!args[0]) {
@@ -39,12 +38,18 @@ async function hambre(botQueue, chatId, args, usuarios) {
         return botQueue.sendMessage(chatId, `Nadie tiene comida`);
     }
 
-    await botQueue.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}`, { disable_web_page_preview: true });
-
+    await botQueue.sendMessage(chatId, `${urlBattle}\n${escapeMarkdownV2(mensajeExtra)}`, { 
+        disable_web_page_preview: true,
+        parse_mode: "MarkdownV2"
+    });
+    
     const chunkSize = 5;
     for (let i = 0; i < menciones.length; i += chunkSize) {
         const grupo = menciones.slice(i, i + chunkSize).join('\n');
-        await botQueue.sendMessage(chatId, grupo);
+        await botQueue.sendMessage(chatId, grupo, { 
+            parse_mode: "MarkdownV2",
+            disable_web_page_preview: true 
+        });
     }
 }
 
