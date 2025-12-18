@@ -1475,7 +1475,7 @@ const comandos = {
                     if (modo === "rapido") {
                         ganador += ppt;
                     } else {
-                        if (perdedor < 299) {
+                        if (perdedor + ppt < 299) {
                             perdedor += ppt;
                         } else {
                             ganador += ppt;
@@ -1491,7 +1491,7 @@ const comandos = {
             /* =======================
             ESCENARIO RÁPIDO
             ======================== */
-            const defensorVaGanando = defPoints >= attPoints;
+            const defensorVaGanando = defenderWins > attackerWins && defPoints >= attPoints;
             const ganadorRapido = defensorVaGanando ? defenderCountry : attackerCountry;
 
             let tiempoRapido = simularRonda({
@@ -1509,19 +1509,37 @@ const comandos = {
             ESCENARIO LENTO
             ======================== */
             let tiempoLento = 0;
-            let rondaActualGanador = defenderWins > attackerWins ? attackerCountry : defenderCountry;
-            let rondaActualPerdedor = defensorVaGanando ? defenderCountry : attackerCountry;
+            let rondaActualGanador = defenderWins > attackerWins && defPoints >= attPoints ? defenderCountry : attackerCountry;
+            let rondaActualPerdedor = rondaActualGanador === defenderCountry ? attackerCountry : defenderCountry;
 
             tiempoLento += simularRonda({
                 ganadorInicial: rondaActualGanador === defenderCountry ? defPoints : attPoints,
-                perdedorInicial: rondaActualPerdedor === defenderCountry ? defPoints : attPoints,
+                perdedorInicial: rondaActualPerdedor === defenderCountry ? attPoints : defPoints,
                 modo: "lento"
             });
 
             const winsTrasRondaLenta = rondaActualGanador === defenderCountry ? defenderWins + 1 : attackerWins + 1;
 
             if (winsTrasRondaLenta < roundsToWin) {
+                if(defenderWins === 0){
+                    tiempoLento += simularRonda({
+                        perdedorInicial: 0,
+                        ganadorInicial: 0,
+                        modo: "lento"
+                    });
+                    defenderWins += 1;
+                }
+                    
+                if(attackerWins === 0){
+                    tiempoLento += simularRonda({
+                        perdedorInicial: 0,
+                        ganadorInicial: 0,
+                        modo: "lento"
+                    });
+                    attackerWins += 1;
+                }
                 tiempoLento += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "lento" });
+                winsTrasRondaLenta += 1;
             }
 
             /* =======================
