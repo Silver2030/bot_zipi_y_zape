@@ -1039,8 +1039,8 @@ const comandos = {
             return;
         }
 
-        const urlBattle = args[0]; // obligatorio
-        const mensajeExtra = args.slice(1).join(' '); // opcional
+        const urlBattle = args[0];
+        const mensajeExtra = args.slice(1).join(' ');
         const menciones = [];
 
         for (const usuario of usuarios) {
@@ -1048,12 +1048,10 @@ const comandos = {
                 const userData = await getUserData(usuario.userId);
                 if (!userData) continue;
 
-                // Analizar build del usuario
                 const { build } = analizarBuild(userData);
 
-                if (build === "ECO") continue; // ignorar ECO
+                if (build === "ECO") continue;
 
-                // Revisar hambre
                 const hunger = userData.skills?.hunger;
                 if (hunger && hunger.currentBarValue >= 0.3 * hunger.total) {
                     menciones.push(`${usuario.mention} (${userData.username})`);
@@ -1064,14 +1062,12 @@ const comandos = {
         }
 
         if (menciones.length === 0) {
-            bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}\n\nNadie tiene comida`);
+            bot.sendMessage(chatId, `Nadie tiene comida`);
             return;
         }
 
-        // Enviar mensaje principal
-        await bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}`);
+        await bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}`, { disable_web_page_preview: true });
 
-        // Enviar menciones en grupos
         const chunkSize = 5;
         for (let i = 0; i < menciones.length; i += chunkSize) {
             const grupo = menciones.slice(i, i + chunkSize).join('\n');
