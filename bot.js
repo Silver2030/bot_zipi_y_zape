@@ -16,7 +16,9 @@ const TOKEN_TELEGRAM = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(TOKEN_TELEGRAM, { polling: true });
 const botQueue = new TelegramQueue(bot, 500);
 
-const allowedChats = [process.env.GROUP_ID, process.env.GROUP_PRUEBAS_ID, process.env.CHAT_ID].filter(id => id);
+const allowedChats = [process.env.GROUP_ID, process.env.GROUP_PRUEBAS_ID, process.env.CHAT_ID]
+    .filter(id => id)
+    .map(id => Number(id));
 const usuarios = [
     { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     { userId: "686eefe3ee16d37c417a0e59", mention: "@lodensy" },
