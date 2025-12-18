@@ -1489,14 +1489,11 @@ const comandos = {
                 perdedorInicial: defensorVaGanando ? attPoints : defPoints,
                 modo: "rapido"
             });
-            msg += `⚔️ ${tiempoRapido}: TIEMPO RAPIDO 1`;
 
             const winsTrasRondaRapida = defensorVaGanando ? defenderWins + 1 : attackerWins + 1;
             if (winsTrasRondaRapida < roundsToWin) {
                 tiempoRapido += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "rapido" });
             }
-
-            msg += `⚔️ ${tiempoRapido}: TIEMPO RAPIDO 2`;
 
             let tiempoLento = 0;
             let rondaActualGanador = defenderWins >= attackerWins && defPoints >= attPoints ? defenderCountry : attackerCountry;
