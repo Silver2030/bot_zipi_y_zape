@@ -1496,7 +1496,12 @@ const comandos = {
             }
 
             let tiempoLento = 0;
-            let rondaActualGanador = defenderWins >= attackerWins && defPoints >= attPoints ? defenderCountry : attackerCountry;
+            if((defenderWins > 0 && attackerWins === 0) || (defenderWins === attackerWins && attPoints > defPoints)){
+                rondaActualGanador = attackerCountry;
+            }else{
+                rondaActualGanador = defenderCountry;
+            }
+
             let rondaActualPerdedor = rondaActualGanador === defenderCountry ? attackerCountry : defenderCountry;
 
             tiempoLento += simularRonda({
