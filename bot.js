@@ -1509,6 +1509,8 @@ const comandos = {
                 perdedorInicial: rondaActualPerdedor === defenderCountry ? attPoints : defPoints,
                 modo: "lento"
             });
+            console.log("Ganador Inicial:", rondaActualGanador === defenderCountry ? defPoints : attPoints);
+            console.log("Perdedor Inicial:", rondaActualPerdedor === defenderCountry ? attPoints : defPoints);
             msg += `⚔️ ${tiempoLento}: TIEMPO LENTO 1\n\n`;
 
             if(rondaActualGanador === defenderCountry ){
