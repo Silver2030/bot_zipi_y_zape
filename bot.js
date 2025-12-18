@@ -146,6 +146,65 @@ async function getBattleRanking(battleId, dataType, type, side) {
     return apiCall('battleRanking.getRanking', { battleId, dataType, type, side });
 }
 
+function puntosPorTick(total) {
+    if (total < 100) return 1;
+    if (total < 200) return 2;
+    if (total < 300) return 3;
+    if (total < 400) return 4;
+    if (total < 500) return 5;
+    return 6;
+}
+
+/**
+ * RONDA RÁPIDA
+ * Un solo bando recibe siempre los puntos
+ */
+function duracionRondaRapida(puntosIniciales = 0, puntosRival = 0) {
+    let puntos = puntosIniciales;
+    let total = puntosIniciales + puntosRival;
+    let tiempo = 0;
+
+    while (puntos < 300) {
+        const ppt = puntosPorTick(total);
+        puntos += ppt;
+        total += ppt;
+        tiempo += 2;
+    }
+
+    return tiempo;
+}
+
+/**
+ * RONDA LENTA REAL
+ * 1) Un bando llega a 299
+ * 2) El otro llega a 300
+ */
+function duracionRondaLenta(puntosA = 0, puntosB = 0) {
+    let total = puntosA + puntosB;
+    let tiempo = 0;
+
+    // 1️⃣ alguien llega a 299
+    let faltan299 = 299 - Math.max(puntosA, puntosB);
+    while (faltan299 > 0) {
+        const ppt = puntosPorTick(total);
+        faltan299 -= ppt;
+        total += ppt;
+        tiempo += 2;
+    }
+
+    // 2️⃣ el otro llega a 300
+    let faltan300 = 300;
+    while (faltan300 > 0) {
+        const ppt = puntosPorTick(total);
+        faltan300 -= ppt;
+        total += ppt;
+        tiempo += 2;
+    }
+
+    return tiempo;
+}
+
+
 // --- Función para generar archivo Excel como Buffer ---
 function generarExcelBuffer(resultados, nombreGrupo) {
     // Crear un nuevo workbook
@@ -1346,7 +1405,7 @@ const comandos = {
         }
     },
     duracion: async (chatId, args) => {
-        if (args.length < 1) {
+        if (!args.length) {
             return bot.sendMessage(
                 chatId,
                 "Ejemplo: /duracion https://app.warera.io/battle/XXXXXXXX",
@@ -1358,22 +1417,22 @@ const comandos = {
 
         try {
             /* =======================
-            OBTENER BATALLA
+            BATALLA
             ======================== */
             const battle = await apiCall("battle.getById", { battleId });
             if (!battle || !battle.isActive) {
                 return bot.sendMessage(chatId, "La batalla ya ha finalizado.");
             }
 
-            const defenderWins = battle.defender.wonRoundsCount;
-            const attackerWins = battle.attacker.wonRoundsCount;
+            const defWins = battle.defender.wonRoundsCount;
+            const attWins = battle.attacker.wonRoundsCount;
             const roundsToWin = battle.roundsToWin;
 
             /* =======================
-            NOMBRES DE PAÍSES
+            PAÍSES
             ======================== */
-            const defenderCountry = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
-            const attackerCountry = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
+            const defName = (await getCountryData(battle.defender.country))?.name ?? "Defensor";
+            const attName = (await getCountryData(battle.attacker.country))?.name ?? "Atacante";
 
             /* =======================
             RONDA ACTUAL
@@ -1383,132 +1442,72 @@ const comandos = {
                 return bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
             }
 
-            const defPoints = round.defender.points;
-            const attPoints = round.attacker.points;
-
-            /* =======================
-            PUNTOS POR TICK
-            ======================== */
-            function puntosPorTick(total) {
-                if (total < 100) return 1;
-                if (total < 200) return 2;
-                if (total < 300) return 3;
-                if (total < 400) return 4;
-                if (total < 500) return 5;
-                return 6;
-            }
-
-            /* =======================
-            SIMULAR UNA RONDA
-            modo:
-            - rapido → un bando gana directo
-            - lento  → perdedor llega a 299 primero
-            ======================== */
-            function simularRonda({
-                ganadorInicial = 0,
-                perdedorInicial = 0,
-                modo = "rapido"
-            }) {
-                let ganador = ganadorInicial;
-                let perdedor = perdedorInicial;
-                let total = ganador + perdedor;
-                let tiempo = 0;
-
-                while (ganador < 300) {
-                    const ppt = puntosPorTick(total);
-
-                    if (modo === "rapido") {
-                        ganador += ppt;
-                    } else {
-                        if (perdedor < 299) {
-                            perdedor += ppt;
-                        } else {
-                            ganador += ppt;
-                        }
-                    }
-
-                    total += ppt;
-                    tiempo += 2;
-                }
-
-                return tiempo;
-            }
+            const defPts = round.defender.points;
+            const attPts = round.attacker.points;
 
             /* =======================
             ESCENARIO RÁPIDO
             ======================== */
             let tiempoRapido = 0;
-            let ganadorRapido;
+            const defensorDomina = defPts >= attPts;
+            const ganadorRapido = defensorDomina ? defName : attName;
 
-            const defenderVaGanando = defPoints >= attPoints;
-            ganadorRapido = defenderVaGanando ? defenderCountry : attackerCountry;
+            tiempoRapido += duracionRondaRapida(
+                defensorDomina ? defPts : attPts,
+                defensorDomina ? attPts : defPts
+            );
 
-            tiempoRapido += simularRonda({
-                ganadorInicial: defenderVaGanando ? defPoints : attPoints,
-                perdedorInicial: defenderVaGanando ? attPoints : defPoints,
-                modo: "rapido"
-            });
-
-            const winsTrasRondaRapida = defenderVaGanando
-                ? defenderWins + 1
-                : attackerWins + 1;
-
-            if (winsTrasRondaRapida < roundsToWin) {
-                tiempoRapido += simularRonda({ modo: "rapido" });
+            const winsTrasRapida = (defensorDomina ? defWins : attWins) + 1;
+            if (winsTrasRapida < roundsToWin) {
+                tiempoRapido += duracionRondaRapida();
             }
 
             /* =======================
-            ESCENARIO LENTO (FORZAR 3 RONDAS)
+            ESCENARIO LENTO (3 RONDAS)
             ======================== */
             let tiempoLento = 0;
 
-            // 1️⃣ RONDA ACTUAL → pierde el que VA GANANDO POR MARCADOR
-            const defensorLideraBatalla = defenderWins > attackerWins;
+            // Ronda actual → forzar empate
+            tiempoLento += duracionRondaLenta(defPts, attPts);
 
-            tiempoLento += simularRonda({
-                ganadorInicial: defensorLideraBatalla ? attPoints : defPoints,
-                perdedorInicial: defensorLideraBatalla ? defPoints : attPoints,
-                modo: "lento"
-            });
+            // Ronda 2
+            tiempoLento += duracionRondaLenta();
 
-            // 2️⃣ RONDA DECISIVA (siempre lenta)
-            tiempoLento += simularRonda({ modo: "lento" });
+            // Ronda 3 (decisiva)
+            tiempoLento += duracionRondaLenta();
 
             /* =======================
-            FORMATO TIEMPO
+            FORMATO
             ======================== */
-            const formatTiempo = (m) => {
+            const fmt = (m) => {
                 const h = Math.floor(m / 60);
                 const mm = m % 60;
-                if (!h) return `${mm}m`;
-                if (!mm) return `${h}h`;
-                return `${h}h ${mm}m`;
+                return h ? `${h}h ${mm}m` : `${mm}m`;
             };
 
-            const horaFinal = (min) =>
-                new Date(Date.now() + min * 60000)
-                    .toLocaleTimeString("es-ES", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                        timeZone: "Europe/Madrid"
-                    });
+            const hora = (m) =>
+                new Date(Date.now() + m * 60000).toLocaleTimeString("es-ES", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                    timeZone: "Europe/Madrid"
+                });
 
             /* =======================
             MENSAJE
             ======================== */
             let msg = `⏰ *DURACIÓN ESTIMADA*\n\n`;
-            msg += `🛡️ ${defenderCountry}: ${defenderWins} rondas – ${defPoints} pts\n`;
-            msg += `⚔️ ${attackerCountry}: ${attackerWins} rondas – ${attPoints} pts\n\n`;
+            msg += `🛡️ ${defName}: ${defWins} rondas – ${defPts} pts\n`;
+            msg += `⚔️ ${attName}: ${attWins} rondas – ${attPts} pts\n\n`;
 
             msg += `⚡ *Escenario más rápido:*\n`;
             msg += `• Ganador: ${ganadorRapido}\n`;
-            msg += `• Tiempo: ${formatTiempo(tiempoRapido)}\n`;
-            msg += `• Finaliza: ${horaFinal(tiempoRapido)}\n\n`;
+            msg += `• Tiempo: ${fmt(tiempoRapido)}\n`;
+            msg += `• Finaliza: ${hora(tiempoRapido)}\n\n`;
 
-            msg += `🐌 *Escenario más lento (3 rondas):*\n`;
-            msg += `• Tiempo: ${formatTiempo(tiempoLento)}\n`;
-            msg += `• Finaliza: ${horaFinal(tiempoLento)}`;
+            msg += `🐌 *Escenario más lento (siempre 3 rondas):*\n`;
+            msg += `• Tiempo: ${fmt(tiempoLento)}\n`;
+            msg += `• Finaliza: ${hora(tiempoLento)}`;
 
             await bot.sendMessage(chatId, msg, {
                 parse_mode: "Markdown",
@@ -1516,11 +1515,10 @@ const comandos = {
             });
 
         } catch (err) {
-            console.error("/duracion error:", err);
-            bot.sendMessage(chatId, "Error calculando la duración.");
+            console.error("/duracion", err);
+            bot.sendMessage(chatId, "Error al calcular la duración.");
         }
     }
-
 };
 
 // --- Listener principal ---
