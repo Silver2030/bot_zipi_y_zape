@@ -1501,7 +1501,7 @@ const comandos = {
                 console.log("ENTRA EN EL PRIMER IF ", rondaActualGanador);
             }else{
                 rondaActualGanador = defenderCountry;
-                onsole.log("ENTRA EN EL SEGUNDO IF ", rondaActualGanador);
+                console.log("ENTRA EN EL SEGUNDO IF ", rondaActualGanador);
             }
 
             let rondaActualPerdedor = rondaActualGanador === defenderCountry ? attackerCountry : defenderCountry;
