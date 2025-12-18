@@ -27,40 +27,6 @@ const usuarios = [
     { userId: "688fc8522d7fcdd226cda5ee", mention: "@gonchiii1" },
 ];
 
-const guerraMundial1 = [
-    { battleId: "68efed40fe26838752f28497", side: "defender"},
-    { battleId: "68efee41abec61b8dc799afd", side: "defender"},
-    { battleId: "68efee9a98e7755e2edca072", side: "defender"},
-    { battleId: "68f09045645874ebe739570f", side: "defender"},
-    { battleId: "68f0e3643c18466b083963ce", side: "attacker"},
-    { battleId: "68f20597af94346601d21ef9", side: "attacker"},
-    { battleId: "68f22fce9f257966ebcfa3c2", side: "attacker"},
-    { battleId: "68f363b18159a0ed537801ae", side: "attacker"},
-    { battleId: "68f3f6a6a25ce856fa0f5560", side: "attacker"},
-    { battleId: "68f4b46ab0106c54a1ea2ae7", side: "attacker"},
-    { battleId: "68f5eed122a4934adaf24933", side: "attacker"},
-    { battleId: "68f4fdc36d91d9804c07d39e", side: "attacker"},
-    { battleId: "68f60312dd4b0abd59dc2866", side: "attacker"},
-    { battleId: "68f6b2ea701c3ead28394f8f", side: "defender"},
-    { battleId: "68f690e8a321e114eab68c10", side: "defender"},
-    { battleId: "68f69714a7f3608cd8e2ca91", side: "defender"},
-    { battleId: "68f69500f090bc2fa6b600ab", side: "attacker"},
-    { battleId: "68f7bd8c62096761ad1aec29", side: "attacker"},
-    { battleId: "68f76b2a06b8db7fa05d134e", side: "attacker"},
-    { battleId: "68f7bd321de52f0c8b371e8c", side: "attacker"},
-    { battleId: "68f7efb6cddfe69e25581573", side: "defender"},
-    { battleId: "68f7797208396b899dcefe2f", side: "attacker"},
-    { battleId: "68f892fec8e25cced354623b", side: "attacker"},
-    { battleId: "68f9413ac8e25cced3b27a7d", side: "defender"},
-    { battleId: "68fa62cac9db35d148f617d1", side: "defender"},
-    { battleId: "68faa01db2f23c1a85449598", side: "attacker"},
-    { battleId: "68fb582f9f81af5c571c4f35", side: "defender"},
-    { battleId: "68fb81281e6dc00c9dbd9d74", side: "defender"},
-    { battleId: "68fc42687bc5e95d023e46f0", side: "attacker"},
-    { battleId: "68fccc007bc5e95d02581b2d", side: "attacker"},
-    { battleId: "68fd106e8831416ea7d761a3", side: "defender"}
-]
-
 // --- Funciones de utilidad ---
 function escapeMarkdownV2(text) {
     if (typeof text !== 'string') {
@@ -928,7 +894,6 @@ const comandos = {
 /dineropais <ID_PAIS> - Riqueza del país
 /dineromu <ID_MU> - Riqueza de la MU
 /danyosemanal - Ranking de daño semanal
-/guerras <GUERRA> - Daño en conflictos
 /duracion <GUERRA> - Duración restante de una guerra
 /all - Menciona al grupo
 /produccion - Ranking productivo`;
@@ -1193,82 +1158,6 @@ const comandos = {
 
     dineromu: async (chatId, args) => {
         procesarDineroGrupo(chatId, args, 'mu');
-    },
-    
-    guerras: async (chatId, args) => {
-        if (!args[0]) {
-            bot.sendMessage(chatId, "Ejemplo: /guerras primeraMundial");
-            return;
-        }
-
-        const guerraNombre = args[0].toLowerCase();
-        let guerrasSeleccionadas;
-
-        if (guerraNombre === "primeramundial") {
-            guerrasSeleccionadas = guerraMundial1;
-        } else {
-            bot.sendMessage(chatId, "Guerra no reconocida. Guerras disponibles: primeraMundial");
-            return;
-        }
-
-        const paises = {
-            "683ddd2c24b5a2e114af15d9": "MALASYA",
-            "683ddd2c24b5a2e114af15cd": "LAOS",
-            "6813b6d546e731854c7ac868": "RUSIA"
-        };
-
-        const totales = { MALASYA: 0, LAOS: 0, RUSIA: 0 };
-        const detalle = [];
-
-        for (const guerra of guerrasSeleccionadas) {
-            try {
-                const rankings = await getBattleRanking(
-                    guerra.battleId, 
-                    "damage", 
-                    "country", 
-                    guerra.side
-                );
-
-                let resumenBatalla = {
-                    battleId: guerra.battleId,
-                    link: `https://app.warera.io/battle/${guerra.battleId}`,
-                    valores: {}
-                };
-
-                for (const r of rankings || []) {
-                    if (paises[r.country]) {
-                        totales[paises[r.country]] += r.value;
-                        resumenBatalla.valores[paises[r.country]] = r.value;
-                    }
-                }
-
-                detalle.push(resumenBatalla);
-
-            } catch (error) {
-                console.error(`Error en batalla ${guerra.battleId}:`, error.message);
-            }
-        }
-
-        const totalConjunto = Object.values(totales).reduce((a, b) => a + b, 0);
-
-        let mensaje = `📊 *Resultados de la guerra: ${guerraNombre}*\n\n`;
-        mensaje += `🇲🇾 MALASYA: ${formatNumber(totales.MALASYA)}\n`;
-        mensaje += `🇱🇦 LAOS: ${formatNumber(totales.LAOS)}\n`;
-        mensaje += `🇷🇺 RUSIA: ${formatNumber(totales.RUSIA)}\n`;
-        mensaje += `\n🧮 *Total combinado:* ${formatNumber(totalConjunto)}\n\n`;
-        mensaje += `📋 *Detalle por batalla:*\n`;
-
-        detalle.forEach((b, i) => {
-            mensaje += `\n${i + 1}) ${b.link}\n`;
-            for (const [pais, dmg] of Object.entries(b.valores)) {
-                mensaje += `   - ${pais}: ${formatNumber(dmg)}\n`;
-            }
-        });
-
-        bot.sendMessage(chatId, mensaje,{ 
-            parse_mode: "Markdown",
-            disable_web_page_preview: true 
-        });
     },
 
     produccion: async (chatId) => {
