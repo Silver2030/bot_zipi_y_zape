@@ -1509,6 +1509,7 @@ const comandos = {
                 perdedorInicial: rondaActualPerdedor === defenderCountry ? attPoints : defPoints,
                 modo: "lento"
             });
+            msg += `⚔️ ${tiempoLento}: TIEMPO LENTO 1\n\n`;
 
             if(rondaActualGanador === defenderCountry ){
                 defenderWins += 1;
@@ -1526,7 +1527,9 @@ const comandos = {
                         modo: "lento"
                     });
                 }
+                msg += `⚔️ ${tiempoLento}: TIEMPO LENTO 2\n\n`;
                 tiempoLento += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "lento" });
+                msg += `⚔️ ${tiempoLento}: TIEMPO LENTO 3\n\n`;
             }
 
             const formatTiempo = (m) => {
