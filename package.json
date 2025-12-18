@@ -14,6 +14,7 @@
     "axios": "^1.12.1",
     "node-telegram-bot-api": "^0.66.0",
     "express": "^4.18.2",
-    "xlsx": "^0.18.5"
+    "exceljs": "^5.2.0",
+    "dotenv": "^16.0.0"
   }
 }
