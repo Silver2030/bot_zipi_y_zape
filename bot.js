@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const pLimit = require('p-limit');
@@ -13,7 +12,8 @@ const { produccion } = require('./processors/productionProcessor');
 const { all } = require('./processors/allProcessor');
 const { danyoSemanal } = require('./processors/weeklyDamageProcessor');
 
-const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
+const TOKEN_TELEGRAM = process.env.TELEGRAM_TOKEN;
+const bot = new TelegramBot(TOKEN_TELEGRAM, { polling: true });
 const botQueue = new TelegramQueue(bot, 500);
 const limit = pLimit(5);
 
