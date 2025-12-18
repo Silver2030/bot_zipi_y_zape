@@ -1505,7 +1505,7 @@ const comandos = {
             }
 
             let rondaActualPerdedor = rondaActualGanador === defenderCountry ? attackerCountry : defenderCountry;
-            onsole.log("VALOR DEL PERDEDOR ", rondaActualPerdedor);
+            console.log("VALOR DEL PERDEDOR ", rondaActualPerdedor);
 
             tiempoLento += simularRonda({
                 ganadorInicial: rondaActualGanador === defenderCountry ? defPoints : attPoints,
