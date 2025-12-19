@@ -1,8 +1,8 @@
 function escapeMarkdownV2(text) {
-    if (typeof text !== 'string') {
-        text = String(text);
-    }
-    return text.replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1');
+  if (typeof text !== 'string') {
+    text = String(text);
+  }
+  return text.replace(/([_*[\]()~`>#+\-=|{}.!])/g, '\\$1');
 }
 
 function formatNumber(num) {
