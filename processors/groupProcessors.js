@@ -58,7 +58,7 @@ async function procesarJugadoresGrupo(botQueue, chatId, args, tipo) {
         let mensaje = `*Jugadores ${i + 1}\\-${Math.min(i + chunkSize, resultados.length)}:*\n\n`;
         chunk.forEach((jugador, index) => {
             const idx = i + index + 1;
-            mensaje += `${idx}) ${escapeMarkdownV2(jugador.username)}\nhttps://app.warera.io/user/${escapeMarkdownV2(jugador.userId)}\n\n`;
+            mensaje += `${escapeMarkdownV2(`${idx})`)} ${escapeMarkdownV2(jugador.username)}\n`;
         });
 
         await botQueue.sendMessage(chatId,mensaje, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
