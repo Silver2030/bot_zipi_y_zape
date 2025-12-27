@@ -6,11 +6,13 @@ async function procesarJugadoresGrupo(botQueue, chatId, args, tipo) {
         return botQueue.sendMessage(chatId, `Falta ID de ${tipo}`);
     }
 
+    let usuarios;
+
     const grupoId = args[0];
     if(tipo === 'pais'){
-        const usuarios = await apiCall('user.getUsersByCountry', { countryId: grupoId });
+        usuarios = await apiCall('user.getUsersByCountry', { countryId: grupoId });
     }else{
-        const usuarios = await apiCall('mu.getById', { muId: grupoId });
+        usuarios = await apiCall('mu.getById', { muId: grupoId });
     }
 
     if (!usuarios?.length) {
