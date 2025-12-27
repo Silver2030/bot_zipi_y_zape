@@ -7,7 +7,11 @@ async function procesarJugadoresGrupo(botQueue, chatId, args, tipo) {
     }
 
     const grupoId = args[0];
-    const usuarios = await apiCall(tipo === 'pais' ? 'country.getUsers' : 'mu.getUsers', { id: grupoId });
+    if(tipo === 'pais'){
+        const usuarios = await apiCall('user.getUsersByCountry', { countryId: grupoId });
+    }else{
+        const usuarios = await apiCall('mu.getById', { muId: grupoId });
+    }
 
     if (!usuarios?.length) {
         return botQueue.sendMessage(chatId, `No se encontraron usuarios en este ${tipo}`);
