@@ -55,11 +55,18 @@ function analizarBuild(userData) {
     return { build, nivel: userData.leveling?.level || 0 };
 }
 
+function extraerId(input) {
+    if (!input) return null;
+    return input.split('/').pop();
+}
+
+
 module.exports = { 
     escapeMarkdownV2, 
     formatNumber, 
     formatNumberMarkdown, 
     delay, 
     generarExcelBuffer, 
-    analizarBuild 
+    analizarBuild,
+    extraerId
 };

@@ -1,17 +1,17 @@
 const { getUserData, apiCall } = require('../services/apiService');
-const { escapeMarkdownV2, formatNumberMarkdown, generarExcelBuffer, delay } = require('../utils/helpers');
+const { escapeMarkdownV2, formatNumberMarkdown, generarExcelBuffer, delay, extraerId } = require('../utils/helpers');
 
 async function procesarJugadoresGrupo(botQueue, chatId, args, tipo) {
     if (!args[0]) {
         return botQueue.sendMessage(chatId, `Falta ID de ${tipo}`);
     }
 
+    const grupoId = extraerId(args[0]);
     let usuarios;
 
-    const grupoId = args[0];
-    if(tipo === 'pais'){
+    if (tipo === 'pais') {
         usuarios = await apiCall('user.getUsersByCountry', { countryId: grupoId });
-    }else{
+    } else {
         usuarios = await apiCall('mu.getById', { muId: grupoId });
     }
 
