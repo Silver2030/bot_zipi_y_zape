@@ -55,7 +55,7 @@ async function procesarJugadoresGrupo(botQueue, chatId, args, tipo) {
     const chunkSize = 10;
     for (let i = 0; i < resultados.length; i += chunkSize) {
         const chunk = resultados.slice(i, i + chunkSize);
-        let mensaje = `*Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)}:*\n\n`;
+        let mensaje = `*Jugadores ${i + 1}\\-${Math.min(i + chunkSize, resultados.length)}:*\n\n`;
         chunk.forEach((jugador, index) => {
             const idx = i + index + 1;
             mensaje += `${idx}) ${escapeMarkdownV2(jugador.username)}\nhttps://app.warera.io/user/${escapeMarkdownV2(jugador.userId)}\n\n`;
