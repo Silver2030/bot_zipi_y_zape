@@ -1,16 +1,16 @@
 const { getUserData, apiCall } = require('../services/apiService');
 const { escapeMarkdownV2, formatNumberMarkdown, generarExcelBuffer, delay } = require('../utils/helpers');
 
-async function procesarJugadoresGrupo(botQueue, args, tipo) {
+async function procesarJugadoresGrupo(botQueue, chatId, args, tipo) {
     if (!args[0]) {
-        return botQueue.sendMessage(`Falta ID de ${tipo}`);
+        return botQueue.sendMessage(chatId, `Falta ID de ${tipo}`);
     }
 
     const grupoId = args[0];
     const usuarios = await apiCall(tipo === 'pais' ? 'country.getUsers' : 'mu.getUsers', { id: grupoId });
 
     if (!usuarios?.length) {
-        return botQueue.sendMessage(`No se encontraron usuarios en este ${tipo}`);
+        return botQueue.sendMessage(chatId, `No se encontraron usuarios en este ${tipo}`);
     }
     
     const resultados = [];
@@ -38,21 +38,21 @@ async function procesarJugadoresGrupo(botQueue, args, tipo) {
             mensaje += `${idx}) ${escapeMarkdownV2(jugador.username)}\nhttps://app.warera.io/user/${escapeMarkdownV2(jugador.userId)}\n\n`;
         });
 
-        await botQueue.sendMessage(mensaje, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
+        await botQueue.sendMessage(chatId,mensaje, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
         await delay(500);
     }
 }
 
-async function procesarDineroGrupo(botQueue, args, tipo) {
+async function procesarDineroGrupo(botQueue, chatId, args, tipo) {
     if (!args[0]) {
-        return botQueue.sendMessage(`Falta ID de ${tipo}`);
+        return botQueue.sendMessage(chatId,`Falta ID de ${tipo}`);
     }
 
     const grupoId = args[0];
     const items = await apiCall(tipo === 'pais' ? 'country.getUsers' : 'mu.getUsers', { id: grupoId });
 
     if (!items?.length) {
-        return botQueue.sendMessage(`No se encontraron usuarios en este ${tipo}`);
+        return botQueue.sendMessage(chatId,`No se encontraron usuarios en este ${tipo}`);
     }
 
     const resultados = [];
@@ -83,7 +83,7 @@ async function procesarDineroGrupo(botQueue, args, tipo) {
             totalFactories += userData.factories?.length || 0;
 
             if (index % 10 === 0) {
-                await botQueue.sendMessage(`💰 Procesando ${index + 1}/${items.length} jugadores...`);
+                await botQueue.sendMessage(chatId,`💰 Procesando ${index + 1}/${items.length} jugadores...`);
             }
 
         } catch (error) {
@@ -107,24 +107,24 @@ async function procesarDineroGrupo(botQueue, args, tipo) {
     mensajePrincipal += `💰 Wealth: ${formatNumberMarkdown(avgWealth)}\n🏭 Fábricas: ${formatNumberMarkdown(avgFactoryWealth)}\n`;
     mensajePrincipal += `💵 Dinero/Almacen: ${formatNumberMarkdown(avgLiquidWealth)}\n🔧 ${avgFactories.toFixed(1)} fábricas`;
 
-    await botQueue.sendMessage(mensajePrincipal, { parse_mode: "MarkdownV2" });
+    await botQueue.sendMessage(chatId,mensajePrincipal, { parse_mode: "MarkdownV2" });
 
     try {
         const excelBuffer = await generarExcelBuffer(resultados, `${tipo}_${Date.now()}`);
         await botQueue.sendDocument(excelBuffer, { filename: `dinero_${tipo}_${Date.now()}.xlsx` });
     } catch (error) {
         console.error('Error generando Excel:', error);
-        await botQueue.sendMessage('⚠️ No se pudo generar el archivo Excel, pero aquí están los datos:');
+        await botQueue.sendMessage(chatId,'⚠️ No se pudo generar el archivo Excel, pero aquí están los datos:');
     }
 }
 
-async function procesarGrupoDanyo(botQueue, args, tipo) {
-    if (!args[0]) return botQueue.sendMessage(`Falta ID de ${tipo}`);
+async function procesarGrupoDanyo(botQueue, chatId, args, tipo) {
+    if (!args[0]) return botQueue.sendMessage(chatId, `Falta ID de ${tipo}`);
 
     const grupoId = args[0];
     const usuarios = await apiCall(tipo === 'pais' ? 'country.getUsers' : 'mu.getUsers', { id: grupoId });
 
-    if (!usuarios?.length) return botQueue.sendMessage(`No se encontraron usuarios en este ${tipo}`);
+    if (!usuarios?.length) return botQueue.sendMessage(chatId, `No se encontraron usuarios en este ${tipo}`);
 
     const resultados = [];
 
@@ -147,7 +147,7 @@ async function procesarGrupoDanyo(botQueue, args, tipo) {
         mensaje += `${i + 1}) ${escapeMarkdownV2(r.username)}: ${formatNumberMarkdown(r.damage)}\n`;
     });
 
-    await botQueue.sendMessage(mensaje, { parse_mode: "MarkdownV2" });
+    await botQueue.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
 }
 
 module.exports = { procesarJugadoresGrupo, procesarDineroGrupo, procesarGrupoDanyo };
