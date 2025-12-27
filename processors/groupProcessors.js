@@ -15,23 +15,40 @@ async function procesarJugadoresGrupo(botQueue, chatId, args, tipo) {
         usuarios = await apiCall('mu.getById', { muId: grupoId });
     }
 
-    if (!usuarios?.length) {
+    if (!usuarios) {
         return botQueue.sendMessage(chatId, `No se encontraron usuarios en este ${tipo}`);
     }
     
     const resultados = [];
-    for (const usuario of usuarios) {
-        try {
-            const userData = await getUserData(usuario._id);
-            if (!userData) continue;
+    if (tipo === 'pais') {
+        for (const usuario of usuarios.items) {
+            try {
+                const userData = await getUserData(usuario._id);
+                if (!userData) continue;
 
-            resultados.push({
-                username: userData.username,
-                userId: usuario._id,
-                level: userData.leveling?.level || 0
-            });
-        } catch (err) {
-            console.error(`Error procesando usuario ${usuario._id}:`, err.message);
+                resultados.push({
+                    username: userData.username,
+                    userId: usuario._id,
+                    level: userData.leveling?.level || 0
+                });
+            } catch (err) {
+                console.error(`Error procesando usuario ${usuario._id}:`, err.message);
+            }
+        }
+    } else {
+        for (const usuario of usuarios.members) {
+            try {
+                const userData = await getUserData(usuario);
+                if (!userData) continue;
+
+                resultados.push({
+                    username: userData.username,
+                    userId: usuario,
+                    level: userData.leveling?.level || 0
+                });
+            } catch (err) {
+                console.error(`Error procesando usuario ${usuario._id}:`, err.message);
+            }
         }
     }
 
