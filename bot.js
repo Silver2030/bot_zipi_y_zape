@@ -769,7 +769,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
 }
 
 async function procesarDineroGrupo(chatId, args, tipo) {
-  const ENVIAR_LISTA_EN_CHAT = false;
+  const ENVIAR_LISTA_EN_CHAT = true;
   const CHUNK_DELAY_MS = 900;
 
   if (args.length < 1) {
