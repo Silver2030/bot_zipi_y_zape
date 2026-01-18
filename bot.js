@@ -350,60 +350,30 @@ function duracionRondaLenta(puntosA = 0, puntosB = 0) {
   return tiempo;
 }
 
-// -------------------------
-// Excel (igual que antes)
-// -------------------------
 function generarExcelBuffer(resultados, nombreGrupo) {
   const workbook = XLSX.utils.book_new();
 
-  const datos = [["Ranking", "Name", "Url", "Level", "Companies", "Wealth", "Companies Wealth", "Player Wealth", "Factory Disabled"]];
+  const datos = [
+    ["Ranking", "Name", "Url", "Level", "Companies", "Wealth", "Companies Wealth", "Player Wealth", "Factory Disabled"],
+  ];
 
   resultados.forEach((jugador, index) => {
     datos.push([
       index + 1,
       jugador.username,
       `https://app.warera.io/user/${jugador.userId}`,
-      jugador.level || "N/A",
-      jugador.factoryCount,
-      jugador.totalWealth,
-      jugador.factoryWealth,
-      jugador.liquidWealth,
+      jugador.level ?? "N/A",
+      jugador.factoryCount ?? 0,
+      Number(jugador.totalWealth ?? 0),
+      Number(jugador.factoryWealth ?? 0),
+      Number(jugador.liquidWealth ?? 0),
       jugador.hasDisabledFactories ? "Yes" : "No",
     ]);
   });
 
   const worksheet = XLSX.utils.aoa_to_sheet(datos);
-  const range = XLSX.utils.decode_range(worksheet["!ref"]);
 
-  const headerColor = { rgb: "4F81BD" };
-  const evenRowColor = { rgb: "DCE6F1" };
-  const oddRowColor = { rgb: "F2F2F2" };
-
-  for (let R = range.s.r; R <= range.e.r; R++) {
-    for (let C = range.s.c; C <= range.e.c; C++) {
-      const cell_ref = XLSX.utils.encode_cell({ c: C, r: R });
-      if (!worksheet[cell_ref]) continue;
-
-      if (!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
-
-      if (R === 0) {
-        worksheet[cell_ref].s.fill = { fgColor: headerColor };
-        worksheet[cell_ref].s.font = { bold: true, color: { rgb: "FFFFFF" } };
-      } else {
-        worksheet[cell_ref].s.fill = { fgColor: R % 2 === 0 ? evenRowColor : oddRowColor };
-      }
-
-      worksheet[cell_ref].s.border = {
-        top: { style: "thin", color: { rgb: "000000" } },
-        left: { style: "thin", color: { rgb: "000000" } },
-        bottom: { style: "thin", color: { rgb: "000000" } },
-        right: { style: "thin", color: { rgb: "000000" } },
-      };
-
-      worksheet[cell_ref].s.alignment = { horizontal: "center", vertical: "center" };
-    }
-  }
-
+  // Anchos (esto sí funciona en xlsx normal)
   worksheet["!cols"] = [
     { wch: 10 },
     { wch: 20 },
@@ -416,18 +386,10 @@ function generarExcelBuffer(resultados, nombreGrupo) {
     { wch: 15 },
   ];
 
-  worksheet["!autofilter"] = { ref: "A1:I1" };
   XLSX.utils.book_append_sheet(workbook, worksheet, "Datos");
 
-  const excelBuffer = XLSX.write(workbook, {
-    type: "buffer",
-    bookType: "xlsx",
-    bookSST: false,
-    compression: false,
-    cellStyles: true,
-  });
-
-  return excelBuffer;
+  // ✅ Sin cellStyles (evita comportamientos raros según versión)
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 }
 
 // -------------------------
@@ -930,20 +892,26 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     try {
     const progressExcelMsg = await tgSendMessageSafe(chatId, `📊 Generando archivo Excel...`);
 
-    const excelBuffer = generarExcelBuffer(resultados, nombreGrupo);
+    const raw = generarExcelBuffer(resultados, nombreGrupo);
+
+    // ✅ Asegura Buffer real
+    const excelBuffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+
+    if (!excelBuffer.length) {
+        throw new Error("Excel buffer vacío");
+    }
+
     const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
 
-    // ✅ Así lo detecta como archivo real
-    const file = {
-        source: excelBuffer,
-        filename: nombreArchivo,
-    };
-
+    // ✅ MUY IMPORTANTE: Buffer directo + filename en fileOptions
     await tgSendDocumentSafe(
         chatId,
-        file,
-        {}, // opciones del mensaje (caption etc.)
-        { contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } // fileOptions
+        excelBuffer,
+        {}, // message options (caption, etc.)
+        {
+        filename: nombreArchivo,
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }
     );
 
     await tgDeleteMessageSafe(chatId, progressExcelMsg.message_id);
@@ -951,7 +919,6 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     console.error("Error generando/enviando Excel:", error?.message || error);
     await tgSendMessageSafe(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
     }
-
 
     // Lista en chunks (opcional)
     if (ENVIAR_LISTA_EN_CHAT) {
