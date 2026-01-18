@@ -1021,14 +1021,6 @@ function tgEnqueue(fn, opts) {
   return tgQueue;
 }
 
-const doc = {
-  value: excelBuffer,
-  options: {
-    filename: nombreArchivo,
-    contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  },
-};
-
 // Wrappers que usarás en vez de bot.sendMessage/etc
 function tgSendMessage(chatId, text, options) {
   return tgEnqueue(() => bot.sendMessage(chatId, text, options));
