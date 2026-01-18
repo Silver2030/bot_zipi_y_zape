@@ -769,7 +769,6 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
 }
 
 async function procesarDineroGrupo(chatId, args, tipo) {
-  // 🔧 Recomendación: si mandas Excel, no mandes chunks para evitar 429
   const ENVIAR_LISTA_EN_CHAT = false;
   const CHUNK_DELAY_MS = 900;
 
@@ -783,13 +782,6 @@ async function procesarDineroGrupo(chatId, args, tipo) {
   }
 
   const id = args[0].split("/").pop();
-
-  // Helper timeout (para no quedarte colgado en sendDocument)
-  const withTimeout = (promise, ms, label = "timeout") =>
-    Promise.race([
-      promise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error(label)), ms)),
-    ]);
 
   try {
     let items = [];
@@ -820,12 +812,10 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       return;
     }
 
-    console.log(`[DINERO] Inicio. Tipo=${tipo} id=${id} jugadores=${items.length}`);
     const progressMsg = await tgSendMessage(chatId, `💰 Procesando ${items.length} jugadores...`);
 
     // 1) Batch usuarios
     const userIds = items.map((x) => x._id);
-    console.log(`[DINERO] Fetch usersLite (${userIds.length})...`);
     const usersData = await fetchUsersLite(userIds, { batchSize: 30 });
 
     // 2) Batch company.getCompanies por usuario
@@ -833,7 +823,6 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       chat_id: chatId,
       message_id: progressMsg.message_id,
     });
-    console.log(`[DINERO] Fetch companiesByUser (${userIds.length})...`);
     const companiesByUser = await fetchCompaniesByUser(userIds, { batchSize: 20 });
 
     // 3) Batch company.getById para TODAS las empresas únicas
@@ -843,16 +832,13 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       allCompanyIds.push(...ids);
     }
 
-    const uniqueFactories = new Set(allCompanyIds).size;
-    await tgEditMessageText(`💰 Cargando datos de ${uniqueFactories} fábricas...`, {
+    await tgEditMessageText(`💰 Cargando datos de ${new Set(allCompanyIds).size} fábricas...`, {
       chat_id: chatId,
       message_id: progressMsg.message_id,
     });
-    console.log(`[DINERO] Fetch companyById (unique=${uniqueFactories})...`);
     const companyById = await fetchCompaniesById(allCompanyIds, { batchSize: 40 });
 
     // 4) Calcular
-    console.log(`[DINERO] Calculando...`);
     const resultados = [];
     let totalWealth = 0;
     let totalFactoryWealth = 0;
@@ -901,7 +887,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       totalLiquidWealth += liquidWealth;
       totalFactories += factoryCount;
 
-      // menos edits
+      // menos edits para evitar 429
       if (idx % 80 === 0) {
         await tgEditMessageText(`💰 Calculando ${idx + 1}/${usersData.length} jugadores...`, {
           chat_id: chatId,
@@ -917,8 +903,6 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       return;
     }
 
-    console.log(`[DINERO] Cálculo listo. resultados=${resultados.length}`);
-
     const playerCount = resultados.length;
     const avgWealth = totalWealth / playerCount;
     const avgFactoryWealth = totalFactoryWealth / playerCount;
@@ -927,7 +911,6 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
     resultados.sort((a, b) => b.totalWealth - a.totalWealth);
 
-    // IMPORTANTE: tu URL tenía /pais en el mensaje (la tuya en el log). Mantengo tu grupoUrl real.
     let mensajePrincipal = `💰 *DINERO DE [${escapeMarkdownV2(nombreGrupo)}](${escapeMarkdownV2(grupoUrl)})*\n\n`;
     mensajePrincipal += `*Estadísticas Generales:*\n`;
     mensajePrincipal += `👥 Jugadores: ${playerCount}\n`;
@@ -943,30 +926,21 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
     await tgSendMessage(chatId, mensajePrincipal, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
 
-    // Excel
+    // Excel (✅ forma correcta para node-telegram-bot-api)
     try {
-      console.log(`[DINERO] Generando Excel...`);
       const progressExcelMsg = await tgSendMessage(chatId, `📊 Generando archivo Excel...`);
-
       const excelBuffer = generarExcelBuffer(resultados, nombreGrupo);
       const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
 
-      console.log(`[DINERO] Excel listo (${(excelBuffer?.length || 0)} bytes). Enviando...`);
+      const doc = {
+        value: excelBuffer,
+        options: {
+          filename: nombreArchivo,
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      };
 
-      // ✅ Enviar como "file options" con source Buffer (más compatible)
-      // y con timeout para no quedarte colgado si Telegram se pone tonto.
-      await withTimeout(
-        tgSendDocument(
-          chatId,
-          { source: excelBuffer, filename: nombreArchivo },
-          {},
-          { contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
-        ),
-        120000,
-        "sendDocument timeout"
-      );
-
-      console.log(`[DINERO] Excel enviado OK`);
+      await tgSendDocument(chatId, doc);
       await tgDeleteMessage(chatId, progressExcelMsg.message_id);
     } catch (error) {
       console.error("Error generando/enviando Excel:", error);
@@ -1047,6 +1021,14 @@ function tgEnqueue(fn, opts) {
   return tgQueue;
 }
 
+const doc = {
+  value: excelBuffer,
+  options: {
+    filename: nombreArchivo,
+    contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  },
+};
+
 // Wrappers que usarás en vez de bot.sendMessage/etc
 function tgSendMessage(chatId, text, options) {
   return tgEnqueue(() => bot.sendMessage(chatId, text, options));
@@ -1057,10 +1039,9 @@ function tgEditMessageText(text, options) {
 function tgDeleteMessage(chatId, messageId) {
   return tgEnqueue(() => bot.deleteMessage(chatId, messageId));
 }
-function tgSendDocument(chatId, doc, options1, options2) {
-  return tgEnqueue(() => bot.sendDocument(chatId, doc, options1, options2));
+function tgSendDocument(chatId, doc, options = {}) {
+  return tgEnqueue(() => bot.sendDocument(chatId, doc, options));
 }
-
 
 // -------------------------
 // Comandos
