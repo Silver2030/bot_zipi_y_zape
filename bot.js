@@ -524,7 +524,7 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
       tipo === "pais"
         ? "/paisesDanyo https://app.warera.io/country/683ddd2c24b5a2e114af15d9 PESCADO"
         : "/muDanyo https://app.warera.io/mu/687cbb53fae4c9cf04340e77 PESCADO";
-    bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`, { parse_mode: "Markdown", disable_web_page_preview: true });
+    tgSendMessageSafe(chatId, `Ejemplo: ${ejemplo}`, { parse_mode: "Markdown", disable_web_page_preview: true });
     return;
   }
 
@@ -533,7 +533,7 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
   const healFood = HEAL_FOOD_MAP[comida];
 
   if (!healFood) {
-    bot.sendMessage(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
+    tgSendMessageSafe(chatId, "Comida inválida. Usa PAN, FILETE o PESCADO.");
     return;
   }
 
@@ -546,13 +546,13 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
     } else {
       const muData = await getMUData(id);
       if (!muData?.members?.length) {
-        bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+        tgSendMessageSafe(chatId, "No se encontraron miembros en esa MU.");
         return;
       }
       items = muData.members.map((userId) => ({ _id: userId }));
     }
 
-    const progressMsg = await bot.sendMessage(chatId, `⚙️ Procesando ${items.length} jugadores...`);
+    const progressMsg = await tgSendMessageSafe(chatId, `⚙️ Procesando ${items.length} jugadores...`);
 
     const userIds = items.map((x) => x._id);
     const usersData = await fetchUsersLite(userIds, { batchSize: 30 });
@@ -577,14 +577,14 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
       });
 
       if (idx % 25 === 0) {
-        await bot.editMessageText(`⚙️ Procesando ${idx + 1}/${usersData.length} jugadores...`, {
+        await tgEditMessageTextSafe(`⚙️ Procesando ${idx + 1}/${usersData.length} jugadores...`, {
           chat_id: chatId,
           message_id: progressMsg.message_id,
         });
       }
     }
 
-    await bot.deleteMessage(chatId, progressMsg.message_id);
+    await tgDeleteMessageSafe(chatId, progressMsg.message_id);
 
     resultados.sort((a, b) => b.danyoActual - a.danyoActual);
 
@@ -596,7 +596,7 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
       `👥 Jugadores: ${resultados.length}`,
     ].join("\n");
 
-    await bot.sendMessage(chatId, mensajeResumen);
+    await tgSendMessageSafe(chatId, mensajeResumen);
 
     const chunkSize = 10;
     for (let i = 0; i < resultados.length; i += chunkSize) {
@@ -609,12 +609,12 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
         .join("\n");
 
       const header = `📊 Jugadores ${i + 1}-${Math.min(i + chunkSize, resultados.length)}:\n\n`;
-      await bot.sendMessage(chatId, header + mensajeChunk);
+      await tgSendMessageSafe(chatId, header + mensajeChunk);
       await delay(250);
     }
   } catch (error) {
     console.error(error?.message || error);
-    bot.sendMessage(chatId, "Error al procesar el comando.");
+    tgSendMessageSafe(chatId, "Error al procesar el comando.");
   }
 }
 
@@ -624,7 +624,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
       tipo === "pais"
         ? "/jugadoresPais https://app.warera.io/country/6813b6d446e731854c7ac7ae"
         : "/jugadoresMu https://app.warera.io/mu/687cbb53fae4c9cf04340e77";
-    bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`, { parse_mode: "Markdown", disable_web_page_preview: true });
+    tgSendMessageSafe(chatId, `Ejemplo: ${ejemplo}`, { parse_mode: "Markdown", disable_web_page_preview: true });
     return;
   }
 
@@ -647,7 +647,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
     } else {
       const muData = await getMUData(id);
       if (!muData?.members?.length) {
-        bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+        tgSendMessageSafe(chatId, "No se encontraron miembros en esa MU.");
         return;
       }
       items = muData.members.map((userId) => ({ _id: userId }));
@@ -655,11 +655,11 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
     }
 
     if (!items.length) {
-      bot.sendMessage(chatId, `No se encontraron jugadores en el ${tipo === "pais" ? "país" : "MU"} especificado.`);
+      tgSendMessageSafe(chatId, `No se encontraron jugadores en el ${tipo === "pais" ? "país" : "MU"} especificado.`);
       return;
     }
 
-    const progressMsg = await bot.sendMessage(chatId, `📊 Procesando ${items.length} jugadores...`);
+    const progressMsg = await tgSendMessageSafe(chatId, `📊 Procesando ${items.length} jugadores...`);
 
     const userIds = items.map((x) => x._id);
     const usersData = await fetchUsersLite(userIds, { batchSize: 30 });
@@ -683,17 +683,17 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
       });
 
       if (idx % 30 === 0) {
-        await bot.editMessageText(`📊 Procesando ${idx + 1}/${usersData.length} jugadores...`, {
+        await tgEditMessageTextSafe(`📊 Procesando ${idx + 1}/${usersData.length} jugadores...`, {
           chat_id: chatId,
           message_id: progressMsg.message_id,
         });
       }
     }
 
-    await bot.deleteMessage(chatId, progressMsg.message_id);
+    await tgDeleteMessageSafe(chatId, progressMsg.message_id);
 
     if (!usuariosProcesados.length) {
-      bot.sendMessage(chatId, "No se pudieron procesar los datos de ningún jugador.");
+      tgSendMessageSafe(chatId, "No se pudieron procesar los datos de ningún jugador.");
       return;
     }
 
@@ -720,7 +720,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
       `⚔️ PVP: ${pvp.length} | 🎯 Híbridos: ${hibridos.length} | 💰 ECO: ${eco.length}`,
     ].join("\n");
 
-    await bot.sendMessage(chatId, mensajeResumen, { parse_mode: "Markdown", disable_web_page_preview: true });
+    await tgSendMessageSafe(chatId, mensajeResumen, { parse_mode: "Markdown", disable_web_page_preview: true });
     await delay(300);
 
     const formatUsuarioSimple = (u) => {
@@ -734,7 +734,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
       const chunks = dividirEnChunks(pvp, 50);
       for (let i = 0; i < chunks.length; i++) {
         const msg = `⚔️ PVP - Parte ${i + 1}/${chunks.length}:\n\n` + chunks[i].map(formatUsuarioSimple).join("\n");
-        await bot.sendMessage(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
+        await tgSendMessageSafe(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
         await delay(200);
       }
     }
@@ -743,7 +743,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
       const chunks = dividirEnChunks(hibridos, 50);
       for (let i = 0; i < chunks.length; i++) {
         const msg = `🎯 HIBRIDA - Parte ${i + 1}/${chunks.length}:\n\n` + chunks[i].map(formatUsuarioSimple).join("\n");
-        await bot.sendMessage(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
+        await tgSendMessageSafe(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
         await delay(200);
       }
     }
@@ -752,7 +752,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
       const chunks = dividirEnChunks(eco, 50);
       for (let i = 0; i < chunks.length; i++) {
         const msg = `💰 ECO - Parte ${i + 1}/${chunks.length}:\n\n` + chunks[i].map(formatUsuarioSimple).join("\n");
-        await bot.sendMessage(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
+        await tgSendMessageSafe(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
         await delay(200);
       }
     }
@@ -761,10 +761,10 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
     if (!pvp.length) categoriasVacias.push("PVP");
     if (!hibridos.length) categoriasVacias.push("Híbridos");
     if (!eco.length) categoriasVacias.push("ECO");
-    if (categoriasVacias.length) await bot.sendMessage(chatId, `📝 Categorías vacías: ${categoriasVacias.join(", ")}`);
+    if (categoriasVacias.length) await tgSendMessageSafe(chatId, `📝 Categorías vacías: ${categoriasVacias.join(", ")}`);
   } catch (error) {
     console.error(`Error en procesarJugadoresGrupo:`, error);
-    bot.sendMessage(chatId, "Error al procesar el comando.");
+    tgSendMessageSafe(chatId, "Error al procesar el comando.");
   }
 }
 
@@ -777,7 +777,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       tipo === "pais"
         ? "/dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae"
         : "/dineromu https://app.warera.io/mu/687cbb53fae4c9cf04340e77";
-    await tgSendMessage(chatId, `Ejemplo: ${ejemplo}`, { parse_mode: "Markdown", disable_web_page_preview: true });
+    await tgSendMessageSafe(chatId, `Ejemplo: ${ejemplo}`, { parse_mode: "Markdown", disable_web_page_preview: true });
     return;
   }
 
@@ -800,7 +800,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     } else {
       const muData = await getMUData(id);
       if (!muData?.members?.length) {
-        await tgSendMessage(chatId, "No se encontraron miembros en esa MU.");
+        await tgSendMessageSafe(chatId, "No se encontraron miembros en esa MU.");
         return;
       }
       items = muData.members.map((userId) => ({ _id: userId }));
@@ -808,18 +808,18 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     }
 
     if (!items.length) {
-      await tgSendMessage(chatId, `No se encontraron jugadores en el ${tipo === "pais" ? "país" : "MU"} especificado.`);
+      await tgSendMessageSafe(chatId, `No se encontraron jugadores en el ${tipo === "pais" ? "país" : "MU"} especificado.`);
       return;
     }
 
-    const progressMsg = await tgSendMessage(chatId, `💰 Procesando ${items.length} jugadores...`);
+    const progressMsg = await tgSendMessageSafe(chatId, `💰 Procesando ${items.length} jugadores...`);
 
     // 1) Batch usuarios
     const userIds = items.map((x) => x._id);
     const usersData = await fetchUsersLite(userIds, { batchSize: 30 });
 
     // 2) Batch company.getCompanies por usuario
-    await tgEditMessageText(`💰 Cargando fábricas de ${userIds.length} jugadores...`, {
+    await tgEditMessageTextSafe(`💰 Cargando fábricas de ${userIds.length} jugadores...`, {
       chat_id: chatId,
       message_id: progressMsg.message_id,
     });
@@ -832,7 +832,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       allCompanyIds.push(...ids);
     }
 
-    await tgEditMessageText(`💰 Cargando datos de ${new Set(allCompanyIds).size} fábricas...`, {
+    await tgEditMessageTextSafe(`💰 Cargando datos de ${new Set(allCompanyIds).size} fábricas...`, {
       chat_id: chatId,
       message_id: progressMsg.message_id,
     });
@@ -889,17 +889,17 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
       // menos edits para evitar 429
       if (idx % 80 === 0) {
-        await tgEditMessageText(`💰 Calculando ${idx + 1}/${usersData.length} jugadores...`, {
+        await tgEditMessageTextSafe(`💰 Calculando ${idx + 1}/${usersData.length} jugadores...`, {
           chat_id: chatId,
           message_id: progressMsg.message_id,
         });
       }
     }
 
-    await tgDeleteMessage(chatId, progressMsg.message_id);
+    await tgDeleteMessageSafe(chatId, progressMsg.message_id);
 
     if (!resultados.length) {
-      await tgSendMessage(chatId, "No se pudieron obtener datos.");
+      await tgSendMessageSafe(chatId, "No se pudieron obtener datos.");
       return;
     }
 
@@ -924,7 +924,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     mensajePrincipal += `💵 Dinero/Almacen: ${formatNumberMarkdown(avgLiquidWealth)} monedas\n`;
     mensajePrincipal += `🔧 Nº fábricas: ${escapeMarkdownV2(avgFactories.toFixed(1))}`;
 
-    await tgSendMessage(chatId, mensajePrincipal, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
+    await tgSendMessageSafe(chatId, mensajePrincipal, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
 
     // Excel (✅ envío correcto como documento)
     try {
@@ -933,24 +933,25 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     const excelBuffer = generarExcelBuffer(resultados, nombreGrupo);
     const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
 
-    // ✅ OJO: así lo detecta como archivo real (multipart), no como texto
+    // ✅ Así lo detecta como archivo real
     const file = {
         source: excelBuffer,
         filename: nombreArchivo,
     };
 
-    await tgSendDocument(
+    await tgSendDocumentSafe(
         chatId,
         file,
-        {}, // opciones del mensaje (caption, etc.)
+        {}, // opciones del mensaje (caption etc.)
         { contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } // fileOptions
     );
 
-    await tgDeleteMessage(chatId, progressExcelMsg.message_id);
+    await tgDeleteMessageSafe(chatId, progressExcelMsg.message_id);
     } catch (error) {
     console.error("Error generando/enviando Excel:", error?.message || error);
     await tgSendMessageSafe(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
     }
+
 
     // Lista en chunks (opcional)
     if (ENVIAR_LISTA_EN_CHAT) {
@@ -973,13 +974,13 @@ async function procesarDineroGrupo(chatId, args, tipo) {
           mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
         });
 
-        await tgSendMessage(chatId, mensajeChunk, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
+        await tgSendMessageSafe(chatId, mensajeChunk, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
         await delay(CHUNK_DELAY_MS);
       }
     }
   } catch (error) {
     console.error(`Error en procesarDineroGrupo (${tipo}):`, error);
-    await tgSendMessage(chatId, "Error al procesar el comando.");
+    await tgSendMessageSafe(chatId, "Error al procesar el comando.");
   }
 }
 
@@ -988,55 +989,59 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 // -------------------------
 let tgQueue = Promise.resolve();
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 function extractRetryAfterSeconds(err) {
-  // node-telegram-bot-api suele ponerlo en err.response.body.parameters.retry_after
   const ra1 = err?.response?.body?.parameters?.retry_after;
   if (typeof ra1 === "number") return ra1;
 
-  // A veces viene en headers
-  const ra2 = err?.response?.headers?.["retry-after"];
+  const ra2 = err?.response?.headers?.["retry-after"] ?? err?.response?.headers?.["Retry-After"];
   const n2 = Number(ra2);
   if (!Number.isNaN(n2) && n2 > 0) return n2;
 
-  // Tu log muestra rawHeaders con Retry-After, así que esto lo cubre
   return null;
 }
 
-async function tgCall(fn, { maxRetries = 5 } = {}) {
+async function tgCallWithRetry(fn, { maxRetries = 6 } = {}) {
   let attempt = 0;
 
   while (true) {
     try {
       return await fn();
     } catch (err) {
-      const is429 = err?.code === "ETELEGRAM" && (err?.response?.statusCode === 429 || err?.response?.body?.error_code === 429);
+      const is429 =
+        err?.code === "ETELEGRAM" &&
+        (err?.response?.statusCode === 429 || String(err?.message || "").includes("429"));
+
       if (!is429 || attempt >= maxRetries) throw err;
 
       const ra = extractRetryAfterSeconds(err) ?? 3;
-      // Telegram pide X segundos, le sumamos un pequeño margen
-      await delay((ra * 1000) + 300);
+      await sleep(ra * 1000 + 350);
       attempt++;
     }
   }
 }
 
-// Encola llamadas para no disparar bursts
-function tgEnqueue(fn, opts) {
-  tgQueue = tgQueue.then(() => tgCall(fn, opts));
+function tgEnqueue(task) {
+  tgQueue = tgQueue.then(task, task);
   return tgQueue;
 }
 
-// Wrappers que usarás en vez de bot.sendMessage/etc
-function tgSendMessage(chatId, text, options) {
-  return tgEnqueue(() => bot.sendMessage(chatId, text, options));
+function tgSendMessageSafe(chatId, text, options = {}) {
+  return tgEnqueue(() => tgCallWithRetry(() => bot.sendMessage(chatId, text, options)));
 }
-function tgEditMessageText(text, options) {
-  return tgEnqueue(() => bot.editMessageText(text, options));
+
+function tgEditMessageTextSafe(text, opts) {
+  return tgEnqueue(() => tgCallWithRetry(() => bot.editMessageText(text, opts)));
 }
-function tgDeleteMessage(chatId, messageId) {
-  return tgEnqueue(() => bot.deleteMessage(chatId, messageId));
+
+function tgDeleteMessageSafe(chatId, messageId) {
+  return tgEnqueue(() => tgCallWithRetry(() => bot.deleteMessage(chatId, messageId)));
 }
-function tgSendDocument(chatId, document, options = {}, fileOptions = {}) {
+
+function tgSendDocumentSafe(chatId, document, options = {}, fileOptions = {}) {
   return tgEnqueue(() => tgCallWithRetry(() => bot.sendDocument(chatId, document, options, fileOptions)));
 }
 
@@ -1059,12 +1064,12 @@ const comandos = {
 /duracion <GUERRA> - Duración restante de una guerra
 /all - Menciona al grupo
 /produccion - Ranking productivo`;
-    bot.sendMessage(chatId, mensaje);
+    tgSendMessageSafe(chatId, mensaje);
   },
 
   buscar: async (chatId, args) => {
     if (args.length < 1) {
-      bot.sendMessage(chatId, "Ejemplo: /buscar Silver");
+      tgSendMessageSafe(chatId, "Ejemplo: /buscar Silver");
       return;
     }
 
@@ -1074,7 +1079,7 @@ const comandos = {
       const searchData = await apiCall("search.searchAnything", { searchText });
 
       if (!searchData?.hasData) {
-        bot.sendMessage(chatId, `No hay resultados para: "${searchText}"`);
+        tgSendMessageSafe(chatId, `No hay resultados para: "${searchText}"`);
         return;
       }
 
@@ -1153,16 +1158,16 @@ const comandos = {
         }
       });
 
-      await bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
+      await tgSendMessageSafe(chatId, mensaje, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
     } catch (error) {
       console.error("Error en /buscar:", error);
-      bot.sendMessage(chatId, "Error en la búsqueda.");
+      tgSendMessageSafe(chatId, "Error en la búsqueda.");
     }
   },
 
   hambre: async (chatId, args) => {
     if (!args[0]) {
-      bot.sendMessage(chatId, "Ejemplo: /hambre https://app.warera.io/battle/XXXXXXXX DEFENDEMOS CON TODO", {
+      tgSendMessageSafe(chatId, "Ejemplo: /hambre https://app.warera.io/battle/XXXXXXXX DEFENDEMOS CON TODO", {
         parse_mode: "Markdown",
         disable_web_page_preview: true,
       });
@@ -1192,16 +1197,16 @@ const comandos = {
     }
 
     if (!menciones.length) {
-      bot.sendMessage(chatId, `Nadie tiene comida`);
+      tgSendMessageSafe(chatId, `Nadie tiene comida`);
       return;
     }
 
-    await bot.sendMessage(chatId, `${urlBattle}\n${mensajeExtra}`, { disable_web_page_preview: true });
+    await tgSendMessageSafe(chatId, `${urlBattle}\n${mensajeExtra}`, { disable_web_page_preview: true });
 
     const chunkSize = 5;
     for (let i = 0; i < menciones.length; i += chunkSize) {
       const grupo = menciones.slice(i, i + chunkSize).join("\n");
-      await bot.sendMessage(chatId, grupo);
+      await tgSendMessageSafe(chatId, grupo);
       await delay(400);
     }
   },
@@ -1227,7 +1232,7 @@ const comandos = {
       }
 
       if (!resultados.length) {
-        bot.sendMessage(chatId, "No se pudo obtener el daño semanal.");
+        tgSendMessageSafe(chatId, "No se pudo obtener el daño semanal.");
         return;
       }
 
@@ -1238,10 +1243,10 @@ const comandos = {
       const lista = resultados.map((r, i) => `${i + 1}) ${r.username}: ${formatNumber(r.weeklyDamage)}`).join("\n");
       const mensajeFinal = `Daño semanal:\n\n${lista}\n\nMedia de daño: ${formatNumber(media)}`;
 
-      bot.sendMessage(chatId, mensajeFinal);
+      tgSendMessageSafe(chatId, mensajeFinal);
     } catch (error) {
       console.error("Error en /danyoSemanal:", error);
-      bot.sendMessage(chatId, "Error al obtener daños semanales.");
+      tgSendMessageSafe(chatId, "Error al obtener daños semanales.");
     }
   },
 
@@ -1249,19 +1254,19 @@ const comandos = {
     try {
       const mencionesUnicas = [...new Set(usuarios.map((usuario) => usuario.mention))];
       if (!mencionesUnicas.length) {
-        bot.sendMessage(chatId, "No hay usuarios para mencionar.");
+        tgSendMessageSafe(chatId, "No hay usuarios para mencionar.");
         return;
       }
 
       const chunkSize = 5;
       for (let i = 0; i < mencionesUnicas.length; i += chunkSize) {
         const grupo = mencionesUnicas.slice(i, i + chunkSize).join("\n");
-        await bot.sendMessage(chatId, grupo);
+        await tgSendMessageSafe(chatId, grupo);
         if (i + chunkSize < mencionesUnicas.length) await delay(250);
       }
     } catch (error) {
       console.error("Error en /all:", error);
-      bot.sendMessage(chatId, "Error al enviar menciones.");
+      tgSendMessageSafe(chatId, "Error al enviar menciones.");
     }
   },
 
@@ -1271,7 +1276,7 @@ const comandos = {
       const productionData = productionRes.data?.result?.data;
 
       if (!productionData) {
-        bot.sendMessage(chatId, "No se pudieron obtener los datos de producción.");
+        tgSendMessageSafe(chatId, "No se pudieron obtener los datos de producción.");
         return;
       }
 
@@ -1367,24 +1372,24 @@ const comandos = {
         mensaje += `${index + 1}\\. ${emoji} *${nombreEscapado}*: ${productividadEscapada} monedas/pp\n`;
       });
 
-      bot.sendMessage(chatId, mensaje, { parse_mode: "MarkdownV2" });
+      tgSendMessageSafe(chatId, mensaje, { parse_mode: "MarkdownV2" });
     } catch (error) {
       console.error("Error en comando /produccion:", error);
-      bot.sendMessage(chatId, "Error al obtener los datos de producción.");
+      tgSendMessageSafe(chatId, "Error al obtener los datos de producción.");
     }
   },
 
   duracion: async (chatId, args) => {
     if (args.length < 1) {
-      return bot.sendMessage(chatId, "Ejemplo: /duracion https://app.warera.io/battle/XXXXXXXX", { disable_web_page_preview: true });
+      return tgSendMessageSafe(chatId, "Ejemplo: /duracion https://app.warera.io/battle/XXXXXXXX", { disable_web_page_preview: true });
     }
 
     const battleId = args[0].split("/").pop();
 
     try {
       const battle = await apiCall("battle.getById", { battleId });
-      if (!battle) return bot.sendMessage(chatId, "No se pudo obtener la batalla.");
-      if (!battle.isActive) return bot.sendMessage(chatId, "La batalla ya ha finalizado.");
+      if (!battle) return tgSendMessageSafe(chatId, "No se pudo obtener la batalla.");
+      if (!battle.isActive) return tgSendMessageSafe(chatId, "La batalla ya ha finalizado.");
 
       const roundsToWin = battle.roundsToWin;
       let defenderWins = battle.defender.wonRoundsCount;
@@ -1399,7 +1404,7 @@ const comandos = {
       const attackerCountry = attData?.name ?? "Atacante";
 
       const round = await apiCall("round.getById", { roundId: battle.currentRound });
-      if (!round || !round.isActive) return bot.sendMessage(chatId, "No se pudo obtener la ronda actual.");
+      if (!round || !round.isActive) return tgSendMessageSafe(chatId, "No se pudo obtener la ronda actual.");
 
       const defPoints = round.defender.points;
       const attPoints = round.attacker.points;
@@ -1496,10 +1501,10 @@ const comandos = {
       msg += `• Tiempo: ${formatTiempo(tiempoLento)}\n`;
       msg += `• Finaliza: ${horaFinal(tiempoLento)}`;
 
-      await bot.sendMessage(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
+      await tgSendMessageSafe(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
     } catch (err) {
       console.error("/duracion error:", err);
-      bot.sendMessage(chatId, "Error calculando la duración.");
+      tgSendMessageSafe(chatId, "Error calculando la duración.");
     }
   },
 };
@@ -1530,14 +1535,14 @@ bot.on("message", async (msg) => {
     const palabras = text.toLowerCase().split(/\s+/);
     const variantesOtto = ["otto", "oto", "oton", "otón"];
     if (variantesOtto.some((variant) => palabras.includes(variant))) {
-      bot.sendMessage(chatId, "Putero");
+      tgSendMessageSafe(chatId, "Putero");
     }
   }
 
   if (!text?.startsWith("/")) return;
 
   if (allowedChats.length > 0 && !allowedChats.includes(chatId)) {
-    bot.sendMessage(chatId, "Bot no autorizado en este chat.");
+    tgSendMessageSafe(chatId, "Bot no autorizado en este chat.");
     return;
   }
 
