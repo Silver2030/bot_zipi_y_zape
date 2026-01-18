@@ -769,12 +769,16 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
 }
 
 async function procesarDineroGrupo(chatId, args, tipo) {
+  // 🔧 Control para evitar 429 por spam (recomendado: false si ya mandas Excel)
+  const ENVIAR_LISTA_EN_CHAT = false; // <- pon true si quieres seguir mandando chunks
+  const CHUNK_DELAY_MS = 900;         // <- si ENVIAR_LISTA_EN_CHAT=true, sube el delay
+
   if (args.length < 1) {
     const ejemplo =
       tipo === "pais"
         ? "/dineropais https://app.warera.io/country/6813b6d446e731854c7ac7ae"
         : "/dineromu https://app.warera.io/mu/687cbb53fae4c9cf04340e77";
-    bot.sendMessage(chatId, `Ejemplo: ${ejemplo}`, { parse_mode: "Markdown", disable_web_page_preview: true });
+    await tgSendMessage(chatId, `Ejemplo: ${ejemplo}`, { parse_mode: "Markdown", disable_web_page_preview: true });
     return;
   }
 
@@ -797,7 +801,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     } else {
       const muData = await getMUData(id);
       if (!muData?.members?.length) {
-        bot.sendMessage(chatId, "No se encontraron miembros en esa MU.");
+        await tgSendMessage(chatId, "No se encontraron miembros en esa MU.");
         return;
       }
       items = muData.members.map((userId) => ({ _id: userId }));
@@ -805,18 +809,18 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     }
 
     if (!items.length) {
-      bot.sendMessage(chatId, `No se encontraron jugadores en el ${tipo === "pais" ? "país" : "MU"} especificado.`);
+      await tgSendMessage(chatId, `No se encontraron jugadores en el ${tipo === "pais" ? "país" : "MU"} especificado.`);
       return;
     }
 
-    const progressMsg = await bot.sendMessage(chatId, `💰 Procesando ${items.length} jugadores...`);
+    const progressMsg = await tgSendMessage(chatId, `💰 Procesando ${items.length} jugadores...`);
 
     // 1) Batch usuarios
     const userIds = items.map((x) => x._id);
     const usersData = await fetchUsersLite(userIds, { batchSize: 30 });
 
     // 2) Batch company.getCompanies por usuario
-    await bot.editMessageText(`💰 Cargando fábricas de ${userIds.length} jugadores...`, {
+    await tgEditMessageText(`💰 Cargando fábricas de ${userIds.length} jugadores...`, {
       chat_id: chatId,
       message_id: progressMsg.message_id,
     });
@@ -828,7 +832,8 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       const ids = companiesByUser.get(uid) || [];
       allCompanyIds.push(...ids);
     }
-    await bot.editMessageText(`💰 Cargando datos de ${new Set(allCompanyIds).size} fábricas...`, {
+
+    await tgEditMessageText(`💰 Cargando datos de ${new Set(allCompanyIds).size} fábricas...`, {
       chat_id: chatId,
       message_id: progressMsg.message_id,
     });
@@ -865,7 +870,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
         }
       }
 
-      // Tu lógica: si hay fábricas deshabilitadas, sumar ese valor también al wealth total
+      // Si hay fábricas deshabilitadas, sumar ese valor también al wealth total
       if (disabledFactoryWealth > 0) {
         totalWealthValue += disabledFactoryWealth;
       }
@@ -888,18 +893,20 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       totalLiquidWealth += liquidWealth;
       totalFactories += factoryCount;
 
-      if (idx % 40 === 0) {
-        await bot.editMessageText(`💰 Calculando ${idx + 1}/${usersData.length} jugadores...`, {
+      // 🔧 Edita el mensaje menos a menudo para evitar rate limit
+      if (idx % 80 === 0) {
+        await tgEditMessageText(`💰 Calculando ${idx + 1}/${usersData.length} jugadores...`, {
           chat_id: chatId,
           message_id: progressMsg.message_id,
         });
       }
     }
 
-    await bot.deleteMessage(chatId, progressMsg.message_id);
+    // Borrar progreso
+    await tgDeleteMessage(chatId, progressMsg.message_id);
 
     if (!resultados.length) {
-      bot.sendMessage(chatId, "No se pudieron obtener datos.");
+      await tgSendMessage(chatId, "No se pudieron obtener datos.");
       return;
     }
 
@@ -924,49 +931,115 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     mensajePrincipal += `💵 Dinero/Almacen: ${formatNumberMarkdown(avgLiquidWealth)} monedas\n`;
     mensajePrincipal += `🔧 Nº fábricas: ${escapeMarkdownV2(avgFactories.toFixed(1))}`;
 
-    await bot.sendMessage(chatId, mensajePrincipal, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
+    await tgSendMessage(chatId, mensajePrincipal, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
 
     // Excel
     try {
-      const progressExcelMsg = await bot.sendMessage(chatId, `📊 Generando archivo Excel...`);
+      const progressExcelMsg = await tgSendMessage(chatId, `📊 Generando archivo Excel...`);
       const excelBuffer = generarExcelBuffer(resultados, nombreGrupo);
       const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
 
-      await bot.sendDocument(chatId, excelBuffer, {}, { filename: nombreArchivo, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      await bot.deleteMessage(chatId, progressExcelMsg.message_id);
+      await tgSendDocument(
+        chatId,
+        excelBuffer,
+        {},
+        { filename: nombreArchivo, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+      );
+
+      await tgDeleteMessage(chatId, progressExcelMsg.message_id);
     } catch (error) {
       console.error("Error generando Excel:", error);
-      await bot.sendMessage(chatId, "⚠️ No se pudo generar el archivo Excel, pero aquí están los datos:");
+      await tgSendMessage(chatId, "⚠️ No se pudo generar el archivo Excel, pero aquí están los datos:");
     }
 
     // Lista en chunks (opcional)
-    const chunkSize = 10;
-    for (let i = 0; i < resultados.length; i += chunkSize) {
-      const chunk = resultados.slice(i, i + chunkSize);
-      let mensajeChunk = `*Jugadores ${i + 1}\\-${Math.min(i + chunkSize, resultados.length)}:*\n\n`;
+    if (ENVIAR_LISTA_EN_CHAT) {
+      const chunkSize = 10;
+      for (let i = 0; i < resultados.length; i += chunkSize) {
+        const chunk = resultados.slice(i, i + chunkSize);
+        let mensajeChunk = `*Jugadores ${i + 1}\\-${Math.min(i + chunkSize, resultados.length)}:*\n\n`;
 
-      chunk.forEach((jugador, index) => {
-        const globalIndex = i + index + 1;
-        const usernameEscapado = escapeMarkdownV2(jugador.username);
-        const userIdEscapado = escapeMarkdownV2(jugador.userId);
+        chunk.forEach((jugador, index) => {
+          const globalIndex = i + index + 1;
+          const usernameEscapado = escapeMarkdownV2(jugador.username);
+          const userIdEscapado = escapeMarkdownV2(jugador.userId);
 
-        mensajeChunk += `${globalIndex}\\) ${usernameEscapado}`;
-        if (jugador.hasDisabledFactories) mensajeChunk += ` ⚠️`;
-        mensajeChunk += `\nhttps://app\\.warera\\.io/user/${userIdEscapado}\n`;
-        mensajeChunk += `💰 Wealth: ${formatNumberMarkdown(jugador.totalWealth)} \\| `;
-        mensajeChunk += `🏭 Fábricas: ${formatNumberMarkdown(jugador.factoryWealth)}\n`;
-        mensajeChunk += `💵 Dinero/Almacen: ${formatNumberMarkdown(jugador.liquidWealth)} \\| `;
-        mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
-      });
+          mensajeChunk += `${globalIndex}\\) ${usernameEscapado}`;
+          if (jugador.hasDisabledFactories) mensajeChunk += ` ⚠️`;
+          mensajeChunk += `\nhttps://app\\.warera\\.io/user/${userIdEscapado}\n`;
+          mensajeChunk += `💰 Wealth: ${formatNumberMarkdown(jugador.totalWealth)} \\| `;
+          mensajeChunk += `🏭 Fábricas: ${formatNumberMarkdown(jugador.factoryWealth)}\n`;
+          mensajeChunk += `💵 Dinero/Almacen: ${formatNumberMarkdown(jugador.liquidWealth)} \\| `;
+          mensajeChunk += `🔧 ${jugador.factoryCount} fábricas\n\n`;
+        });
 
-      await bot.sendMessage(chatId, mensajeChunk, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
-      await delay(350);
+        await tgSendMessage(chatId, mensajeChunk, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
+        await delay(CHUNK_DELAY_MS);
+      }
     }
   } catch (error) {
     console.error(`Error en procesarDineroGrupo (${tipo}):`, error);
-    bot.sendMessage(chatId, "Error al procesar el comando.");
+    await tgSendMessage(chatId, "Error al procesar el comando.");
   }
 }
+
+// -------------------------
+// Telegram rate-limit safe wrapper (cola + retry 429)
+// -------------------------
+let tgQueue = Promise.resolve();
+
+function extractRetryAfterSeconds(err) {
+  // node-telegram-bot-api suele ponerlo en err.response.body.parameters.retry_after
+  const ra1 = err?.response?.body?.parameters?.retry_after;
+  if (typeof ra1 === "number") return ra1;
+
+  // A veces viene en headers
+  const ra2 = err?.response?.headers?.["retry-after"];
+  const n2 = Number(ra2);
+  if (!Number.isNaN(n2) && n2 > 0) return n2;
+
+  // Tu log muestra rawHeaders con Retry-After, así que esto lo cubre
+  return null;
+}
+
+async function tgCall(fn, { maxRetries = 5 } = {}) {
+  let attempt = 0;
+
+  while (true) {
+    try {
+      return await fn();
+    } catch (err) {
+      const is429 = err?.code === "ETELEGRAM" && (err?.response?.statusCode === 429 || err?.response?.body?.error_code === 429);
+      if (!is429 || attempt >= maxRetries) throw err;
+
+      const ra = extractRetryAfterSeconds(err) ?? 3;
+      // Telegram pide X segundos, le sumamos un pequeño margen
+      await delay((ra * 1000) + 300);
+      attempt++;
+    }
+  }
+}
+
+// Encola llamadas para no disparar bursts
+function tgEnqueue(fn, opts) {
+  tgQueue = tgQueue.then(() => tgCall(fn, opts));
+  return tgQueue;
+}
+
+// Wrappers que usarás en vez de bot.sendMessage/etc
+function tgSendMessage(chatId, text, options) {
+  return tgEnqueue(() => bot.sendMessage(chatId, text, options));
+}
+function tgEditMessageText(text, options) {
+  return tgEnqueue(() => bot.editMessageText(text, options));
+}
+function tgDeleteMessage(chatId, messageId) {
+  return tgEnqueue(() => bot.deleteMessage(chatId, messageId));
+}
+function tgSendDocument(chatId, doc, options1, options2) {
+  return tgEnqueue(() => bot.sendDocument(chatId, doc, options1, options2));
+}
+
 
 // -------------------------
 // Comandos
