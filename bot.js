@@ -926,23 +926,30 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
     await tgSendMessage(chatId, mensajePrincipal, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
 
-    // Excel (✅ forma correcta para node-telegram-bot-api)
+    // Excel (✅ envío correcto como documento)
     try {
-    const progressExcelMsg = await tgSendMessage(chatId, `📊 Generando archivo Excel...`);
+    const progressExcelMsg = await tgSendMessageSafe(chatId, `📊 Generando archivo Excel...`);
 
     const excelBuffer = generarExcelBuffer(resultados, nombreGrupo);
     const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
 
-    // ✅ Enviar Buffer DIRECTO + filename en options
-    await tgSendDocument(chatId, excelBuffer, {
+    // ✅ OJO: así lo detecta como archivo real (multipart), no como texto
+    const file = {
+        source: excelBuffer,
         filename: nombreArchivo,
-        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
+    };
+
+    await tgSendDocument(
+        chatId,
+        file,
+        {}, // opciones del mensaje (caption, etc.)
+        { contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } // fileOptions
+    );
 
     await tgDeleteMessage(chatId, progressExcelMsg.message_id);
     } catch (error) {
     console.error("Error generando/enviando Excel:", error?.message || error);
-    await tgSendMessage(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
+    await tgSendMessageSafe(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
     }
 
     // Lista en chunks (opcional)
@@ -1029,8 +1036,8 @@ function tgEditMessageText(text, options) {
 function tgDeleteMessage(chatId, messageId) {
   return tgEnqueue(() => bot.deleteMessage(chatId, messageId));
 }
-function tgSendDocument(chatId, document, options = {}) {
-  return tgEnqueue(() => bot.sendDocument(chatId, document, options));
+function tgSendDocument(chatId, document, options = {}, fileOptions = {}) {
+  return tgEnqueue(() => tgCallWithRetry(() => bot.sendDocument(chatId, document, options, fileOptions)));
 }
 
 // -------------------------
