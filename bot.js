@@ -613,7 +613,7 @@ async function procesarGrupoDanyo(chatId, args, tipo) {
       await delay(250);
     }
   } catch (error) {
-    console.error(error);
+    console.error(error?.message || error);
     bot.sendMessage(chatId, "Error al procesar el comando.");
   }
 }
@@ -928,23 +928,21 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
     // Excel (✅ forma correcta para node-telegram-bot-api)
     try {
-      const progressExcelMsg = await tgSendMessage(chatId, `📊 Generando archivo Excel...`);
-      const excelBuffer = generarExcelBuffer(resultados, nombreGrupo);
-      const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
+    const progressExcelMsg = await tgSendMessage(chatId, `📊 Generando archivo Excel...`);
 
-      const doc = {
-        value: excelBuffer,
-        options: {
-          filename: nombreArchivo,
-          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-      };
+    const excelBuffer = generarExcelBuffer(resultados, nombreGrupo);
+    const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
 
-      await tgSendDocument(chatId, doc);
-      await tgDeleteMessage(chatId, progressExcelMsg.message_id);
+    // ✅ Enviar Buffer DIRECTO + filename en options
+    await tgSendDocument(chatId, excelBuffer, {
+        filename: nombreArchivo,
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    await tgDeleteMessage(chatId, progressExcelMsg.message_id);
     } catch (error) {
-      console.error("Error generando/enviando Excel:", error);
-      await tgSendMessage(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
+    console.error("Error generando/enviando Excel:", error?.message || error);
+    await tgSendMessage(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
     }
 
     // Lista en chunks (opcional)
@@ -1031,8 +1029,8 @@ function tgEditMessageText(text, options) {
 function tgDeleteMessage(chatId, messageId) {
   return tgEnqueue(() => bot.deleteMessage(chatId, messageId));
 }
-function tgSendDocument(chatId, doc, options = {}) {
-  return tgEnqueue(() => bot.sendDocument(chatId, doc, options));
+function tgSendDocument(chatId, document, options = {}) {
+  return tgEnqueue(() => bot.sendDocument(chatId, document, options));
 }
 
 // -------------------------
