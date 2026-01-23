@@ -1478,8 +1478,8 @@ const comandos = {
           ? new Date(ts).toLocaleString("es-ES", { timeZone: "Europe/Madrid", hour12: false })
           : null;
 
-      let msg = `*RANKING PRODUCTIVIDAD (MEJOR PAÍS POR ITEM)*\n\n`;
-      msg += `_Incluye bonus de país (specializedItem) + mejor depósito activo (si aplica)_\n\n`;
+      let msg = `*RANKING PRODUCTIVIDAD \\(MEJOR PAÍS POR ITEM\\)*\n\n`;
+      msg += `${escapeMarkdownV2("Incluye bonus de país (specializedItem) + mejor depósito activo (si aplica)")}\n\n`;
 
       for (let i = 0; i < bestByItem.length; i++) {
         const x = bestByItem[i];
