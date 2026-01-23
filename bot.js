@@ -1495,7 +1495,7 @@ const comandos = {
         const bonusTxt = bonusTxtParts.length ? ` — ${bonusTxtParts.join(" · ")}` : "";
 
         msg += `${i + 1}\\. *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(fmt5(x.profitPerPP))} monedas/pp\n`;
-        msg += `   🇺🇳 ${escapeMarkdownV2(x.countryName)} (${escapeMarkdownV2(x.countryCode.toUpperCase())})`;
+        msg += `   🇺🇳 ${escapeMarkdownV2(x.countryName)} \\(${escapeMarkdownV2(x.countryCode.toUpperCase())}\\)`;
         if (bonusTxt) msg += ` ${escapeMarkdownV2(bonusTxt)}`;
         msg += `\n`;
       }
