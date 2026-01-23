@@ -730,6 +730,43 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
   }
 }
 
+// -------------------------
+// Nuevos endpoints cacheados para /produccion
+// -------------------------
+async function getAllCountries() {
+  const key = `allCountries`;
+  const hit = cacheGet(key);
+  if (hit) return hit;
+
+  // country.getAllCountries NO necesita input (normalmente)
+  const res = await axios.get(`${TRPC_BASE}/country.getAllCountries`);
+  const data = res.data?.result?.data || [];
+  cacheSet(key, data, 5 * 60_000);
+  return data;
+}
+
+async function getRegionsObject() {
+  const key = `regionsObject`;
+  const hit = cacheGet(key);
+  if (hit) return hit;
+
+  const res = await axios.get(`${TRPC_BASE}/region.getRegionsObject`);
+  const data = res.data?.result?.data || {};
+  cacheSet(key, data, 2 * 60_000);
+  return data;
+}
+
+async function getPrices() {
+  const key = `itemPrices`;
+  const hit = cacheGet(key);
+  if (hit) return hit;
+
+  const res = await axios.get(`${TRPC_BASE}/itemTrading.getPrices`);
+  const data = res.data?.result?.data || {};
+  cacheSet(key, data, 30_000);
+  return data;
+}
+
 async function procesarDineroGrupo(chatId, args, tipo) {
   const ENVIAR_LISTA_EN_CHAT = true;
   const CHUNK_DELAY_MS = 900;
@@ -1239,17 +1276,27 @@ const comandos = {
 
   produccion: async (chatId) => {
     try {
-      const productionRes = await axios.get(`https://api2.warera.io/trpc/itemTrading.getPrices`);
-      const productionData = productionRes.data?.result?.data;
-
-      if (!productionData) {
-        tgSendMessageSafe(chatId, "No se pudieron obtener los datos de producción.");
-        return;
-      }
-
-      function limitarDecimales(num) {
-        return Math.round(num * 100000) / 100000;
-      }
+      // Recursos a controlar (ignorar case1/case2/scraps)
+      const CONTROL_ITEMS = [
+        "cookedFish",
+        "heavyAmmo",
+        "steel",
+        "bread",
+        "grain",
+        "limestone",
+        "coca",
+        "concrete",
+        "oil",
+        "lightAmmo",
+        "steak",
+        "livestock",
+        "cocain",
+        "lead",
+        "fish",
+        "petroleum",
+        "ammo",
+        "iron",
+      ];
 
       const traducciones = {
         grain: "Granos",
@@ -1272,6 +1319,7 @@ const comandos = {
         ammo: "Munición",
       };
 
+      // pp y recetas (lo que ya tenías)
       const materiasPrimas = {
         grain: { pp: 1 },
         livestock: { pp: 20 },
@@ -1296,55 +1344,169 @@ const comandos = {
         ammo: { materias: { lead: 4 }, pp: 4 },
       };
 
-      const resultados = [];
+      const isRaw = (item) => !!materiasPrimas[item];
+      const getInputs = (item) => (productosManufacturados[item]?.materias ? Object.keys(productosManufacturados[item].materias) : []);
 
-      for (const [material, datos] of Object.entries(materiasPrimas)) {
-        const precioVenta = productionData[material];
-        if (precioVenta !== undefined && precioVenta !== null) {
-          const productividad = limitarDecimales(precioVenta / datos.pp);
-          resultados.push({ nombre: material, nombreDisplay: traducciones[material] || material, productividad, tipo: "materia_prima" });
+      // Cargar datos
+      const [prices, countriesArr, regionsObj] = await Promise.all([getPrices(), getAllCountries(), getRegionsObject()]);
+
+      if (!prices || !countriesArr?.length || !regionsObj) {
+        return tgSendMessageSafe(chatId, "No se pudieron obtener datos (precios/países/regiones).");
+      }
+
+      // Helper: bonus de país (solo si el item coincide con specializedItem)
+      function getCountryProdBonusPercent(country) {
+        const a = country?.rankings?.countryProductionBonus?.value;
+        const b = country?.strategicResources?.bonuses?.productionPercent;
+        const v = (typeof a === "number" ? a : typeof b === "number" ? b : 0);
+        return Number(v) || 0;
+      }
+
+      // Construir: por país -> depósitos activos por tipo, usando el mayor bonus
+      // Importante: solo depósitos activos (now < endsAt)
+      const now = Date.now();
+      const depositsByCountry = new Map(); // countryId -> Map<type, { bonusPercent, endsAt }>
+      for (const region of Object.values(regionsObj)) {
+        const cId = region?.country;
+        const dep = region?.deposit;
+        if (!cId || !dep?.type || typeof dep?.bonusPercent !== "number" || !dep?.endsAt) continue;
+
+        const endsAt = new Date(dep.endsAt).getTime();
+        if (!endsAt || now >= endsAt) continue; // expirado
+
+        if (!depositsByCountry.has(cId)) depositsByCountry.set(cId, new Map());
+        const m = depositsByCountry.get(cId);
+
+        const prev = m.get(dep.type);
+        // elegir el mayor bonus; si empatan, el que acabe antes (más informativo)
+        if (!prev || dep.bonusPercent > prev.bonusPercent || (dep.bonusPercent === prev.bonusPercent && endsAt < prev.endsAt)) {
+          m.set(dep.type, { bonusPercent: dep.bonusPercent, endsAt });
         }
       }
 
-      for (const [producto, datos] of Object.entries(productosManufacturados)) {
-        const precioVentaProducto = productionData[producto];
-        if (precioVentaProducto !== undefined && precioVentaProducto !== null) {
-          let costeMateriasPrimas = 0;
-          let todas = true;
+      // Calcular mejor país para cada item
+      function calcProductivityForCountry(item, country) {
+        const sell = prices[item];
+        if (typeof sell !== "number") return null;
 
-          for (const [materia, cantidad] of Object.entries(datos.materias)) {
-            const precioVentaMateria = productionData[materia];
-            if (precioVentaMateria !== undefined && precioVentaMateria !== null) costeMateriasPrimas += precioVentaMateria * cantidad;
-            else {
-              todas = false;
-              break;
+        const countryBonus = (country?.specializedItem === item) ? getCountryProdBonusPercent(country) : 0;
+
+        // depósitos aplicables:
+        // - si el depósito es del mismo item, cuenta
+        // - o si el item es manufacturado, depósitos de sus materias también cuentan
+        const depsMap = depositsByCountry.get(country._id);
+        let depositBonus = 0;
+        let depositEnd = null;
+        let depositTypeUsed = null;
+
+        const candidates = new Set([item, ...getInputs(item)]);
+        if (depsMap) {
+          for (const t of candidates) {
+            const d = depsMap.get(t);
+            if (d && d.bonusPercent > depositBonus) {
+              depositBonus = d.bonusPercent;
+              depositEnd = d.endsAt;
+              depositTypeUsed = t;
             }
           }
-
-          if (todas) {
-            const productividad = limitarDecimales((precioVentaProducto - costeMateriasPrimas) / datos.pp);
-            resultados.push({ nombre: producto, nombreDisplay: traducciones[producto] || producto, productividad, tipo: "manufacturado" });
-          }
         }
+
+        const totalBonus = countryBonus + depositBonus;
+        const multiplier = 1 + totalBonus / 100;
+
+        let pp = 0;
+        let cost = 0;
+
+        if (isRaw(item)) {
+          pp = materiasPrimas[item].pp;
+          cost = 0;
+        } else if (productosManufacturados[item]) {
+          pp = productosManufacturados[item].pp;
+
+          // coste materias a precio de mercado
+          for (const [mat, qty] of Object.entries(productosManufacturados[item].materias)) {
+            const p = prices[mat];
+            if (typeof p !== "number") return null;
+            cost += p * qty;
+          }
+        } else {
+          return null;
+        }
+
+        const profitPerPP = ((sell * multiplier) - cost) / pp;
+
+        return {
+          countryName: country.name,
+          countryCode: country.code,
+          profitPerPP,
+          totalBonus,
+          countryBonus,
+          depositBonus,
+          depositTypeUsed,
+          depositEnd,
+        };
       }
 
-      const resultadosValidos = resultados.filter((item) => item.productividad !== undefined && item.productividad !== null && !isNaN(item.productividad));
-      resultadosValidos.sort((a, b) => b.productividad - a.productividad);
+      const countries = countriesArr.filter((c) => c && c._id && c.name && c.code);
 
-      let mensaje = "*RANKING PRODUCTIVIDAD*\n\n";
-      resultadosValidos.forEach((item, index) => {
-        const emoji = item.tipo === "materia_prima" ? "⛏️" : "🏭";
-        const nombreEscapado = escapeMarkdownV2(item.nombreDisplay);
-        const productividadEscapada = escapeMarkdownV2(item.productividad.toFixed(5));
-        mensaje += `${index + 1}\\. ${emoji} *${nombreEscapado}*: ${productividadEscapada} monedas/pp\n`;
-      });
+      const bestByItem = [];
+      for (const item of CONTROL_ITEMS) {
+        // saltar si no está en recetas/precios
+        if (!prices[item]) continue;
+        if (!isRaw(item) && !productosManufacturados[item]) continue;
 
-      tgSendMessageSafe(chatId, mensaje, { parse_mode: "MarkdownV2" });
+        let best = null;
+        for (const c of countries) {
+          const r = calcProductivityForCountry(item, c);
+          if (!r) continue;
+          if (!best || r.profitPerPP > best.profitPerPP) best = r;
+        }
+        if (best) bestByItem.push({ item, ...best });
+      }
+
+      if (!bestByItem.length) {
+        return tgSendMessageSafe(chatId, "No hay resultados válidos para productividad.");
+      }
+
+      // Ordenar por productividad desc para que el mensaje sea útil
+      bestByItem.sort((a, b) => b.profitPerPP - a.profitPerPP);
+
+      // Formateo
+      const fmt5 = (n) => (Math.round(n * 100000) / 100000).toFixed(5);
+      const formatEnd = (ts) =>
+        ts
+          ? new Date(ts).toLocaleString("es-ES", { timeZone: "Europe/Madrid", hour12: false })
+          : null;
+
+      let msg = `*RANKING PRODUCTIVIDAD (MEJOR PAÍS POR ITEM)*\n\n`;
+      msg += `_Incluye bonus de país (specializedItem) + mejor depósito activo (si aplica)_\n\n`;
+
+      for (let i = 0; i < bestByItem.length; i++) {
+        const x = bestByItem[i];
+        const name = traducciones[x.item] || x.item;
+
+        const bonusTxtParts = [];
+        if (x.countryBonus) bonusTxtParts.push(`+${x.countryBonus}% país`);
+        if (x.depositBonus) {
+          const depEnd = formatEnd(x.depositEnd);
+          const depType = x.depositTypeUsed ? (traducciones[x.depositTypeUsed] || x.depositTypeUsed) : "depósito";
+          bonusTxtParts.push(`+${x.depositBonus}% depósito (${depType}${depEnd ? ` hasta ${depEnd}` : ""})`);
+        }
+        const bonusTxt = bonusTxtParts.length ? ` — ${bonusTxtParts.join(" · ")}` : "";
+
+        msg += `${i + 1}\\. *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(fmt5(x.profitPerPP))} monedas/pp\n`;
+        msg += `   🇺🇳 ${escapeMarkdownV2(x.countryName)} (${escapeMarkdownV2(x.countryCode.toUpperCase())})`;
+        if (bonusTxt) msg += ` ${escapeMarkdownV2(bonusTxt)}`;
+        msg += `\n`;
+      }
+
+      await tgSendMessageSafe(chatId, msg, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
     } catch (error) {
       console.error("Error en comando /produccion:", error);
       tgSendMessageSafe(chatId, "Error al obtener los datos de producción.");
     }
   },
+
 
   duracion: async (chatId, args) => {
     if (args.length < 1) {
