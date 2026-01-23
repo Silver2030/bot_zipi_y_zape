@@ -927,34 +927,34 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
     // Excel (✅ envío correcto como documento)
     try {
-    const progressExcelMsg = await tgSendMessageSafe(chatId, `📊 Generando archivo Excel...`);
+      const progressExcelMsg = await tgSendMessageSafe(chatId, `📊 Generando archivo Excel...`);
 
-    const raw = generarExcelBuffer(resultados, nombreGrupo);
+      const raw = generarExcelBuffer(resultados, nombreGrupo);
 
-    // ✅ Asegura Buffer real
-    const excelBuffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+      // ✅ Asegura Buffer real
+      const excelBuffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
 
-    if (!excelBuffer.length) {
+      if (!excelBuffer.length) {
         throw new Error("Excel buffer vacío");
-    }
+      }
 
-    const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
+      const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
 
-    // ✅ MUY IMPORTANTE: Buffer directo + filename en fileOptions
-    await tgSendDocumentSafe(
+      // ✅ MUY IMPORTANTE: Buffer directo + filename en fileOptions
+      await tgSendDocumentSafe(
         chatId,
         excelBuffer,
         {}, // message options (caption, etc.)
         {
-        filename: nombreArchivo,
-        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          filename: nombreArchivo,
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }
-    );
+      );
 
-    await tgDeleteMessageSafe(chatId, progressExcelMsg.message_id);
+      await tgDeleteMessageSafe(chatId, progressExcelMsg.message_id);
     } catch (error) {
-    console.error("Error generando/enviando Excel:", error?.message || error);
-    await tgSendMessageSafe(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
+      console.error("Error generando/enviando Excel:", error?.message || error);
+      await tgSendMessageSafe(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
     }
 
     // Lista en chunks (opcional)
@@ -1274,6 +1274,9 @@ const comandos = {
     }
   },
 
+  // -------------------------
+  // /produccion (MEJOR VISIBILIDAD + LINK A REGIÓN DE DEPÓSITO)
+  // -------------------------
   produccion: async (chatId) => {
     try {
       // Recursos a controlar (ignorar case1/case2/scraps)
@@ -1319,7 +1322,7 @@ const comandos = {
         ammo: "Munición",
       };
 
-      // pp y recetas (lo que ya tenías)
+      // pp y recetas
       const materiasPrimas = {
         grain: { pp: 1 },
         livestock: { pp: 20 },
@@ -1345,7 +1348,8 @@ const comandos = {
       };
 
       const isRaw = (item) => !!materiasPrimas[item];
-      const getInputs = (item) => (productosManufacturados[item]?.materias ? Object.keys(productosManufacturados[item].materias) : []);
+      const getInputs = (item) =>
+        productosManufacturados[item]?.materias ? Object.keys(productosManufacturados[item].materias) : [];
 
       // Cargar datos
       const [prices, countriesArr, regionsObj] = await Promise.all([getPrices(), getAllCountries(), getRegionsObject()]);
@@ -1358,14 +1362,15 @@ const comandos = {
       function getCountryProdBonusPercent(country) {
         const a = country?.rankings?.countryProductionBonus?.value;
         const b = country?.strategicResources?.bonuses?.productionPercent;
-        const v = (typeof a === "number" ? a : typeof b === "number" ? b : 0);
+        const v = typeof a === "number" ? a : typeof b === "number" ? b : 0;
         return Number(v) || 0;
       }
 
-      // Construir: por país -> depósitos activos por tipo, usando el mayor bonus
-      // Importante: solo depósitos activos (now < endsAt)
+      // ✅ Construir depósitos con regionId
       const now = Date.now();
-      const depositsByCountry = new Map(); // countryId -> Map<type, { bonusPercent, endsAt }>
+      // countryId -> Map<type, { bonusPercent, endsAt, regionId }>
+      const depositsByCountry = new Map();
+
       for (const region of Object.values(regionsObj)) {
         const cId = region?.country;
         const dep = region?.deposit;
@@ -1377,36 +1382,47 @@ const comandos = {
         if (!depositsByCountry.has(cId)) depositsByCountry.set(cId, new Map());
         const m = depositsByCountry.get(cId);
 
+        const candidate = { bonusPercent: dep.bonusPercent, endsAt, regionId: region?._id };
+
         const prev = m.get(dep.type);
-        // elegir el mayor bonus; si empatan, el que acabe antes (más informativo)
-        if (!prev || dep.bonusPercent > prev.bonusPercent || (dep.bonusPercent === prev.bonusPercent && endsAt < prev.endsAt)) {
-          m.set(dep.type, { bonusPercent: dep.bonusPercent, endsAt });
+        // elegir el mayor bonus; si empatan, el que acabe antes
+        if (
+          !prev ||
+          candidate.bonusPercent > prev.bonusPercent ||
+          (candidate.bonusPercent === prev.bonusPercent && candidate.endsAt < prev.endsAt)
+        ) {
+          m.set(dep.type, candidate);
         }
       }
 
-      // Calcular mejor país para cada item
       function calcProductivityForCountry(item, country) {
         const sell = prices[item];
         if (typeof sell !== "number") return null;
 
-        const countryBonus = (country?.specializedItem === item) ? getCountryProdBonusPercent(country) : 0;
+        const countryBonus = country?.specializedItem === item ? getCountryProdBonusPercent(country) : 0;
 
-        // depósitos aplicables:
-        // - si el depósito es del mismo item, cuenta
-        // - o si el item es manufacturado, depósitos de sus materias también cuentan
         const depsMap = depositsByCountry.get(country._id);
+
         let depositBonus = 0;
         let depositEnd = null;
         let depositTypeUsed = null;
+        let depositRegionId = null;
 
         const candidates = new Set([item, ...getInputs(item)]);
         if (depsMap) {
           for (const t of candidates) {
             const d = depsMap.get(t);
-            if (d && d.bonusPercent > depositBonus) {
+            if (!d) continue;
+
+            const better =
+              d.bonusPercent > depositBonus ||
+              (d.bonusPercent === depositBonus && depositEnd && d.endsAt < depositEnd);
+
+            if (better) {
               depositBonus = d.bonusPercent;
               depositEnd = d.endsAt;
               depositTypeUsed = t;
+              depositRegionId = d.regionId;
             }
           }
         }
@@ -1422,8 +1438,6 @@ const comandos = {
           cost = 0;
         } else if (productosManufacturados[item]) {
           pp = productosManufacturados[item].pp;
-
-          // coste materias a precio de mercado
           for (const [mat, qty] of Object.entries(productosManufacturados[item].materias)) {
             const p = prices[mat];
             if (typeof p !== "number") return null;
@@ -1433,17 +1447,17 @@ const comandos = {
           return null;
         }
 
-        const profitPerPP = ((sell * multiplier) - cost) / pp;
+        const profitPerPP = (sell * multiplier - cost) / pp;
 
         return {
           countryName: country.name,
           countryCode: country.code,
           profitPerPP,
-          totalBonus,
           countryBonus,
           depositBonus,
           depositTypeUsed,
           depositEnd,
+          depositRegionId,
         };
       }
 
@@ -1451,7 +1465,6 @@ const comandos = {
 
       const bestByItem = [];
       for (const item of CONTROL_ITEMS) {
-        // saltar si no está en recetas/precios
         if (!prices[item]) continue;
         if (!isRaw(item) && !productosManufacturados[item]) continue;
 
@@ -1468,36 +1481,40 @@ const comandos = {
         return tgSendMessageSafe(chatId, "No hay resultados válidos para productividad.");
       }
 
-      // Ordenar por productividad desc para que el mensaje sea útil
+      // Ordenar por productividad desc
       bestByItem.sort((a, b) => b.profitPerPP - a.profitPerPP);
 
-      // Formateo
       const fmt5 = (n) => (Math.round(n * 100000) / 100000).toFixed(5);
       const formatEnd = (ts) =>
         ts
           ? new Date(ts).toLocaleString("es-ES", { timeZone: "Europe/Madrid", hour12: false })
-          : null;
+          : "";
 
-      let msg = `*RANKING PRODUCTIVIDAD \\(MEJOR PAÍS POR ITEM\\)*\n\n`;
-      msg += `${escapeMarkdownV2("Incluye bonus de país (specializedItem) + mejor depósito activo (si aplica)")}\n\n`;
+      // ✅ Output limpio como pediste
+      let msg = `*RANKING PRODUCTIVIDAD*\n\n`;
 
       for (let i = 0; i < bestByItem.length; i++) {
         const x = bestByItem[i];
         const name = traducciones[x.item] || x.item;
 
-        const bonusTxtParts = [];
-        if (x.countryBonus) bonusTxtParts.push(`+${x.countryBonus}% país`);
-        if (x.depositBonus) {
-          const depEnd = formatEnd(x.depositEnd);
-          const depType = x.depositTypeUsed ? (traducciones[x.depositTypeUsed] || x.depositTypeUsed) : "depósito";
-          bonusTxtParts.push(`+${x.depositBonus}% depósito (${depType}${depEnd ? ` hasta ${depEnd}` : ""})`);
-        }
-        const bonusTxt = bonusTxtParts.length ? ` — ${bonusTxtParts.join(" · ")}` : "";
+        const prodText = `${fmt5(x.profitPerPP)} monedas/pp`;
 
-        msg += `${i + 1}\\. *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(fmt5(x.profitPerPP))} monedas/pp\n`;
-        msg += `   🇺🇳 ${escapeMarkdownV2(x.countryName)} \\(${escapeMarkdownV2(x.countryCode.toUpperCase())}\\)`;
-        if (bonusTxt) msg += ` ${escapeMarkdownV2(bonusTxt)}`;
-        msg += `\n`;
+        // SIN depósito → solo una línea (sin país, sin bonus)
+        if (!x.depositBonus || !x.depositEnd || !x.depositRegionId) {
+          msg += `${i + 1}\\. *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(prodText)}\n`;
+          continue;
+        }
+
+        // CON depósito → link a región en "monedas/pp" + fecha corta
+        const regionUrl = `https://app.warera.io/region/${x.depositRegionId}`;
+        const endStr = formatEnd(x.depositEnd);
+
+        msg += `${i + 1}\\. *${escapeMarkdownV2(name)}*: [${escapeMarkdownV2(prodText)}](${escapeMarkdownV2(
+          regionUrl
+        )}) · ${escapeMarkdownV2(endStr)}\n`;
+        msg += `   🇺🇳 ${escapeMarkdownV2(x.countryName)} \\(${escapeMarkdownV2(
+          String(x.countryCode || "").toUpperCase()
+        )}\\)\n`;
       }
 
       await tgSendMessageSafe(chatId, msg, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
@@ -1507,10 +1524,11 @@ const comandos = {
     }
   },
 
-
   duracion: async (chatId, args) => {
     if (args.length < 1) {
-      return tgSendMessageSafe(chatId, "Ejemplo: /duracion https://app.warera.io/battle/XXXXXXXX", { disable_web_page_preview: true });
+      return tgSendMessageSafe(chatId, "Ejemplo: /duracion https://app.warera.io/battle/XXXXXXXX", {
+        disable_web_page_preview: true,
+      });
     }
 
     const battleId = args[0].split("/").pop();
@@ -1573,7 +1591,8 @@ const comandos = {
       });
 
       const winsTrasRondaRapida = (defensorVaGanando ? defenderWins : attackerWins) + 1;
-      if (winsTrasRondaRapida < roundsToWin) tiempoRapido += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "rapido" });
+      if (winsTrasRondaRapida < roundsToWin)
+        tiempoRapido += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "rapido" });
 
       let tiempoLento = 0;
       let rondaActualGanador;
@@ -1601,7 +1620,8 @@ const comandos = {
       }
 
       if (winsTrasRondaLenta < roundsToWin) {
-        if (defenderWins === 0 || attackerWins === 0) tiempoLento += simularRonda({ perdedorInicial: 0, ganadorInicial: 0, modo: "lento" });
+        if (defenderWins === 0 || attackerWins === 0)
+          tiempoLento += simularRonda({ perdedorInicial: 0, ganadorInicial: 0, modo: "lento" });
         tiempoLento += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "lento" });
       }
 
