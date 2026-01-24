@@ -1274,12 +1274,8 @@ const comandos = {
     }
   },
 
-  // -------------------------
-  // /produccion (MEJOR VISIBILIDAD + LINK A REGIÓN DE DEPÓSITO)
-  // -------------------------
   produccion: async (chatId) => {
     try {
-      // Recursos a controlar (ignorar case1/case2/scraps)
       const CONTROL_ITEMS = [
         "cookedFish",
         "heavyAmmo",
@@ -1322,7 +1318,6 @@ const comandos = {
         ammo: "Munición",
       };
 
-      // pp y recetas
       const materiasPrimas = {
         grain: { pp: 1 },
         livestock: { pp: 20 },
@@ -1348,17 +1343,12 @@ const comandos = {
       };
 
       const isRaw = (item) => !!materiasPrimas[item];
-      const getInputs = (item) =>
-        productosManufacturados[item]?.materias ? Object.keys(productosManufacturados[item].materias) : [];
 
-      // Cargar datos
       const [prices, countriesArr, regionsObj] = await Promise.all([getPrices(), getAllCountries(), getRegionsObject()]);
-
       if (!prices || !countriesArr?.length || !regionsObj) {
         return tgSendMessageSafe(chatId, "No se pudieron obtener datos (precios/países/regiones).");
       }
 
-      // Helper: bonus de país (solo si el item coincide con specializedItem)
       function getCountryProdBonusPercent(country) {
         const a = country?.rankings?.countryProductionBonus?.value;
         const b = country?.strategicResources?.bonuses?.productionPercent;
@@ -1366,9 +1356,8 @@ const comandos = {
         return Number(v) || 0;
       }
 
-      // ✅ Construir depósitos con regionId
+      // countryId -> Map<type, { bonusPercent, endsAt, regionId, regionName }>
       const now = Date.now();
-      // countryId -> Map<type, { bonusPercent, endsAt, regionId }>
       const depositsByCountry = new Map();
 
       for (const region of Object.values(regionsObj)) {
@@ -1377,15 +1366,19 @@ const comandos = {
         if (!cId || !dep?.type || typeof dep?.bonusPercent !== "number" || !dep?.endsAt) continue;
 
         const endsAt = new Date(dep.endsAt).getTime();
-        if (!endsAt || now >= endsAt) continue; // expirado
+        if (!endsAt || now >= endsAt) continue;
 
         if (!depositsByCountry.has(cId)) depositsByCountry.set(cId, new Map());
         const m = depositsByCountry.get(cId);
 
-        const candidate = { bonusPercent: dep.bonusPercent, endsAt, regionId: region?._id };
+        const candidate = {
+          bonusPercent: dep.bonusPercent,
+          endsAt,
+          regionId: region?._id,
+          regionName: region?.name || null,
+        };
 
         const prev = m.get(dep.type);
-        // elegir el mayor bonus; si empatan, el que acabe antes
         if (
           !prev ||
           candidate.bonusPercent > prev.bonusPercent ||
@@ -1395,6 +1388,9 @@ const comandos = {
         }
       }
 
+      // ✅ Depósito CORRECTO:
+      // Solo aplica si existe depósito del MISMO item (no de inputs).
+      // Así, manufacturados como Acero/Hormigón/Pescado Cocido NO deberían sacar depósito.
       function calcProductivityForCountry(item, country) {
         const sell = prices[item];
         if (typeof sell !== "number") return null;
@@ -1402,28 +1398,18 @@ const comandos = {
         const countryBonus = country?.specializedItem === item ? getCountryProdBonusPercent(country) : 0;
 
         const depsMap = depositsByCountry.get(country._id);
-
         let depositBonus = 0;
         let depositEnd = null;
-        let depositTypeUsed = null;
         let depositRegionId = null;
+        let depositRegionName = null;
 
-        const candidates = new Set([item, ...getInputs(item)]);
         if (depsMap) {
-          for (const t of candidates) {
-            const d = depsMap.get(t);
-            if (!d) continue;
-
-            const better =
-              d.bonusPercent > depositBonus ||
-              (d.bonusPercent === depositBonus && depositEnd && d.endsAt < depositEnd);
-
-            if (better) {
-              depositBonus = d.bonusPercent;
-              depositEnd = d.endsAt;
-              depositTypeUsed = t;
-              depositRegionId = d.regionId;
-            }
+          const d = depsMap.get(item);
+          if (d) {
+            depositBonus = d.bonusPercent;
+            depositEnd = d.endsAt;
+            depositRegionId = d.regionId;
+            depositRegionName = d.regionName;
           }
         }
 
@@ -1455,9 +1441,9 @@ const comandos = {
           profitPerPP,
           countryBonus,
           depositBonus,
-          depositTypeUsed,
           depositEnd,
           depositRegionId,
+          depositRegionName,
         };
       }
 
@@ -1481,40 +1467,37 @@ const comandos = {
         return tgSendMessageSafe(chatId, "No hay resultados válidos para productividad.");
       }
 
-      // Ordenar por productividad desc
       bestByItem.sort((a, b) => b.profitPerPP - a.profitPerPP);
 
       const fmt5 = (n) => (Math.round(n * 100000) / 100000).toFixed(5);
       const formatEnd = (ts) =>
-        ts
-          ? new Date(ts).toLocaleString("es-ES", { timeZone: "Europe/Madrid", hour12: false })
-          : "";
+        ts ? new Date(ts).toLocaleString("es-ES", { timeZone: "Europe/Madrid", hour12: false }) : "";
 
-      // ✅ Output limpio como pediste
       let msg = `*RANKING PRODUCTIVIDAD*\n\n`;
 
       for (let i = 0; i < bestByItem.length; i++) {
         const x = bestByItem[i];
         const name = traducciones[x.item] || x.item;
+        const emoji = isRaw(x.item) ? "⛏️" : "🏭";
 
         const prodText = `${fmt5(x.profitPerPP)} monedas/pp`;
 
-        // SIN depósito → solo una línea (sin país, sin bonus)
-        if (!x.depositBonus || !x.depositEnd || !x.depositRegionId) {
-          msg += `${i + 1}\\. *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(prodText)}\n`;
-          continue;
+        // Construir sufijo final: "<Nombre-Region> <Nombre-Pais>"
+        // - Si hay depósito: ponemos fecha + Región + País
+        // - Si no: solo País (porque sigue siendo "mejor país por item")
+        const countryTxt = `${x.countryName} (${String(x.countryCode || "").toUpperCase()})`;
+
+        if (x.depositBonus && x.depositEnd && x.depositRegionId) {
+          const endStr = formatEnd(x.depositEnd);
+          const regionName = x.depositRegionName || `Región ${x.depositRegionId}`;
+          msg += `${i + 1}\\. ${emoji} *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(prodText)} · ${escapeMarkdownV2(
+            endStr
+          )} · ${escapeMarkdownV2(regionName)} ${escapeMarkdownV2(countryTxt)}\n`;
+        } else {
+          msg += `${i + 1}\\. ${emoji} *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(prodText)} · ${escapeMarkdownV2(
+            countryTxt
+          )}\n`;
         }
-
-        // CON depósito → link a región en "monedas/pp" + fecha corta
-        const regionUrl = `https://app.warera.io/region/${x.depositRegionId}`;
-        const endStr = formatEnd(x.depositEnd);
-
-        msg += `${i + 1}\\. *${escapeMarkdownV2(name)}*: [${escapeMarkdownV2(prodText)}](${escapeMarkdownV2(
-          regionUrl
-        )}) · ${escapeMarkdownV2(endStr)}\n`;
-        msg += `   🇺🇳 ${escapeMarkdownV2(x.countryName)} \\(${escapeMarkdownV2(
-          String(x.countryCode || "").toUpperCase()
-        )}\\)\n`;
       }
 
       await tgSendMessageSafe(chatId, msg, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
