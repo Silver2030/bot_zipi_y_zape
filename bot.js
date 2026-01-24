@@ -1423,7 +1423,7 @@ const comandos = {
         }
 
         // ✅ Fórmula: (precio_venta * (1+bonus) - coste_materias) / pp
-        const profitPerPP = (sell * multiplier - cost) / pp;
+        const profitPerPP = (((sell - cost) * multiplier) / pp);
 
         return {
           countryName: country.name,
