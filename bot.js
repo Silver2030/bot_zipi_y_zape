@@ -1470,13 +1470,12 @@ const comandos = {
         const name = traducciones[x.item] || x.item;
 
         const emoji = isRaw(x.item) ? "⛏️" : "🏭";
-        const countryTxt = `${x.countryName} (${String(x.countryCode || "").toUpperCase()})`;
 
-        msg += `${i + 1}\\. ${emoji} ${escapeMarkdownV2(name)}: ${escapeMarkdownV2(fmt5(x.profitPerPP))} monedas/pp · ${escapeMarkdownV2(countryTxt)}\n`;
+        msg += `${i + 1}. ${emoji} ${name}: ${fmt5(x.profitPerPP)} monedas/pp · ${x.countryName}\n`;
 
         if (x.depositBonus && x.depositEnd && x.depositRegionName) {
           const d = formatDateShort(x.depositEnd);
-          const line2 = `${d} · ${x.depositRegionName} ${countryTxt}`;
+          const line2 = `${d} · ${x.depositRegionName}`;
           msg += `${escapeMarkdownV2(line2)}\n`;
         }
       }
