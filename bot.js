@@ -1471,7 +1471,7 @@ const comandos = {
 
         const emoji = isRaw(x.item) ? "⛏️" : "🏭";
 
-        msg += `${i + 1}. ${emoji} ${name}: ${fmt5(x.profitPerPP)} monedas/pp · ${x.countryName}\n`;
+        msg += `${i + 1}\\. ${emoji} ${name}: ${fmt5(x.profitPerPP)} monedas/pp · ${x.countryName}\n`;
 
         if (x.depositBonus && x.depositEnd && x.depositRegionName) {
           const d = formatDateShort(x.depositEnd);
