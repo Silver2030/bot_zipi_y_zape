@@ -53,6 +53,19 @@ function formatNumberMarkdown(num) {
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+function formatDateShort(ts) {
+  if (!ts) return null;
+  return new Date(ts).toLocaleString("es-ES", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
 
 // -------------------------
 // Cache simple con TTL
@@ -373,7 +386,6 @@ function generarExcelBuffer(resultados, nombreGrupo) {
 
   const worksheet = XLSX.utils.aoa_to_sheet(datos);
 
-  // Anchos (esto sí funciona en xlsx normal)
   worksheet["!cols"] = [
     { wch: 10 },
     { wch: 20 },
@@ -387,13 +399,11 @@ function generarExcelBuffer(resultados, nombreGrupo) {
   ];
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Datos");
-
-  // ✅ Sin cellStyles (evita comportamientos raros según versión)
   return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 }
 
 // -------------------------
-// Daño (igual que antes; si quieres más velocidad, te lo dejo igual por compatibilidad)
+// Daño (igual que antes)
 // -------------------------
 function calcularDanyo(userData, healFood) {
   const skills = userData.skills;
@@ -738,7 +748,6 @@ async function getAllCountries() {
   const hit = cacheGet(key);
   if (hit) return hit;
 
-  // country.getAllCountries NO necesita input (normalmente)
   const res = await axios.get(`${TRPC_BASE}/country.getAllCountries`);
   const data = res.data?.result?.data || [];
   cacheSet(key, data, 5 * 60_000);
@@ -813,18 +822,15 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
     const progressMsg = await tgSendMessageSafe(chatId, `💰 Procesando ${items.length} jugadores...`);
 
-    // 1) Batch usuarios
     const userIds = items.map((x) => x._id);
     const usersData = await fetchUsersLite(userIds, { batchSize: 30 });
 
-    // 2) Batch company.getCompanies por usuario
     await tgEditMessageTextSafe(`💰 Cargando fábricas de ${userIds.length} jugadores...`, {
       chat_id: chatId,
       message_id: progressMsg.message_id,
     });
     const companiesByUser = await fetchCompaniesByUser(userIds, { batchSize: 20 });
 
-    // 3) Batch company.getById para TODAS las empresas únicas
     const allCompanyIds = [];
     for (const uid of userIds) {
       const ids = companiesByUser.get(uid) || [];
@@ -837,7 +843,6 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     });
     const companyById = await fetchCompaniesById(allCompanyIds, { batchSize: 40 });
 
-    // 4) Calcular
     const resultados = [];
     let totalWealth = 0;
     let totalFactoryWealth = 0;
@@ -886,7 +891,6 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       totalLiquidWealth += liquidWealth;
       totalFactories += factoryCount;
 
-      // menos edits para evitar 429
       if (idx % 80 === 0) {
         await tgEditMessageTextSafe(`💰 Calculando ${idx + 1}/${usersData.length} jugadores...`, {
           chat_id: chatId,
@@ -925,31 +929,19 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
     await tgSendMessageSafe(chatId, mensajePrincipal, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
 
-    // Excel (✅ envío correcto como documento)
     try {
       const progressExcelMsg = await tgSendMessageSafe(chatId, `📊 Generando archivo Excel...`);
-
       const raw = generarExcelBuffer(resultados, nombreGrupo);
-
-      // ✅ Asegura Buffer real
       const excelBuffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
 
-      if (!excelBuffer.length) {
-        throw new Error("Excel buffer vacío");
-      }
+      if (!excelBuffer.length) throw new Error("Excel buffer vacío");
 
       const nombreArchivo = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
 
-      // ✅ MUY IMPORTANTE: Buffer directo + filename en fileOptions
-      await tgSendDocumentSafe(
-        chatId,
-        excelBuffer,
-        {}, // message options (caption, etc.)
-        {
-          filename: nombreArchivo,
-          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }
-      );
+      await tgSendDocumentSafe(chatId, excelBuffer, {}, {
+        filename: nombreArchivo,
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
 
       await tgDeleteMessageSafe(chatId, progressExcelMsg.message_id);
     } catch (error) {
@@ -957,7 +949,6 @@ async function procesarDineroGrupo(chatId, args, tipo) {
       await tgSendMessageSafe(chatId, "⚠️ No se pudo generar/enviar el archivo Excel.");
     }
 
-    // Lista en chunks (opcional)
     if (ENVIAR_LISTA_EN_CHAT) {
       const chunkSize = 10;
       for (let i = 0; i < resultados.length; i += chunkSize) {
@@ -1090,8 +1081,6 @@ const comandos = {
       let mensaje = `*Resultados para:* ${escapeMarkdownV2(searchText)}\n\n`;
 
       const obtenerDatosConNombre = async (ids, tipo) => {
-        // Optimización: intentamos batch según el tipo
-        // user/country/mu/region tienen endpoints distintos, así que hacemos por categoría
         const resultados = [];
 
         for (const id of ids) {
@@ -1182,7 +1171,6 @@ const comandos = {
     const mensajeExtra = args.slice(1).join(" ");
     const menciones = [];
 
-    // Optimización: batch users de la lista fija "usuarios"
     const ids = usuarios.map((u) => u.userId);
     const usersData = await fetchUsersLite(ids, { batchSize: 30 });
 
@@ -1224,7 +1212,6 @@ const comandos = {
 
   danyosemanal: async (chatId) => {
     try {
-      // Batch de users de la lista fija
       const ids = usuarios.map((u) => u.userId);
       const usersData = await fetchUsersLite(ids, { batchSize: 30 });
 
@@ -1274,6 +1261,9 @@ const comandos = {
     }
   },
 
+  // -------------------------
+  // /produccion (VISIBILIDAD + DEPÓSITOS SOLO PARA MATERIAS)
+  // -------------------------
   produccion: async (chatId) => {
     try {
       const CONTROL_ITEMS = [
@@ -1345,6 +1335,7 @@ const comandos = {
       const isRaw = (item) => !!materiasPrimas[item];
 
       const [prices, countriesArr, regionsObj] = await Promise.all([getPrices(), getAllCountries(), getRegionsObject()]);
+
       if (!prices || !countriesArr?.length || !regionsObj) {
         return tgSendMessageSafe(chatId, "No se pudieron obtener datos (precios/países/regiones).");
       }
@@ -1352,18 +1343,18 @@ const comandos = {
       function getCountryProdBonusPercent(country) {
         const a = country?.rankings?.countryProductionBonus?.value;
         const b = country?.strategicResources?.bonuses?.productionPercent;
-        const v = typeof a === "number" ? a : typeof b === "number" ? b : 0;
+        const v = (typeof a === "number" ? a : typeof b === "number" ? b : 0);
         return Number(v) || 0;
       }
 
-      // countryId -> Map<type, { bonusPercent, endsAt, regionId, regionName }>
+      // Depósitos activos por país y TIPO, guardando región (para mostrar)
       const now = Date.now();
-      const depositsByCountry = new Map();
-
+      const depositsByCountry = new Map(); // countryId -> Map<type, { bonusPercent, endsAt, regionId, regionName }>
       for (const region of Object.values(regionsObj)) {
         const cId = region?.country;
         const dep = region?.deposit;
-        if (!cId || !dep?.type || typeof dep?.bonusPercent !== "number" || !dep?.endsAt) continue;
+        if (!cId || !region?._id || !region?.name) continue;
+        if (!dep?.type || typeof dep?.bonusPercent !== "number" || !dep?.endsAt) continue;
 
         const endsAt = new Date(dep.endsAt).getTime();
         if (!endsAt || now >= endsAt) continue;
@@ -1371,40 +1362,36 @@ const comandos = {
         if (!depositsByCountry.has(cId)) depositsByCountry.set(cId, new Map());
         const m = depositsByCountry.get(cId);
 
-        const candidate = {
-          bonusPercent: dep.bonusPercent,
-          endsAt,
-          regionId: region?._id,
-          regionName: region?.name || null,
-        };
-
         const prev = m.get(dep.type);
         if (
           !prev ||
-          candidate.bonusPercent > prev.bonusPercent ||
-          (candidate.bonusPercent === prev.bonusPercent && candidate.endsAt < prev.endsAt)
+          dep.bonusPercent > prev.bonusPercent ||
+          (dep.bonusPercent === prev.bonusPercent && endsAt < prev.endsAt)
         ) {
-          m.set(dep.type, candidate);
+          m.set(dep.type, {
+            bonusPercent: dep.bonusPercent,
+            endsAt,
+            regionId: region._id,
+            regionName: region.name,
+          });
         }
       }
 
-      // ✅ Depósito CORRECTO:
-      // Solo aplica si existe depósito del MISMO item (no de inputs).
-      // Así, manufacturados como Acero/Hormigón/Pescado Cocido NO deberían sacar depósito.
       function calcProductivityForCountry(item, country) {
         const sell = prices[item];
         if (typeof sell !== "number") return null;
 
         const countryBonus = country?.specializedItem === item ? getCountryProdBonusPercent(country) : 0;
 
-        const depsMap = depositsByCountry.get(country._id);
+        // ✅ Depósito SOLO si el item ES MATERIA PRIMA y existe depósito EXACTO de ese item
         let depositBonus = 0;
         let depositEnd = null;
         let depositRegionId = null;
         let depositRegionName = null;
 
-        if (depsMap) {
-          const d = depsMap.get(item);
+        if (isRaw(item)) {
+          const depsMap = depositsByCountry.get(country._id);
+          const d = depsMap?.get(item);
           if (d) {
             depositBonus = d.bonusPercent;
             depositEnd = d.endsAt;
@@ -1424,6 +1411,8 @@ const comandos = {
           cost = 0;
         } else if (productosManufacturados[item]) {
           pp = productosManufacturados[item].pp;
+
+          // coste materias a precio de mercado
           for (const [mat, qty] of Object.entries(productosManufacturados[item].materias)) {
             const p = prices[mat];
             if (typeof p !== "number") return null;
@@ -1433,6 +1422,7 @@ const comandos = {
           return null;
         }
 
+        // ✅ Fórmula: (precio_venta * (1+bonus) - coste_materias) / pp
         const profitPerPP = (sell * multiplier - cost) / pp;
 
         return {
@@ -1451,7 +1441,7 @@ const comandos = {
 
       const bestByItem = [];
       for (const item of CONTROL_ITEMS) {
-        if (!prices[item]) continue;
+        if (typeof prices[item] !== "number") continue;
         if (!isRaw(item) && !productosManufacturados[item]) continue;
 
         let best = null;
@@ -1470,33 +1460,24 @@ const comandos = {
       bestByItem.sort((a, b) => b.profitPerPP - a.profitPerPP);
 
       const fmt5 = (n) => (Math.round(n * 100000) / 100000).toFixed(5);
-      const formatEnd = (ts) =>
-        ts ? new Date(ts).toLocaleString("es-ES", { timeZone: "Europe/Madrid", hour12: false }) : "";
 
+      // Output: SIEMPRE línea 1 con 🏭/⛏️
+      // Si hay depósito (solo materias): línea 2 con fecha · Región País (CODE)
       let msg = `*RANKING PRODUCTIVIDAD*\n\n`;
 
       for (let i = 0; i < bestByItem.length; i++) {
         const x = bestByItem[i];
         const name = traducciones[x.item] || x.item;
+
         const emoji = isRaw(x.item) ? "⛏️" : "🏭";
-
-        const prodText = `${fmt5(x.profitPerPP)} monedas/pp`;
-
-        // Construir sufijo final: "<Nombre-Region> <Nombre-Pais>"
-        // - Si hay depósito: ponemos fecha + Región + País
-        // - Si no: solo País (porque sigue siendo "mejor país por item")
         const countryTxt = `${x.countryName} (${String(x.countryCode || "").toUpperCase()})`;
 
-        if (x.depositBonus && x.depositEnd && x.depositRegionId) {
-          const endStr = formatEnd(x.depositEnd);
-          const regionName = x.depositRegionName || `Región ${x.depositRegionId}`;
-          msg += `${i + 1}\\. ${emoji} *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(prodText)} · ${escapeMarkdownV2(
-            endStr
-          )} · ${escapeMarkdownV2(regionName)} ${escapeMarkdownV2(countryTxt)}\n`;
-        } else {
-          msg += `${i + 1}\\. ${emoji} *${escapeMarkdownV2(name)}*: ${escapeMarkdownV2(prodText)} · ${escapeMarkdownV2(
-            countryTxt
-          )}\n`;
+        msg += `${i + 1}\\. ${emoji} ${escapeMarkdownV2(name)}: ${escapeMarkdownV2(fmt5(x.profitPerPP))} monedas/pp · ${escapeMarkdownV2(countryTxt)}\n`;
+
+        if (x.depositBonus && x.depositEnd && x.depositRegionName) {
+          const d = formatDateShort(x.depositEnd);
+          const line2 = `${d} · ${x.depositRegionName} ${countryTxt}`;
+          msg += `${escapeMarkdownV2(line2)}\n`;
         }
       }
 
@@ -1509,9 +1490,7 @@ const comandos = {
 
   duracion: async (chatId, args) => {
     if (args.length < 1) {
-      return tgSendMessageSafe(chatId, "Ejemplo: /duracion https://app.warera.io/battle/XXXXXXXX", {
-        disable_web_page_preview: true,
-      });
+      return tgSendMessageSafe(chatId, "Ejemplo: /duracion https://app.warera.io/battle/XXXXXXXX", { disable_web_page_preview: true });
     }
 
     const battleId = args[0].split("/").pop();
@@ -1525,7 +1504,6 @@ const comandos = {
       let defenderWins = battle.defender.wonRoundsCount;
       let attackerWins = battle.attacker.wonRoundsCount;
 
-      // Optimización: país defensor y atacante en paralelo
       const [defData, attData] = await Promise.all([
         getCountryData(battle.defender.country),
         getCountryData(battle.attacker.country),
@@ -1574,8 +1552,7 @@ const comandos = {
       });
 
       const winsTrasRondaRapida = (defensorVaGanando ? defenderWins : attackerWins) + 1;
-      if (winsTrasRondaRapida < roundsToWin)
-        tiempoRapido += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "rapido" });
+      if (winsTrasRondaRapida < roundsToWin) tiempoRapido += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "rapido" });
 
       let tiempoLento = 0;
       let rondaActualGanador;
@@ -1603,8 +1580,7 @@ const comandos = {
       }
 
       if (winsTrasRondaLenta < roundsToWin) {
-        if (defenderWins === 0 || attackerWins === 0)
-          tiempoLento += simularRonda({ perdedorInicial: 0, ganadorInicial: 0, modo: "lento" });
+        if (defenderWins === 0 || attackerWins === 0) tiempoLento += simularRonda({ perdedorInicial: 0, ganadorInicial: 0, modo: "lento" });
         tiempoLento += simularRonda({ ganadorInicial: 0, perdedorInicial: 0, modo: "lento" });
       }
 
