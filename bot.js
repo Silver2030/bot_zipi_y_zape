@@ -1471,8 +1471,11 @@ const comandos = {
 
         const emoji = isRaw(x.item) ? "⛏️" : "🏭";
 
-        msg += `${i + 1}\\. ${emoji} ${name}: ${fmt5(x.profitPerPP)} monedas/pp · ${x.countryName}\n`;
+        // Línea principal (escapada entera => arregla el '.' de los decimales)
+        const line1 = `${i + 1}. ${emoji} ${name}: ${fmt5(x.profitPerPP)} monedas/pp · ${x.countryName}`;
+        msg += `${escapeMarkdownV2(line1)}\n`;
 
+        // Línea depósito (ya la estabas escapando, perfecto)
         if (x.depositBonus && x.depositEnd && x.depositRegionName) {
           const d = formatDateShort(x.depositEnd);
           const line2 = `${d} · ${x.depositRegionName}`;
