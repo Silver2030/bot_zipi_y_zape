@@ -1,14 +1,7 @@
 "use strict";
 
 // ─── Configuración por canal ──────────────────────────────────────────────────
-// Cada entrada define el idioma y los usuarios de ese chat.
-// Para añadir un canal nuevo: añade una entrada con su chatId real.
-//
-// lang:     código de idioma → debe existir en i18n/es.js, i18n/ru.js, etc.
-// usuarios: lista de jugadores de ese canal (userId de WarEra + mention de Telegram)
-
 const CHATS = {
-  // Canal hispano principal
   [-1003341630162]: {
     lang: "es",
     usuarios: [
@@ -22,24 +15,19 @@ const CHATS = {
       { userId: "69264c4ccc751d7f45f2f8f4", mention: "@Kaiado" },
     ],
   },
-
-  // Canal de pruebas (español)
   [-1003246477704]: {
     lang: "es",
     usuarios: [
       { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     ],
   },
-
-  // Chat privado del admin
   [696082291]: {
     lang: "es",
     usuarios: [
       { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     ],
   },
-
-  // ── Canal ruso (rellena los datos cuando lo tengas) ──────────────────────
+  // Canal ruso — descomenta cuando tengas el chatId:
   // [-1001234567890]: {
   //   lang: "ru",
   //   usuarios: [
@@ -48,11 +36,10 @@ const CHATS = {
   // },
 };
 
-// IDs permitidos (se calculan automáticamente a partir de CHATS)
 const ALLOWED_CHATS = Object.keys(CHATS).map(Number);
 
-function getChatConfig(chatId) { return CHATS[chatId] ?? null; }
-function getChatLang(chatId)   { return CHATS[chatId]?.lang ?? "es"; }
+function getChatConfig(chatId)   { return CHATS[chatId] ?? null; }
+function getChatLang(chatId)     { return CHATS[chatId]?.lang ?? "es"; }
 function getChatUsuarios(chatId) { return CHATS[chatId]?.usuarios ?? []; }
 
 // ─── Mecánicas del juego ─────────────────────────────────────────────────────
@@ -67,6 +54,15 @@ const CONTROL_ITEMS = [
   "concrete","oil","lightAmmo","steak","livestock","cocain","lead",
   "fish","petroleum","ammo","iron",
 ];
+
+const TRADUCCIONES = {
+  grain: "Granos", livestock: "Ganado", limestone: "Caliza",
+  coca: "Plantas", lead: "Plomo", petroleum: "Petróleo",
+  iron: "Hierro", fish: "Pescado", cookedFish: "Pescado Cocido",
+  heavyAmmo: "Munición Pesada", steel: "Acero", bread: "Pan",
+  concrete: "Hormigón", oil: "Aceite", lightAmmo: "Munición Ligera",
+  steak: "Filete", cocain: "Pastilla", ammo: "Munición",
+};
 
 const MATERIAS_PRIMAS = {
   grain:{pp:1}, livestock:{pp:20}, limestone:{pp:1}, coca:{pp:1},
@@ -86,26 +82,22 @@ const PRODUCTOS_MANUFACTURADOS = {
   ammo:      { materias:{lead:4},       pp:4   },
 };
 
+// ─── API ─────────────────────────────────────────────────────────────────────
 const TRPC_BASE = "https://api2.warera.io/trpc";
 
+// ─── Configuración de comandos ────────────────────────────────────────────────
+const DINERO_ENVIAR_EN_CHAT = true;
+const DINERO_CHUNK_DELAY_MS = 900;
+const DANYO_CHUNK_SIZE      = 10;
+const JUGADORES_CHUNK_SIZE  = 50;
+
+// ─── Un único module.exports ──────────────────────────────────────────────────
 module.exports = {
   CHATS, ALLOWED_CHATS,
   getChatConfig, getChatLang, getChatUsuarios,
   HEAL_FOOD_MAP, SKILL_COSTS, PVP_SKILLS, ECO_SKILLS,
-  CONTROL_ITEMS, MATERIAS_PRIMAS, PRODUCTOS_MANUFACTURADOS,
+  CONTROL_ITEMS, TRADUCCIONES, MATERIAS_PRIMAS, PRODUCTOS_MANUFACTURADOS,
   TRPC_BASE,
-};
-
-// ─── Configuración de comandos ────────────────────────────────────────────────
-const DINERO_ENVIAR_EN_CHAT = true;   // si false, solo manda el Excel
-const DINERO_CHUNK_DELAY_MS = 900;    // ms entre chunks de la lista de jugadores
-const DANYO_CHUNK_SIZE      = 10;     // jugadores por mensaje en /paisesDanyo
-const JUGADORES_CHUNK_SIZE  = 50;     // jugadores por mensaje en /jugadoresPais
-
-module.exports = {
-  ...module.exports,
-  DINERO_ENVIAR_EN_CHAT,
-  DINERO_CHUNK_DELAY_MS,
-  DANYO_CHUNK_SIZE,
-  JUGADORES_CHUNK_SIZE,
+  DINERO_ENVIAR_EN_CHAT, DINERO_CHUNK_DELAY_MS,
+  DANYO_CHUNK_SIZE, JUGADORES_CHUNK_SIZE,
 };
