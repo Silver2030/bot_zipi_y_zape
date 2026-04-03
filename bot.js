@@ -12,6 +12,68 @@ if (!token) throw new Error("TELEGRAM_BOT_TOKEN no definido");
 const bot = new TelegramBot(token, { polling: true });
 tg.init(bot);
 
+// ─── Comandos por scope (un set por canal) ────────────────────────────────────
+const COMMANDS = {
+  es: [
+    { command: "help",          description: "Muestra todos los comandos disponibles" },
+    { command: "all",           description: "Menciona a todo el grupo" },
+    { command: "produccion",    description: "Ranking de productividad" },
+    { command: "buscar",        description: "Busca usuarios, países, MUs..." },
+    { command: "hambre",        description: "<enlace_guerra> <mensaje>" },
+    { command: "jugadorespais", description: "<enlace_pais/id_pais>" },
+    { command: "jugadoresmu",   description: "<enlace_mu/id_mu>" },
+    { command: "paisesdanyo",   description: "<enlace_pais/id_pais> <comida>" },
+    { command: "mudanyo",       description: "<enlace_mu/id_mu> <comida>" },
+    { command: "danyosemanal",  description: "Ranking de daño de la semana" },
+    { command: "dineropais",    description: "<enlace_pais/id_pais>" },
+    { command: "dineromu",      description: "<enlace_mu/id_mu>" },
+    { command: "duracion",      description: "<enlace_batalla/id_batalla>" },
+    { command: "perfil",        description: "<enlace_usuario/id_usuario>" },
+    { command: "guerra",        description: "<enlace_batalla/id_batalla>" },
+    { command: "mercado",       description: "<nombre_item>" },
+    { command: "eventos",       description: "Últimos eventos del juego" },
+    { command: "ranking",       description: "<danyo/wealth/nivel/pais>" },
+  ],
+  ru: [
+    { command: "help",          description: "Показать все доступные команды" },
+    { command: "vse",           description: "Упомянуть всю группу" },
+    { command: "proizvodstvo",  description: "Рейтинг производительности" },
+    { command: "poisk",         description: "Поиск игроков, стран, ВЕ..." },
+    { command: "golod",         description: "<ссылка_битвы> <сообщение>" },
+    { command: "igroki",        description: "<ссылка_страны/id_страны>" },
+    { command: "igrokilmu",     description: "<ссылка_ве/id_ве>" },
+    { command: "uronstrana",    description: "<ссылка_страны/id_страны> <еда>" },
+    { command: "uronmu",        description: "<ссылка_ве/id_ве> <еда>" },
+    { command: "uronnedeli",    description: "Рейтинг урона за неделю" },
+    { command: "dengistrana",   description: "<ссылка_страны/id_страны>" },
+    { command: "dengimu",       description: "<ссылка_ве/id_ве>" },
+    { command: "vremya",        description: "<ссылка_битвы/id_битвы>" },
+    { command: "profil",        description: "<ссылка_игрока/id_игрока>" },
+    { command: "bitva",         description: "<ссылка_битвы/id_битвы>" },
+    { command: "rynok",         description: "<название_товара>" },
+    { command: "sobytiya",      description: "Последние события игры" },
+    { command: "reiting",       description: "<danyo/wealth/nivel/pais>" },
+  ],
+};
+
+async function registerCommands() {
+  const { CHATS } = require("./config");
+
+  for (const [chatId, config] of Object.entries(CHATS)) {
+    const commands = COMMANDS[config.lang] ?? COMMANDS.es;
+    try {
+      await bot.setMyCommands(commands, {
+        scope: { type: "chat", chat_id: Number(chatId) },
+      });
+      console.log(`✅ Comandos registrados para chat ${chatId} (${config.lang})`);
+    } catch (err) {
+      console.error(`❌ Error registrando comandos para chat ${chatId}:`, err?.message);
+    }
+  }
+}
+
+registerCommands();
+
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 const handlers = {
   ...require("./commands/misc"),
