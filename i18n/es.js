@@ -136,8 +136,50 @@ module.exports = {
   defensor:             "Defensor",
   atacante:             "Atacante",
 
+
+  // ─── Mutex ──────────────────────────────────────────────────────────────────
+  cmd_already_running: "⏳ Este comando ya está en ejecución en este chat. Espera a que termine.",
+
+  // ─── /perfil ────────────────────────────────────────────────────────────────
+  perfil_usage:    "Ejemplo: /perfil https://app.warera.io/user/XXXXXXXX",
+  perfil_not_found:"Usuario no encontrado.",
+  perfil_resumen:  ({ username, userId, nivel, build, weeklyDmg, totalDmg, danyoActual, wealth, pastilla }) =>
+    `👤 *[${username}](https://app.warera.io/user/${userId})*\n` +
+    `📊 Nivel: ${nivel} | Build: ${build}\n` +
+    `⚔️ Daño semanal: ${weeklyDmg}\n` +
+    `⚔️ Daño total: ${totalDmg}\n` +
+    `⚔️ Daño disponible (pescado): ${danyoActual}\n` +
+    `💰 Wealth: ${wealth}\n` +
+    `💊 Pastilla: ${pastilla}`,
+
+  // ─── /guerra ────────────────────────────────────────────────────────────────
+  guerra_usage:   "Ejemplo: /guerra https://app.warera.io/battle/XXXXXXXX",
+  guerra_resumen: ({ estado, defName, defWins, dmgDef, attName, attWins, dmgAtt, roundsToWin, ganador, battleId }) => {
+    let msg = `${estado} *Batalla* — [ver](https://app.warera.io/battle/${battleId})\n\n`;
+    msg += `🛡️ *${defName}*: ${defWins}/${roundsToWin} rondas | Daño: ${dmgDef}\n`;
+    msg += `⚔️ *${attName}*: ${attWins}/${roundsToWin} rondas | Daño: ${dmgAtt}\n`;
+    if (ganador) msg += `\n🏆 Ganador: *${ganador}*`;
+    return msg;
+  },
+
+  // ─── /mercado ───────────────────────────────────────────────────────────────
+  mercado_usage:     "Ejemplo: /mercado pan\nItems: pan, filete, pescado, acero, hierro...",
+  mercado_not_found: (q) => `Item no encontrado: "${q}"`,
+  mercado_resumen:   ({ nombre, itemCode, precio }) =>
+    `🏪 *${nombre}* \(\`${itemCode}\`\)\n💰 Precio de mercado: ${precio}`,
+
+  // ─── /eventos ───────────────────────────────────────────────────────────────
+  eventos_no_data: "No hay eventos recientes.",
+  eventos_header:  "📰 *Últimos eventos*",
+
+  // ─── /ranking ───────────────────────────────────────────────────────────────
+  ranking_usage: (tipos) => `Uso: /ranking <tipo>\nTipos disponibles: ${tipos}`,
+
   // ─── Aliases de comandos ────────────────────────────────────────────────────
   // Mapa de: texto que escribe el usuario → nombre interno del handler
+  // Incluye tanto los comandos en español como los rusos para que funcionen
+  // en cualquier chat independientemente del idioma configurado.
+  // ─── Aliases de comandos ────────────────────────────────────────────────────
   comandoAliases: {
     help:          "help",
     buscar:        "buscar",
@@ -152,5 +194,12 @@ module.exports = {
     duracion:      "duracion",
     all:           "all",
     produccion:    "produccion",
+    perfil:        "perfil",
+    guerra:        "guerra",
+    mercado:       "mercado",
+    eventos:       "eventos",
+    ranking:       "ranking",
+    id:            "id",
+    status:        "status",
   },
 };

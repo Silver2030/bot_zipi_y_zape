@@ -1,7 +1,6 @@
 "use strict";
 
-const { fetchInBatches, getUserData, getUserCompanies, getCompanyData } = require("./api");
-const { apiCall } = require("./api");
+const { fetchInBatches, getUserData, getUserCompanies, getCompanyData, apiCall } = require("./api");
 const { delay } = require("./utils");
 
 async function fetchUsersLite(userIds, { batchSize = 30 } = {}) {
@@ -31,6 +30,7 @@ async function fetchCompaniesByUser(userIds, { batchSize = 20 } = {}) {
 
 async function fetchCompaniesById(companyIds, { batchSize = 40 } = {}) {
   const unique = [...new Set(companyIds.filter(Boolean))];
+  if (!unique.length) return new Map();
   const res = await fetchInBatches({
     items: unique,
     batchSize,
@@ -45,25 +45,32 @@ async function fetchCompaniesById(companyIds, { batchSize = 40 } = {}) {
 }
 
 async function getCountryUsers(countryId) {
-  let allItems = [];
+  let allItems  = [];
   let nextCursor = null;
-  let page = 1;
+  let page      = 1;
+  const MAX_PAGES = 50;
 
   do {
-    console.log(`📄 Obteniendo página ${page} de usuarios del país...`);
-    const queryParams = { countryId, limit: 100 };
-    if (nextCursor) queryParams.cursor = nextCursor;
+    console.log(`📄 Página ${page} de usuarios del país...`);
+    const params = { countryId, limit: 100 };
+    if (nextCursor) params.cursor = nextCursor;
 
-    const usersData = await apiCall("user.getUsersByCountry", queryParams);
-    if (usersData?.items) {
-      allItems = allItems.concat(usersData.items);
-      nextCursor = usersData.nextCursor || null;
-    } else {
-      nextCursor = null;
+    try {
+      const data = await apiCall("user.getUsersByCountry", params);
+      if (data?.items?.length) {
+        allItems   = allItems.concat(data.items);
+        nextCursor = data.nextCursor || null;
+      } else {
+        nextCursor = null;
+      }
+    } catch (err) {
+      console.error(`❌ Error en página ${page} de usuarios del país:`, err?.message);
+      nextCursor = null; // parar para no quedar en bucle infinito
     }
+
     page++;
     if (nextCursor) await delay(200);
-  } while (nextCursor && page < 20);
+  } while (nextCursor && page <= MAX_PAGES);
 
   console.log(`📊 Total usuarios del país: ${allItems.length}`);
   return { items: allItems };

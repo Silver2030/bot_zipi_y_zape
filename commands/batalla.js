@@ -2,8 +2,11 @@
 
 const tg = require("../telegram");
 const { t } = require("../i18n");
+const { getChatLang } = require("../config");
 const { apiCall, getCountryData } = require("../api");
 const { puntosPorTick } = require("../game");
+
+const DATE_LOCALES = { es: "es-ES", ru: "ru-RU" };
 
 function simularRonda({ ganadorInicial, perdedorInicial, modo }) {
   let ganador = ganadorInicial, perdedor = perdedorInicial, tiempo = 0;
@@ -27,8 +30,8 @@ function formatTiempo(minutos) {
   return `${h}h ${mm}m`;
 }
 
-function horaFinal(minutos) {
-  return new Date(Date.now() + minutos * 60000).toLocaleTimeString("es-ES", {
+function horaFinal(minutos, dateLocale) {
+  return new Date(Date.now() + minutos * 60000).toLocaleTimeString(dateLocale, {
     hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Madrid",
   });
 }
@@ -39,7 +42,8 @@ async function duracion(chatId, args) {
     return;
   }
 
-  const battleId = args[0].split("/").pop();
+  const battleId   = args[0].split("/").pop();
+  const dateLocale = DATE_LOCALES[getChatLang(chatId)] ?? "es-ES";
 
   try {
     const battle = await apiCall("battle.getById", { battleId });
@@ -90,11 +94,11 @@ async function duracion(chatId, args) {
     msg += t(chatId, "duracion_rapido");
     msg += t(chatId, "duracion_ganador", ganadorRapido);
     msg += t(chatId, "duracion_tiempo",  formatTiempo(tiempoRapido));
-    msg += t(chatId, "duracion_finaliza", horaFinal(tiempoRapido));
+    msg += t(chatId, "duracion_finaliza", horaFinal(tiempoRapido, dateLocale));
     msg += "\n";
     msg += t(chatId, "duracion_lento");
     msg += t(chatId, "duracion_tiempo",  formatTiempo(tiempoLento));
-    msg += t(chatId, "duracion_finaliza_nl", horaFinal(tiempoLento));
+    msg += t(chatId, "duracion_finaliza_nl", horaFinal(tiempoLento, dateLocale));
 
     await tg.sendMessage(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });
 

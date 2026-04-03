@@ -5,9 +5,7 @@ const { t } = require("../i18n");
 const { getMUData, getCountryData } = require("../api");
 const { fetchUsersLite, fetchCompaniesByUser, fetchCompaniesById, getCountryUsers } = require("../fetchers");
 const { escapeMarkdownV2, formatNumberMarkdown, delay, generarExcelBuffer } = require("../utils");
-
-const CHUNK_DELAY_MS    = 900;
-const ENVIAR_EN_CHAT    = true;
+const { DINERO_ENVIAR_EN_CHAT, DINERO_CHUNK_DELAY_MS } = require("../config");
 
 async function procesarDineroGrupo(chatId, args, tipo) {
   if (!args.length) {
@@ -41,10 +39,12 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     await tg.editMessageText(t(chatId, "dinero_loading_companies", userIds.length), { chat_id: chatId, message_id: progressMsg.message_id });
     const companiesByUser = await fetchCompaniesByUser(userIds, { batchSize: 20 });
 
-    const allCompanyIds = [];
-    for (const uid of userIds) allCompanyIds.push(...(companiesByUser.get(uid) || []));
+    // Deduplicar IDs antes de pasarlos a fetchCompaniesById
+    const allCompanyIds = [...new Set(
+      userIds.flatMap((uid) => companiesByUser.get(uid) || [])
+    )];
 
-    await tg.editMessageText(t(chatId, "dinero_loading_data", new Set(allCompanyIds).size), { chat_id: chatId, message_id: progressMsg.message_id });
+    await tg.editMessageText(t(chatId, "dinero_loading_data", allCompanyIds.length), { chat_id: chatId, message_id: progressMsg.message_id });
     const companyById = await fetchCompaniesById(allCompanyIds, { batchSize: 40 });
 
     const resultados = [];
@@ -106,11 +106,11 @@ async function procesarDineroGrupo(chatId, args, tipo) {
 
     // Excel
     try {
-      const excelMsg  = await tg.sendMessage(chatId, t(chatId, "generating_excel"));
-      const raw       = generarExcelBuffer(resultados, nombreGrupo);
-      const buf       = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+      const excelMsg = await tg.sendMessage(chatId, t(chatId, "generating_excel"));
+      const raw      = generarExcelBuffer(resultados, nombreGrupo);
+      const buf      = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
       if (!buf.length) throw new Error("Buffer vacío");
-      const fileName  = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
+      const fileName = `dinero_${tipo}_${nombreGrupo.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.xlsx`;
       await tg.sendDocument(chatId, buf, {}, { filename: fileName, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       await tg.deleteMessage(chatId, excelMsg.message_id);
     } catch (err) {
@@ -119,7 +119,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
     }
 
     // Lista en chat
-    if (ENVIAR_EN_CHAT) {
+    if (DINERO_ENVIAR_EN_CHAT) {
       const chunkSize = 10;
       for (let i = 0; i < resultados.length; i += chunkSize) {
         const chunk = resultados.slice(i, i + chunkSize);
@@ -139,7 +139,7 @@ async function procesarDineroGrupo(chatId, args, tipo) {
         });
 
         await tg.sendMessage(chatId, msg, { parse_mode: "MarkdownV2", disable_web_page_preview: true });
-        await delay(CHUNK_DELAY_MS);
+        await delay(DINERO_CHUNK_DELAY_MS);
       }
     }
 

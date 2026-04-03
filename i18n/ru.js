@@ -136,6 +136,45 @@ module.exports = {
   defensor:             "Защитник",
   atacante:             "Атакующий",
 
+
+  // ─── Mutex ──────────────────────────────────────────────────────────────────
+  cmd_already_running: "⏳ Эта команда уже выполняется в этом чате. Подождите.",
+
+  // ─── /perfil / /profil ──────────────────────────────────────────────────────
+  perfil_usage:    "Пример: /profil https://app.warera.io/user/XXXXXXXX",
+  perfil_not_found:"Пользователь не найден.",
+  perfil_resumen:  ({ username, userId, nivel, build, weeklyDmg, totalDmg, danyoActual, wealth, pastilla }) =>
+    `👤 *[${username}](https://app.warera.io/user/${userId})*\n` +
+    `📊 Уровень: ${nivel} | Билд: ${build}\n` +
+    `⚔️ Урон за неделю: ${weeklyDmg}\n` +
+    `⚔️ Общий урон: ${totalDmg}\n` +
+    `⚔️ Доступный урон (рыба): ${danyoActual}\n` +
+    `💰 Богатство: ${wealth}\n` +
+    `💊 Таблетка: ${pastilla}`,
+
+  // ─── /guerra / /bitva ───────────────────────────────────────────────────────
+  guerra_usage:   "Пример: /bitva https://app.warera.io/battle/XXXXXXXX",
+  guerra_resumen: ({ estado, defName, defWins, dmgDef, attName, attWins, dmgAtt, roundsToWin, ganador, battleId }) => {
+    let msg = `${estado} *Битва* — [смотреть](https://app.warera.io/battle/${battleId})\n\n`;
+    msg += `🛡️ *${defName}*: ${defWins}/${roundsToWin} раундов | Урон: ${dmgDef}\n`;
+    msg += `⚔️ *${attName}*: ${attWins}/${roundsToWin} раундов | Урон: ${dmgAtt}\n`;
+    if (ganador) msg += `\n🏆 Победитель: *${ganador}*`;
+    return msg;
+  },
+
+  // ─── /mercado / /rynok ──────────────────────────────────────────────────────
+  mercado_usage:     "Пример: /rynok hleb\nТовары: hleb, steik, ryba, stal, zhelezo...",
+  mercado_not_found: (q) => `Товар не найден: "${q}"`,
+  mercado_resumen:   ({ nombre, itemCode, precio }) =>
+    `🏪 *${nombre}* (\`${itemCode}\`)\n💰 Рыночная цена: ${precio}`,
+
+  // ─── /eventos / /sobytiya ───────────────────────────────────────────────────
+  eventos_no_data: "Недавних событий нет.",
+  eventos_header:  "📰 *Последние события*",
+
+  // ─── /ranking / /reiting ────────────────────────────────────────────────────
+  ranking_usage: (tipos) => `Использование: /reiting <тип>\nДоступные типы: ${tipos}`,
+
   // ─── Aliases de comandos (ruso) ─────────────────────────────────────────────
   // Mapa de: texto que escribe el usuario → nombre interno del handler
   comandoAliases: {
@@ -168,5 +207,18 @@ module.exports = {
     duracion:      "duracion",
     all:           "all",
     produccion:    "produccion",
+    // Nuevos comandos
+    perfil:        "perfil",
+    profil:        "perfil",
+    guerra:        "guerra",
+    bitva:         "guerra",
+    mercado:       "mercado",
+    rynok:         "mercado",
+    eventos:       "eventos",
+    sobytiya:      "eventos",
+    ranking:       "ranking",
+    reiting:       "ranking",
+    id:            "id",
+    status:        "status",
   },
 };

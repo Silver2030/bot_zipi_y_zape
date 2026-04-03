@@ -2,20 +2,41 @@
 
 const axios = require("axios");
 const { TRPC_BASE } = require("./config");
+const { delay } = require("./utils");
 
-// ─── Cache TTL ────────────────────────────────────────────────────────────────
-const cache = new Map();
+// ─── Caché LRU con TTL ────────────────────────────────────────────────────────
+const CACHE_MAX = 500; // máximo de entradas simultáneas
 
-function cacheGet(key) {
-  const x = cache.get(key);
-  if (!x) return null;
-  if (Date.now() > x.exp) { cache.delete(key); return null; }
-  return x.value;
+class LRUCache {
+  constructor(max) {
+    this.max  = max;
+    this.map  = new Map(); // key → { value, exp }
+  }
+
+  get(key) {
+    const x = this.map.get(key);
+    if (!x) return null;
+    if (Date.now() > x.exp) { this.map.delete(key); return null; }
+    // mover al final (más reciente)
+    this.map.delete(key);
+    this.map.set(key, x);
+    return x.value;
+  }
+
+  set(key, value, ttlMs = 60_000) {
+    if (this.map.has(key)) this.map.delete(key);
+    else if (this.map.size >= this.max) {
+      // eliminar el más antiguo (primer elemento)
+      this.map.delete(this.map.keys().next().value);
+    }
+    this.map.set(key, { value, exp: Date.now() + ttlMs });
+  }
+
+  delete(key) { this.map.delete(key); }
+  get size()  { return this.map.size; }
 }
 
-function cacheSet(key, value, ttlMs = 60_000) {
-  cache.set(key, { value, exp: Date.now() + ttlMs });
-}
+const cache = new LRUCache(CACHE_MAX);
 
 // ─── Concurrencia limitada (fallback) ────────────────────────────────────────
 async function mapLimit(items, limit, fn) {
@@ -52,13 +73,11 @@ async function apiBatchCall(requests) {
 }
 
 async function fetchInBatches({ items, batchSize = 30, pauseMs = 120, batchRequestBuilder, fallbackFn, fallbackConcurrency = 10 }) {
-  const { delay } = require("./utils");
   const out = [];
   for (let i = 0; i < items.length; i += batchSize) {
     const slice = items.slice(i, i + batchSize);
     try {
-      const reqs = slice.map(batchRequestBuilder);
-      out.push(...(await apiBatchCall(reqs)));
+      out.push(...(await apiBatchCall(slice.map(batchRequestBuilder))));
     } catch {
       out.push(...(await mapLimit(slice, fallbackConcurrency, fallbackFn)));
     }
@@ -70,82 +89,86 @@ async function fetchInBatches({ items, batchSize = 30, pauseMs = 120, batchReque
 // ─── Endpoints cacheados ──────────────────────────────────────────────────────
 async function getUserData(userId) {
   const key = `user:${userId}`;
-  const hit = cacheGet(key);
+  const hit = cache.get(key);
   if (hit) return hit;
   const data = await apiCall("user.getUserLite", { userId });
-  if (data) cacheSet(key, data, 60_000);
+  if (data) cache.set(key, data, 60_000);
   return data;
 }
 
 async function getMUData(muId) {
   const key = `mu:${muId}`;
-  const hit = cacheGet(key);
+  const hit = cache.get(key);
   if (hit) return hit;
   const data = await apiCall("mu.getById", { muId });
-  if (data) cacheSet(key, data, 60_000);
+  if (data) cache.set(key, data, 60_000);
   return data;
 }
 
 async function getCountryData(countryId) {
   const key = `country:${countryId}`;
-  const hit = cacheGet(key);
+  const hit = cache.get(key);
   if (hit) return hit;
   const data = await apiCall("country.getCountryById", { countryId });
-  if (data) cacheSet(key, data, 5 * 60_000);
+  if (data) cache.set(key, data, 5 * 60_000);
   return data;
 }
 
 async function getUserCompanies(userId) {
   const key = `companiesByUser:${userId}`;
-  const hit = cacheGet(key);
+  const hit = cache.get(key);
   if (hit) return hit;
   const data = await apiCall("company.getCompanies", { userId, perPage: 50 });
-  if (data) cacheSet(key, data, 30_000);
+  if (data) cache.set(key, data, 30_000);
   return data;
 }
 
 async function getCompanyData(companyId) {
   const key = `company:${companyId}`;
-  const hit = cacheGet(key);
+  const hit = cache.get(key);
   if (hit) return hit;
   const data = await apiCall("company.getById", { companyId });
-  if (data) cacheSet(key, data, 2 * 60_000);
+  if (data) cache.set(key, data, 2 * 60_000);
   return data;
 }
 
 async function getAllCountries() {
   const key = "allCountries";
-  const hit = cacheGet(key);
+  const hit = cache.get(key);
   if (hit) return hit;
-  const res = await axios.get(`${TRPC_BASE}/country.getAllCountries`);
+  const res  = await axios.get(`${TRPC_BASE}/country.getAllCountries`);
   const data = res.data?.result?.data || [];
-  cacheSet(key, data, 5 * 60_000);
+  cache.set(key, data, 5 * 60_000);
   return data;
 }
 
 async function getRegionsObject() {
   const key = "regionsObject";
-  const hit = cacheGet(key);
+  const hit = cache.get(key);
   if (hit) return hit;
-  const res = await axios.get(`${TRPC_BASE}/region.getRegionsObject`);
+  const res  = await axios.get(`${TRPC_BASE}/region.getRegionsObject`);
   const data = res.data?.result?.data || {};
-  cacheSet(key, data, 2 * 60_000);
+  cache.set(key, data, 2 * 60_000);
   return data;
 }
 
 async function getPrices() {
   const key = "itemPrices";
-  const hit = cacheGet(key);
+  const hit = cache.get(key);
   if (hit) return hit;
-  const res = await axios.get(`${TRPC_BASE}/itemTrading.getPrices`);
+  const res  = await axios.get(`${TRPC_BASE}/itemTrading.getPrices`);
   const data = res.data?.result?.data || {};
-  cacheSet(key, data, 30_000);
+  cache.set(key, data, 30_000);
   return data;
 }
+
+// Exponer tamaño de caché para /status
+function getCacheSize() { return cache.size; }
 
 module.exports = {
   apiCall, apiBatchCall, fetchInBatches,
   getUserData, getMUData, getCountryData,
   getUserCompanies, getCompanyData,
   getAllCountries, getRegionsObject, getPrices,
+  getCacheSize,
 };

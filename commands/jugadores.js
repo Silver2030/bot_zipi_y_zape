@@ -1,13 +1,16 @@
 "use strict";
 
-const tg        = require("../telegram");
-const { t }     = require("../i18n");
+const tg = require("../telegram");
+const { t } = require("../i18n");
+const { getChatLang } = require("../config");
 const { getMUData, getCountryData } = require("../api");
-const { fetchUsersLite }            = require("../fetchers");
-const { getCountryUsers }           = require("../fetchers");
+const { fetchUsersLite, getCountryUsers } = require("../fetchers");
 const { analizarBuild, obtenerEstadoPastilla } = require("../game");
-const { delay }  = require("../utils");
-const { getChatUsuarios } = require("../config");
+const { delay } = require("../utils");
+const { JUGADORES_CHUNK_SIZE } = require("../config");
+
+// Mapa de lang → locale de fecha
+const DATE_LOCALES = { es: "es-ES", ru: "ru-RU" };
 
 function dividirEnChunks(array, size) {
   const chunks = [];
@@ -22,6 +25,7 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
   }
 
   const id = args[0].split("/").pop();
+  const dateLocale = DATE_LOCALES[getChatLang(chatId)] ?? "es-ES";
 
   try {
     let items = [], nombreGrupo = "Sin nombre";
@@ -41,15 +45,15 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
     if (!items.length) { await tg.sendMessage(chatId, t(chatId, "jugadores_no_players", tipo)); return; }
 
     const progressMsg = await tg.sendMessage(chatId, t(chatId, "jugadores_processing", items.length));
-    const userIds = items.map((x) => x._id);
-    const usersData = await fetchUsersLite(userIds, { batchSize: 30 });
+    const userIds     = items.map((x) => x._id);
+    const usersData   = await fetchUsersLite(userIds, { batchSize: 30 });
 
     const procesados = [];
     for (let idx = 0; idx < usersData.length; idx++) {
       const userData = usersData[idx];
       if (!userData) continue;
-      const { build, nivel }  = analizarBuild(userData);
-      const { icono, fecha }  = obtenerEstadoPastilla(userData);
+      const { build, nivel } = analizarBuild(userData);
+      const { icono, fecha } = obtenerEstadoPastilla(userData);
       procesados.push({ username: userData.username, _id: userData._id, icono, fecha, build, nivel });
       if (idx % 30 === 0) {
         await tg.editMessageText(t(chatId, "jugadores_progress", idx + 1, usersData.length), { chat_id: chatId, message_id: progressMsg.message_id });
@@ -63,26 +67,26 @@ async function procesarJugadoresGrupo(chatId, args, tipo) {
     const hibridos = procesados.filter((u) => u.build === "HIBRIDA").sort((a, b) => b.nivel - a.nivel);
     const eco      = procesados.filter((u) => u.build === "ECO").sort((a, b) => b.nivel - a.nivel);
 
-    const resumen = t(chatId, "jugadores_resumen", {
+    await tg.sendMessage(chatId, t(chatId, "jugadores_resumen", {
       tipo, nombre: nombreGrupo, url: grupoUrl,
       disponibles: procesados.filter((u) => u.icono === "").length,
       activas:     procesados.filter((u) => u.icono === "💊").length,
       debuffs:     procesados.filter((u) => u.icono === "⛔").length,
       total: procesados.length, pvp: pvp.length, hibridos: hibridos.length, eco: eco.length,
-    });
-    await tg.sendMessage(chatId, resumen, { parse_mode: "Markdown", disable_web_page_preview: true });
+    }), { parse_mode: "Markdown", disable_web_page_preview: true });
     await delay(300);
 
+    // Fecha con el locale correcto para el canal
     const fmt = (u) => {
       let line = `${u.nivel}) [${u.username}](https://app.warera.io/user/${u._id})`;
       if (u.icono) line += ` ${u.icono}`;
-      if (u.fecha) line += ` ${u.fecha.toLocaleString("es-ES", { timeZone: "Europe/Madrid" })}`;
+      if (u.fecha) line += ` ${u.fecha.toLocaleString(dateLocale, { timeZone: "Europe/Madrid" })}`;
       return line;
     };
 
     for (const [grupo, labelFn] of [[pvp, "jugadores_pvp"], [hibridos, "jugadores_hibrida"], [eco, "jugadores_eco"]]) {
       if (!grupo.length) continue;
-      const chunks = dividirEnChunks(grupo, 50);
+      const chunks = dividirEnChunks(grupo, JUGADORES_CHUNK_SIZE);
       for (let i = 0; i < chunks.length; i++) {
         const msg = t(chatId, labelFn, i + 1, chunks.length) + chunks[i].map(fmt).join("\n");
         await tg.sendMessage(chatId, msg, { parse_mode: "Markdown", disable_web_page_preview: true });

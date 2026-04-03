@@ -25,7 +25,7 @@ const CHATS = {
 
   // Canal de pruebas (español)
   [-1003246477704]: {
-    lang: "ru",
+    lang: "es",
     usuarios: [
       { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     ],
@@ -94,4 +94,18 @@ module.exports = {
   HEAL_FOOD_MAP, SKILL_COSTS, PVP_SKILLS, ECO_SKILLS,
   CONTROL_ITEMS, MATERIAS_PRIMAS, PRODUCTOS_MANUFACTURADOS,
   TRPC_BASE,
+};
+
+// ─── Configuración de comandos ────────────────────────────────────────────────
+const DINERO_ENVIAR_EN_CHAT = true;   // si false, solo manda el Excel
+const DINERO_CHUNK_DELAY_MS = 900;    // ms entre chunks de la lista de jugadores
+const DANYO_CHUNK_SIZE      = 10;     // jugadores por mensaje en /paisesDanyo
+const JUGADORES_CHUNK_SIZE  = 50;     // jugadores por mensaje en /jugadoresPais
+
+module.exports = {
+  ...module.exports,
+  DINERO_ENVIAR_EN_CHAT,
+  DINERO_CHUNK_DELAY_MS,
+  DANYO_CHUNK_SIZE,
+  JUGADORES_CHUNK_SIZE,
 };

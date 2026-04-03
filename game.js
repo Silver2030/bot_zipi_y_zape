@@ -18,7 +18,7 @@ function calcularDanyo(userData, healFood) {
   const hp24h      = hpRegen24h + hungerReg;
 
   function simularCombate(hpTotal) {
-    const simulaciones = 10000;
+    const simulaciones = 1000;
     let totalDanyo = 0;
     for (let i = 0; i < simulaciones; i++) {
       let hp = hpTotal;

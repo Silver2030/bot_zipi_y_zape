@@ -140,3 +140,33 @@ async function all(chatId) {
 }
 
 module.exports = { help, buscar, hambre, danyosemanal, all };
+
+// ── /id ───────────────────────────────────────────────────────────────────────
+async function id(chatId) {
+  await tg.sendMessage(chatId, `Chat ID: \`${chatId}\``, { parse_mode: "Markdown" });
+}
+
+// ── /status (solo admin) ──────────────────────────────────────────────────────
+async function status(chatId) {
+  const { getCacheSize } = require("../api");
+  const { CHAT_ID }      = require("../config");
+
+  if (chatId !== CHAT_ID) return; // solo el admin
+
+  const uptime  = process.uptime();
+  const h       = Math.floor(uptime / 3600);
+  const m       = Math.floor((uptime % 3600) / 60);
+  const s       = Math.floor(uptime % 60);
+  const mem     = process.memoryUsage();
+  const mbUsed  = (mem.heapUsed / 1024 / 1024).toFixed(1);
+  const mbTotal = (mem.heapTotal / 1024 / 1024).toFixed(1);
+
+  const msg = `*Status del bot*\n\n` +
+    `⏱ Uptime: ${h}h ${m}m ${s}s\n` +
+    `💾 Memoria: ${mbUsed} MB / ${mbTotal} MB\n` +
+    `📦 Caché: ${getCacheSize()} entradas`;
+
+  await tg.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+}
+
+module.exports = { ...module.exports, id, status };
