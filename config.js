@@ -22,7 +22,7 @@ const CHATS = {
     ],
   },
   [696082291]: {
-    lang: "es",
+    lang: "ru",
     usuarios: [
       { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     ],
