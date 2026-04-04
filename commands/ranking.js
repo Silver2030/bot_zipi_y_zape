@@ -34,6 +34,8 @@ async function ranking(chatId, args) {
 
     if (!items.length) { await tg.sendMessage(chatId, t(chatId, "no_results")); return; }
 
+    console.log("[ranking] primer item:", JSON.stringify(items[0], null, 2));
+
     const top10 = items.slice(0, 10);
     let msg = `*${escapeMarkdownV2(config.label)}*\n\n`;
     top10.forEach((item, i) => {
