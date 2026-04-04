@@ -23,6 +23,11 @@ module.exports = {
 /dineromu <ID_MU> - Riqueza de la MU
 /danyosemanal - Ranking de daño semanal
 /duracion <GUERRA> - Duración restante de una guerra
+/perfil <ENLACE_USUARIO> - Perfil de un jugador
+/guerra <ENLACE_BATALLA> - Info de una batalla
+/mercado <ITEM> - Precio y órdenes de un item
+/eventos - Últimos eventos del juego
+/ranking <danyo/wealth/nivel/pais> - Rankings globales
 /all - Menciona al grupo
 /produccion - Ranking productivo`,
 

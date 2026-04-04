@@ -3,7 +3,7 @@
 const tg = require("../telegram");
 const { t } = require("../i18n");
 const { apiCall } = require("../api");
-const { formatNumber } = require("../utils");
+const { escapeMarkdownV2, formatNumberMarkdown } = require("../utils");
 
 const TIPOS_VALIDOS = {
   danyo:    { key: "weeklyUserDamages",    label: "⚔️ Daño semanal" },
@@ -35,10 +35,10 @@ async function ranking(chatId, args) {
     if (!items.length) { await tg.sendMessage(chatId, t(chatId, "no_results")); return; }
 
     const top10 = items.slice(0, 10);
-    let msg = `*${config.label}*\n\n`;
+    let msg = `*${escapeMarkdownV2(config.label)}*\n\n`;
     top10.forEach((item, i) => {
-      const nombre = item.username ?? item.name ?? item.countryName ?? "?";
-      const valor  = formatNumber(item.value ?? item.damage ?? 0);
+      const nombre = escapeMarkdownV2(item.username ?? item.name ?? item.countryName ?? "?");
+      const valor  = formatNumberMarkdown(item.value ?? item.damage ?? 0);
       msg += `${i + 1}\\. ${nombre}: ${valor}\n`;
     });
 
