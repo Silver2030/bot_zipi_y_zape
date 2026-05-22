@@ -33,7 +33,7 @@ const CHATS = {
     ],
   },
   [696082291]: {
-    lang: "ru",
+    lang: "es",
     usuarios: [
       { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
     ],

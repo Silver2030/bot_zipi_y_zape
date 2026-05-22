@@ -33,6 +33,7 @@ const COMMANDS = {
     { command: "mercado",       description: "<nombre_item>" },
     { command: "eventos",       description: "Últimos eventos del juego" },
     { command: "ranking",       description: "<danyo/wealth/nivel/pais>" },
+    { command: "gastos",        description: "<enlace_batalla/id_batalla>" },
   ],
   ru: [
     { command: "help",          description: "Показать все доступные команды" },
@@ -53,6 +54,7 @@ const COMMANDS = {
     { command: "rynok",         description: "<название_товара>" },
     { command: "sobytiya",      description: "Последние события игры" },
     { command: "reiting",       description: "<danyo/wealth/nivel/pais>" },
+    { command: "gastos",        description: "<ссылка_битвы/id_битвы>" },
   ],
 };
 
@@ -87,6 +89,7 @@ const handlers = {
   ...require("./commands/mercado"),
   ...require("./commands/eventos"),
   ...require("./commands/ranking"),
+  ...require("./commands/gastos"),
 };
 
 // ─── Mutex por chat para comandos pesados ─────────────────────────────────────
@@ -96,6 +99,7 @@ const HEAVY_COMMANDS = new Set([
   "jugadorespais", "jugadoresmu",
   "paisesdanyo",   "mudanyo",
   "dineropais",    "dineromu",
+  "gastos",
 ]);
 
 const chatLocks = new Map(); // chatId → Set de handlers en ejecución

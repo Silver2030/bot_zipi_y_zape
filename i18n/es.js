@@ -177,6 +177,9 @@ module.exports = {
   eventos_no_data: "No hay eventos recientes.",
   eventos_header:  "📰 *Últimos eventos*",
 
+  // ─── /gastos ────────────────────────────────────────────────────────────────
+  gastos_usage: "Ejemplo: /gastos https://app.warera.io/battle/XXXXXXXX",
+
   // ─── /ranking ───────────────────────────────────────────────────────────────
   ranking_usage: (tipos) => `Uso: /ranking <tipo>\nTipos disponibles: ${tipos}`,
 
@@ -204,6 +207,7 @@ module.exports = {
     mercado:       "mercado",
     eventos:       "eventos",
     ranking:       "ranking",
+    gastos:        "gastos",
     id:            "id",
     status:        "status",
   },
