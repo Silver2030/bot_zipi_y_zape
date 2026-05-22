@@ -61,7 +61,7 @@ async function fetchAllBrokenDuringBattle(userIds, battleStart) {
   const pendingCursors = new Map(userIds.map((id) => [id, ""]));
 
   while (pendingCursors.size > 0) {
-    const batch    = [...pendingCursors.entries()].slice(0, 100);
+    const batch    = [...pendingCursors.entries()].slice(0, 30);
     const requests = batch.map(([userId, cursor]) => ({
       endpoint: "transaction.getPaginatedTransactions",
       params:   { userId, transactionType: "dismantleItem", limit: 100, cursor },
