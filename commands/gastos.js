@@ -38,6 +38,8 @@ function fmtGold(n) {
 }
 
 // ─── Stats por usuario ────────────────────────────────────────────────────────
+const DETAIL_SKILLS = ["attack", "criticalChance", "criticalDamages", "armor", "precision", "dodge", "health", "hunger"];
+
 function buildStats(userId, username, items) {
   const rarityStats = Object.fromEntries(RARITIES.map((r) => [r.key, { count: 0, gold: 0 }]));
   let totalGold = 0;
@@ -50,7 +52,7 @@ function buildStats(userId, username, items) {
       rarityStats[rKey].gold = round1(rarityStats[rKey].gold + cost);
     }
   }
-  return { userId, username, totalItems: items.length, totalGold: round1(totalGold), rarityStats };
+  return { userId, username, totalItems: items.length, totalGold: round1(totalGold), rarityStats, items };
 }
 
 // ─── Fetch transactions (batch por rondas) ────────────────────────────────────
@@ -116,7 +118,30 @@ function buildExcel(attackerStats, defenderStats) {
     { wch: 10 }, { wch: 5 }, { wch: 25 }, { wch: 42 }, { wch: 12 }, { wch: 12 },
     ...RARITIES.flatMap(() => [{ wch: 16 }, { wch: 12 }]),
   ];
-  XLSX.utils.book_append_sheet(wb, ws, "Gastos");
+  XLSX.utils.book_append_sheet(wb, ws, "Resumen");
+
+  // ── Hoja de detalle: una fila por item roto ──────────────────────────────
+  const detailHeaders = ["Bando", "Usuario", "Item", "Rareza", "Coste", ...DETAIL_SKILLS];
+  const detailRows    = [detailHeaders];
+  for (const [label, statsList] of [["Atacante", attackerStats], ["Defensor", defenderStats]]) {
+    for (const s of statsList) {
+      for (const item of s.items) {
+        detailRows.push([
+          label, s.username, item.code,
+          getRarityKey(item.code) ?? "Desconocido",
+          getItemCost(item.code),
+          ...DETAIL_SKILLS.map((sk) => item.skills?.[sk] ?? ""),
+        ]);
+      }
+    }
+  }
+  const wsDet = XLSX.utils.aoa_to_sheet(detailRows);
+  wsDet["!cols"] = [
+    { wch: 10 }, { wch: 25 }, { wch: 14 }, { wch: 12 }, { wch: 8 },
+    ...DETAIL_SKILLS.map(() => ({ wch: 14 })),
+  ];
+  XLSX.utils.book_append_sheet(wb, wsDet, "Detalle");
+
   return XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 }
 
@@ -194,8 +219,7 @@ async function gastos(chatId, args) {
 
     const excelBuffer = buildExcel(attackerStats, defenderStats);
     await tg.sendDocument(
-      chatId, excelBuffer,
-      { caption: `💸 Gastos batalla — [ver](${battleUrl})`, parse_mode: "Markdown" },
+      chatId, excelBuffer, {},
       { filename: `gastos_${battleId}.xlsx`, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
     );
 
