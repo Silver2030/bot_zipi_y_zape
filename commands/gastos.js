@@ -158,7 +158,8 @@ function buildTelegramMsg(battleUrl, attackerStats, defenderStats) {
     const top3 = [...stats].sort((a, b) => b.totalGold - a.totalGold).slice(0, 3);
     if (!top3.length) continue;
 
-    msg += `\n${emoji} *${label} — Top 3:*\n`;
+    const totalSide = round1(stats.reduce((acc, s) => acc + s.totalGold, 0));
+    msg += `\n${emoji} *${label} — ${fmtGold(totalSide)} oro — Top 3:*\n`;
     for (let i = 0; i < top3.length; i++) {
       const s   = top3[i];
       const url = `https://app.warera.io/user/${s.userId}`;
