@@ -2,7 +2,7 @@
 
 const tg = require("../telegram");
 const { t } = require("../i18n");
-const { apiCall } = require("../api");
+const { apiCall, apiBatchCall } = require("../api");
 const { fetchUsersLite } = require("../fetchers");
 const { delay } = require("../utils");
 const { WARERA_API_KEY } = require("../config");
@@ -26,35 +26,42 @@ function formatSkills(skills = {}) {
     .join(", ");
 }
 
-async function fetchBrokenDuringBattle(userId, battleStart) {
-  const broken = [];
-  let cursor = "";
-  let done = false;
+async function fetchAllBrokenDuringBattle(userIds, battleStart) {
+  const brokenMap   = new Map(userIds.map((id) => [id, []]));
+  const pendingCursors = new Map(userIds.map((id) => [id, ""])); // userId → cursor
 
-  while (!done) {
-    const data = await apiCall("transaction.getPaginatedTransactions", {
-      userId,
-      transactionType: "dismantleItem",
-      limit: 100,
-      cursor,
-    }, AUTH_HEADERS);
+  while (pendingCursors.size > 0) {
+    const batch = [...pendingCursors.entries()].slice(0, 100);
 
-    const items = data?.items ?? [];
-    if (!items.length) break;
+    const requests = batch.map(([userId, cursor]) => ({
+      endpoint: "transaction.getPaginatedTransactions",
+      params:   { userId, transactionType: "dismantleItem", limit: 100, cursor },
+    }));
 
-    for (const tx of items) {
-      if (new Date(tx.createdAt) < battleStart) { done = true; break; }
-      if (tx.item?.state === 0) broken.push(tx.item);
+    const results = await apiBatchCall(requests, AUTH_HEADERS);
+
+    for (let i = 0; i < batch.length; i++) {
+      const [userId] = batch[i];
+      const data     = results[i];
+      const items    = data?.items ?? [];
+
+      let reachedPast = false;
+      for (const tx of items) {
+        if (new Date(tx.createdAt) < battleStart) { reachedPast = true; break; }
+        if (tx.item?.state === 0) brokenMap.get(userId).push(tx.item);
+      }
+
+      if (reachedPast || !data?.nextCursor) {
+        pendingCursors.delete(userId);
+      } else {
+        pendingCursors.set(userId, data.nextCursor);
+      }
     }
 
-    if (!done) {
-      cursor = data?.nextCursor ?? null;
-      if (!cursor) done = true;
-      else await delay(100);
-    }
+    if (pendingCursors.size > 0) await delay(120);
   }
 
-  return broken;
+  return brokenMap;
 }
 
 async function gastos(chatId, args) {
@@ -82,19 +89,13 @@ async function gastos(chatId, args) {
 
     if (!allUserIds.length) { await tg.sendMessage(chatId, t(chatId, "no_results")); return; }
 
-    const usersData   = await fetchUsersLite(allUserIds, { batchSize: 30 });
+    const usersData   = await fetchUsersLite(allUserIds, { batchSize: 100 });
     const usernameMap = new Map();
     allUserIds.forEach((id, idx) => {
       if (usersData[idx]) usernameMap.set(id, usersData[idx].username ?? id);
     });
 
-    // Fetch broken items sequentially to avoid hammering the API
-    const brokenMap = new Map();
-    for (const userId of allUserIds) {
-      const broken = await fetchBrokenDuringBattle(userId, battleStart);
-      if (broken.length) brokenMap.set(userId, broken);
-      await delay(200);
-    }
+    const brokenMap = await fetchAllBrokenDuringBattle(allUserIds, battleStart);
 
     const battleUrl = `https://app.warera.io/battle/${battleId}`;
     const lines = [`💸 *Gastos en batalla* — [ver](${battleUrl})\n`];

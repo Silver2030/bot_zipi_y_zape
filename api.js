@@ -61,13 +61,13 @@ async function apiCall(endpoint, params = {}, headers = {}) {
 }
 
 // ─── Batch ────────────────────────────────────────────────────────────────────
-async function apiBatchCall(requests) {
+async function apiBatchCall(requests, headers = {}) {
   if (!requests?.length) return [];
   const endpoints = requests.map((r) => r.endpoint).join(",");
   const input = {};
   requests.forEach((r, i) => { input[i] = r.params; });
   const url = `${TRPC_BASE}/${endpoints}?batch=1&input=${encodeURIComponent(JSON.stringify(input))}`;
-  const res = await axios.get(url);
+  const res = await axios.get(url, { headers });
   if (!Array.isArray(res.data)) throw new Error("Batch no soportado (respuesta no-array)");
   return res.data.map((x) => x?.result?.data ?? null);
 }
@@ -166,7 +166,7 @@ async function getPrices() {
 function getCacheSize() { return cache.size; }
 
 module.exports = {
-  apiCall, apiBatchCall, fetchInBatches,
+  apiCall, apiBatchCall, fetchInBatches, mapLimit,
   getUserData, getMUData, getCountryData,
   getUserCompanies, getCompanyData,
   getAllCountries, getRegionsObject, getPrices,
