@@ -54,9 +54,9 @@ async function mapLimit(items, limit, fn) {
 }
 
 // ─── Llamada individual ───────────────────────────────────────────────────────
-async function apiCall(endpoint, params = {}) {
+async function apiCall(endpoint, params = {}, headers = {}) {
   const url = `${TRPC_BASE}/${endpoint}?input=${encodeURIComponent(JSON.stringify(params))}`;
-  const response = await axios.get(url);
+  const response = await axios.get(url, { headers });
   return response.data?.result?.data;
 }
 

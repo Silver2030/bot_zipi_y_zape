@@ -5,6 +5,9 @@ const { t } = require("../i18n");
 const { apiCall } = require("../api");
 const { fetchUsersLite } = require("../fetchers");
 const { delay } = require("../utils");
+const { WARERA_API_KEY } = require("../config");
+
+const AUTH_HEADERS = { "x-api-key": WARERA_API_KEY };
 
 const SKILL_ABBR = {
   attack:          "atk",
@@ -34,7 +37,7 @@ async function fetchBrokenDuringBattle(userId, battleStart) {
       transactionType: "dismantleItem",
       limit: 100,
       cursor,
-    });
+    }, AUTH_HEADERS);
 
     const items = data?.items ?? [];
     if (!items.length) break;

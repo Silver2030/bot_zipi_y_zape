@@ -94,7 +94,8 @@ const PRODUCTOS_MANUFACTURADOS = {
 };
 
 // ─── API ─────────────────────────────────────────────────────────────────────
-const TRPC_BASE = "https://api2.warera.io/trpc";
+const TRPC_BASE      = "https://api2.warera.io/trpc";
+const WARERA_API_KEY = process.env.WARERA_TOKEN;
 
 // ─── Configuración de comandos ────────────────────────────────────────────────
 const DINERO_ENVIAR_EN_CHAT = true;
@@ -108,7 +109,7 @@ module.exports = {
   getChatConfig, getChatLang, getChatUsuarios,
   HEAL_FOOD_MAP, SKILL_COSTS, PVP_SKILLS, ECO_SKILLS,
   CONTROL_ITEMS, TRADUCCIONES, MATERIAS_PRIMAS, PRODUCTOS_MANUFACTURADOS,
-  TRPC_BASE,
+  TRPC_BASE, WARERA_API_KEY,
   DINERO_ENVIAR_EN_CHAT, DINERO_CHUNK_DELAY_MS,
   DANYO_CHUNK_SIZE, JUGADORES_CHUNK_SIZE,
 };
