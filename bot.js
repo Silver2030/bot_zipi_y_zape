@@ -34,6 +34,8 @@ const COMMANDS = {
     { command: "eventos",       description: "Últimos eventos del juego" },
     { command: "ranking",       description: "<danyo/wealth/nivel/pais>" },
     { command: "gastos",        description: "<enlace_batalla/id_batalla>" },
+    { command: "addadmin",      description: "Responde a un mensaje para añadir admin" },
+    { command: "listaadmin",    description: "Lista todos los admins" },
   ],
   ru: [
     { command: "help",          description: "Показать все доступные команды" },
@@ -90,6 +92,7 @@ const handlers = {
   ...require("./commands/eventos"),
   ...require("./commands/ranking"),
   ...require("./commands/gastos"),
+  ...require("./commands/admin"),
 };
 
 // ─── Mutex por chat para comandos pesados ─────────────────────────────────────
@@ -161,12 +164,12 @@ bot.on("message", async (msg) => {
     }
     lock(chatId, handlerName);
     try {
-      await handlers[handlerName](chatId, args);
+      await handlers[handlerName](chatId, args, msg);
     } finally {
       unlock(chatId, handlerName);
     }
   } else {
-    await handlers[handlerName](chatId, args);
+    await handlers[handlerName](chatId, args, msg);
   }
 });
 
