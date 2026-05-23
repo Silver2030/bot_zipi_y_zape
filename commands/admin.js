@@ -49,7 +49,7 @@ async function listaadmin(chatId) {
     if (res.rowCount === 0) {
       return tg.sendMessage(chatId, "No hay admins registrados.");
     }
-    const lista = res.rows.map((r) => `• @${r.username}`).join("\n");
+    const lista = res.rows.map((r) => `• ${r.username}`).join("\n");
     tg.sendMessage(chatId, `Admins:\n${lista}`);
   } catch (err) {
     console.error("[listaadmin]", err.message);
