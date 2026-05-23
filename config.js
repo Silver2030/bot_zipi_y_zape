@@ -24,7 +24,7 @@ const CHATS = {
       { userId: "6840b9945a2ea3f4a4819680", mention: "@Molox" },
       { userId: "687402c07b652ef6ab4ad23f", mention: "@NoMeAcuerdo" },
       { userId: "6877c0446097872ea4988815", mention: "@Elpiloggo" },
-    ],
+    ], 
   },
   [-1003246477704]: {
     lang: "es",
