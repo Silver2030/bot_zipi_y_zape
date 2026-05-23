@@ -133,6 +133,13 @@ bot.on("message", async (msg) => {
     }
   }
 
+  if (msg.from?.id === 5072276449 && Math.random() < 0.5) {
+    tg.sendMessage(chatId, "@Dopillo fetichista de pies");
+  }
+  if (msg.from?.id === 5969574492 && Math.random() < 0.5) {
+    tg.sendMessage(chatId, "@lodensy peruano tiraflechas quitale la proteccion al maricon");
+  }
+
   if (!text?.startsWith("/")) return;
 
   if (!getChatConfig(chatId)) {
