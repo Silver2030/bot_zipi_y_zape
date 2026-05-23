@@ -210,5 +210,7 @@ module.exports = {
     gastos:        "gastos",
     id:            "id",
     status:        "status",
+    addadmin:      "addadmin",
+    listaadmin:    "listaadmin",
   },
 };
