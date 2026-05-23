@@ -56,9 +56,9 @@ function buildStats(userId, username, items) {
 }
 
 // ─── Fetch transactions (batch por rondas) ────────────────────────────────────
-async function fetchAllBrokenDuringBattle(userIds, battleStart) {
+async function fetchAllBrokenDuringBattle(userIds, battleStart, battleEnd) {
   const brokenMap      = new Map(userIds.map((id) => [id, []]));
-  const pendingCursors = new Map(userIds.map((id) => [id, ""]));
+  const pendingCursors = new Map(userIds.map((id) => [id, battleEnd]));
 
   while (pendingCursors.size > 0) {
     const batch    = [...pendingCursors.entries()].slice(0, 30);
@@ -189,6 +189,7 @@ async function gastos(chatId, args) {
     if (!battle) { await tg.sendMessage(chatId, t(chatId, "duracion_no_battle")); return; }
 
     const battleStart = new Date(battle.createdAt);
+    const battleEnd   = battle.updatedAt;
 
     const [rankAtt, rankDef] = await Promise.all([
       apiCall("battleRanking.getRanking", { battleId, dataType: "damage", type: "user", side: "attacker" }),
@@ -207,7 +208,7 @@ async function gastos(chatId, args) {
       if (usersData[idx]) usernameMap.set(id, usersData[idx].username ?? id);
     });
 
-    const brokenMap = await fetchAllBrokenDuringBattle(allUserIds, battleStart);
+    const brokenMap = await fetchAllBrokenDuringBattle(allUserIds, battleStart, battleEnd);
 
     const attackerStats = attackerIds.map((id) =>
       buildStats(id, usernameMap.get(id) ?? id, brokenMap.get(id) ?? [])
