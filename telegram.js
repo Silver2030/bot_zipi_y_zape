@@ -1,6 +1,7 @@
 "use strict";
 
 let _bot = null;
+const _threadIds = new Map();
 
 function init(botInstance) {
   _bot = botInstance;
@@ -50,8 +51,15 @@ function enqueue(task) {
 }
 
 // ─── Wrappers públicos ────────────────────────────────────────────────────────
+function setThreadContext(chatId, threadId) {
+  if (threadId) _threadIds.set(chatId, threadId);
+  else _threadIds.delete(chatId);
+}
+
 function sendMessage(chatId, text, options = {}) {
-  return enqueue(() => callWithRetry(() => bot().sendMessage(chatId, text, options)));
+  const threadId = _threadIds.get(chatId);
+  const opts = threadId ? { message_thread_id: threadId, ...options } : options;
+  return enqueue(() => callWithRetry(() => bot().sendMessage(chatId, text, opts)));
 }
 
 function editMessageText(text, opts) {
@@ -66,4 +74,4 @@ function sendDocument(chatId, document, options = {}, fileOptions = {}) {
   return enqueue(() => callWithRetry(() => bot().sendDocument(chatId, document, options, fileOptions)));
 }
 
-module.exports = { init, sendMessage, editMessageText, deleteMessage, sendDocument };
+module.exports = { init, setThreadContext, sendMessage, editMessageText, deleteMessage, sendDocument };

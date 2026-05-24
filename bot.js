@@ -126,7 +126,8 @@ bot.on("message", async (msg) => {
   const text   = msg.text;
   const from   = msg.from ? `${msg.from.username || msg.from.first_name} (${msg.from.id})` : "Unknown";
 
-  console.log(`[${new Date().toISOString()}] ${from} → chat ${chatId}: ${text ?? "(no text)"}`);
+  const thread = msg.message_thread_id ? ` [thread ${msg.message_thread_id}]` : "";
+  console.log(`[${new Date().toISOString()}] ${from} → chat ${chatId}${thread}: ${text ?? "(no text)"}`);
 
   // Easter egg
   if (text) {
@@ -157,6 +158,8 @@ bot.on("message", async (msg) => {
   if (!handlerName || !handlers[handlerName]) return;
 
   // Mutex para comandos pesados
+  tg.setThreadContext(chatId, msg.message_thread_id);
+
   if (HEAVY_COMMANDS.has(handlerName)) {
     if (isLocked(chatId, handlerName)) {
       await tg.sendMessage(chatId, t(chatId, "cmd_already_running"));
