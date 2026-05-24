@@ -18,7 +18,7 @@ const CHATS = {
       { userId: "6849bef474cdd09ff494ddf1", mention: "@YitanRR" },
       { userId: "68b43bcaa297b1be001db43b", mention: "@Sharp_1313" },
       { userId: "688fc8522d7fcdd226cda5ee", mention: "@gonchiii1" },
-      { userId: "68fb3c662d0b627177525a3f", mention: "@Gimmy666" },
+      { userId: "68fb3c662d0b627177525a3f", mention: "@Gimmy666" }, 
       { userId: "6819322a5654b4e464c23d16", mention: "@Asth" },
       { userId: "6908e85e47e7a27fdda8fa75", mention: "@ItalianoRandom" },
       { userId: "6840b9945a2ea3f4a4819680", mention: "@Molox" },
