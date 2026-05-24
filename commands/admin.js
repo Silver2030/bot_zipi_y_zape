@@ -32,7 +32,7 @@ async function addadmin(chatId, _args, msg) {
        VALUES ($1, $2, 'ADMIN')
        ON CONFLICT (telegram_id) DO UPDATE SET rol = 'ADMIN', username = $2`,
       [String(target.id), username]
-    );
+    ); 
 
     tg.sendMessage(chatId, `✅ @${username} añadido como admin.`);
   } catch (err) {
