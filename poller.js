@@ -93,17 +93,20 @@ async function handleActiveRound(battle, row) {
     const key    = `${hit.user}:${hit.weapon.code}`;
     const hitAt  = new Date(hit.hitAt).getTime();
     const lastAt = state.lastHeavyHitAt.get(key) ?? 0;
-    if (Date.now() - lastAt < HEAVY_COOLDOWN_MS) continue;
+    if (hitAt <= lastAt) continue; // golpe ya notificado o más viejo
 
-    state.lastHeavyHitAt.set(key, Date.now());
+    state.lastHeavyHitAt.set(key, hitAt);
     setTimeout(() => state.lastHeavyHitAt.delete(key), HEAVY_COOLDOWN_MS);
 
     const userData = await getUserData(hit.user).catch(() => null);
-    const username = userData?.username ?? hit.user;
+    const username  = userData?.username ?? hit.user;
+    const hasBuff   = userData?.buffs?.buffCodes?.includes("cocain") &&
+                      new Date(userData.buffs.buffEndAt) > new Date();
+    const label     = hasBuff ? `${username} 💊` : username;
 
     await tg.sendMessage(
       TRACK_NOTIFY_CHAT,
-      `*${attName} vs ${defName}*\n⚠️ [${username}](https://app.warera.io/user/${hit.user}) está atacando con *${hit.weapon.code}*! — [ver batalla](https://app.warera.io/battle/${battleId})`,
+      `*${defName} vs ${attName}*\n⚠️ [${label}](https://app.warera.io/user/${hit.user}) está atacando con *${hit.weapon.code}*! — [ver batalla](https://app.warera.io/battle/${battleId})`,
       NOTIFY_OPTS
     );
   }
