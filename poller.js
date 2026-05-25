@@ -87,15 +87,22 @@ async function handleActiveRound(battle, row) {
 
   const HEAVY_COOLDOWN_MS = 5 * 60 * 1000;
 
+  // Quedarse solo con el hit más reciente por user:weapon para no notificar múltiples veces
+  const latestByKey = new Map();
   for (const hit of enemyHits) {
     if (!HEAVY_WEAPONS.has(hit.weapon?.code)) continue;
+    const key   = `${hit.user}:${hit.weapon.code}`;
+    const hitAt = new Date(hit.hitAt).getTime();
+    if (!latestByKey.has(key) || hitAt > latestByKey.get(key).hitAt) {
+      latestByKey.set(key, { ...hit, hitAt });
+    }
+  }
 
-    const key    = `${hit.user}:${hit.weapon.code}`;
-    const hitAt  = new Date(hit.hitAt).getTime();
+  for (const [key, hit] of latestByKey) {
     const lastAt = state.lastHeavyHitAt.get(key) ?? 0;
-    if (hitAt <= lastAt) continue; // golpe ya notificado o más viejo
+    if (hit.hitAt <= lastAt) continue;
 
-    state.lastHeavyHitAt.set(key, hitAt);
+    state.lastHeavyHitAt.set(key, hit.hitAt);
     setTimeout(() => state.lastHeavyHitAt.delete(key), HEAVY_COOLDOWN_MS);
 
     const userData = await getUserData(hit.user).catch(() => null);
