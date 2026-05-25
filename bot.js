@@ -32,7 +32,7 @@ const COMMANDS = {
     { command: "guerra",        description: "<enlace_batalla/id_batalla>" },
     { command: "mercado",       description: "<nombre_item>" },
     { command: "eventos",       description: "Últimos eventos del juego" },
-    { command: "ranking",       description: "<danyo/wealth/nivel/pais>" },
+    { command: "ranking",       description: "<danyo/wealth/nivel/pais>" }, 
     { command: "gastos",        description: "<enlace_batalla/id_batalla>" },
     { command: "addadmin",      description: "Responde a un mensaje para añadir admin" },
     { command: "listaadmin",    description: "Lista todos los admins" },
