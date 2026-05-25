@@ -20,7 +20,8 @@ const HEAVY_WEAPONS = new Set(["tank", "jet"]);
 const roundState = new Map();
 
 // Cooldown para llamadas autónomas a /hambre por batalla
-const HAMBRE_COOLDOWN_MS = 5 * 60 * 1000;
+const HAMBRE_COOLDOWN_MS = 10 * 60 * 1000;
+
 const hambreLastAt = new Map(); // battleId -> timestamp
 
 function getOrInitRoundState(battleId, roundId) {
@@ -74,8 +75,8 @@ async function handleActiveRound(battle, row) {
         setTimeout(() => hambreLastAt.delete(battleId), HAMBRE_COOLDOWN_MS);
         tg.setThreadContext(TRACK_NOTIFY_CHAT, TRACK_NOTIFY_THREAD);
         await hambre(TRACK_NOTIFY_CHAT, [
-          `https://app.warera.io/battle/${battleId}`,
-          `⚠️ NOS ESTÁN DANDO VUELTA, NECESITAMOS PEGAR`,
+          `${defName} vs ${attName}\nhttps://app.warera.io/battle/${battleId}`,
+          `⚠️ VAMOS PERDIENDO, NECESITAMOS PEGAR`,
         ]);
       }
     }
