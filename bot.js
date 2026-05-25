@@ -36,7 +36,7 @@ const COMMANDS = {
     { command: "gastos",        description: "<enlace_batalla/id_batalla>" },
     { command: "addadmin",      description: "Responde a un mensaje para añadir admin" },
     { command: "listaadmin",    description: "Lista todos los admins" },
-    { command: "addtrack",      description: "<battleId_o_url> <attacker|defender>" },
+    { command: "addtrack",      description: "<battleId_o_url> <attacker|defender>" }, 
     { command: "listtrack",     description: "Muestra los frentes trackeados" },
     { command: "removetrack",   description: "<battleId_o_url>" },
   ],
