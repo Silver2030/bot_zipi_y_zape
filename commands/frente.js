@@ -32,6 +32,8 @@ async function addtrack(chatId, args) {
       return;
     }
 
+    const roundCount = battle.roundsHistory?.length ?? 0;
+
     const { rows } = await query('SELECT id, activo FROM frente WHERE battleid = $1', [battleId]);
 
     if (rows.length > 0) {
@@ -39,11 +41,14 @@ async function addtrack(chatId, args) {
         await tg.sendMessage(chatId, t(chatId, "addtrack_already"));
         return;
       }
-      await query('UPDATE frente SET activo = true, side = $2 WHERE battleid = $1', [battleId, side]);
+      await query(
+        'UPDATE frente SET activo = true, side = $2, last_round_count = $3 WHERE battleid = $1',
+        [battleId, side, roundCount]
+      );
     } else {
       await query(
-        'INSERT INTO frente (battleid, side, activo) VALUES ($1, $2, true)',
-        [battleId, side]
+        'INSERT INTO frente (battleid, side, activo, last_round_count) VALUES ($1, $2, true, $3)',
+        [battleId, side, roundCount]
       );
     }
 

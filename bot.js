@@ -11,6 +11,7 @@ if (!token) throw new Error("TELEGRAM_BOT_TOKEN no definido");
 
 const bot = new TelegramBot(token, { polling: true });
 tg.init(bot);
+require("./poller").start();
 
 // ─── Comandos por scope (un set por canal) ────────────────────────────────────
 const COMMANDS = {

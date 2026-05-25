@@ -11,19 +11,25 @@ const CHATS = {
       { userId: "68703ddf37ff51dd0dc590d0", mention: "@TowDl" },
       { userId: "68f8f5ad5dc34ed689e1784c", mention: "@maromaromero" },
       { userId: "68979dcdd2bf43cdb31abb9f", mention: "@XBrotherX" },
-      { userId: "682a6a132b76380956602044", mention: "@Dopillo" },
-      { userId: "682bba892cae032763110f07", mention: "@Retrasado" },
+      { userId: "682bba892cae032763110f07", mention: "@Dopillo" },
       { userId: "6830b7bdec8d7fb5ea1444a0", mention: "@achtzing" },
       { userId: "683e13f6a1027da10c805af0", mention: "@Robeloxinthahouse" },
       { userId: "6849bef474cdd09ff494ddf1", mention: "@YitanRR" },
       { userId: "68b43bcaa297b1be001db43b", mention: "@Sharp_1313" },
-      { userId: "688fc8522d7fcdd226cda5ee", mention: "@gonchiii1" },
       { userId: "68fb3c662d0b627177525a3f", mention: "@Gimmy666" }, 
       { userId: "6819322a5654b4e464c23d16", mention: "@Asth" },
-      { userId: "6908e85e47e7a27fdda8fa75", mention: "@ItalianoRandom" },
+      { userId: "6908e85e47e7a27fdda8fa75", mention: "@Gimmy666" },
       { userId: "6840b9945a2ea3f4a4819680", mention: "@Molox" },
-      { userId: "687402c07b652ef6ab4ad23f", mention: "@NoMeAcuerdo" },
-      { userId: "6877c0446097872ea4988815", mention: "@Elpiloggo" },
+      { userId: "68fffb61ce2953e2e62ff91b", mention: "@arkasfc" },
+      { userId: "6836bf871954bd0e088f8e3d", mention: "@geo7707" },
+      { userId: "689cdf1606abe908497a0202", mention: "@fox_bastard" },
+      { userId: "68743ea999753486f9e7aa86", mention: "@XBrotherX" },
+      { userId: "687402c07b652ef6ab4ad23f", mention: "@lodensy" },
+      { userId: "697fd5e4cab58b5fe8831de3", mention: "@lodensy" },
+      { userId: "68c40730959e9e1d4469cca3", mention: "@lodensy" },
+      { userId: "695fd7cc4a36abae7788ab89", mention: "@lodensy" },
+      { userId: "6877be9e63ae472cc7cd5cde", mention: "@Niaakaniaa" },
+      { userId: "68c9ed512e8a60538975a73a", mention: "@Setux" },
     ], 
   },
   [-1003246477704]: {
@@ -97,6 +103,10 @@ const PRODUCTOS_MANUFACTURADOS = {
 const TRPC_BASE      = "https://api2.warera.io/trpc";
 const WARERA_API_KEY = process.env.WARERA_TOKEN;
 
+// ─── Notificaciones de frentes ────────────────────────────────────────────────
+const TRACK_NOTIFY_CHAT   = -1003341630162;
+const TRACK_NOTIFY_THREAD = 47890;
+
 // ─── Configuración de comandos ────────────────────────────────────────────────
 const DINERO_ENVIAR_EN_CHAT = true;
 const DINERO_CHUNK_DELAY_MS = 900;
@@ -110,6 +120,7 @@ module.exports = {
   HEAL_FOOD_MAP, SKILL_COSTS, PVP_SKILLS, ECO_SKILLS,
   CONTROL_ITEMS, TRADUCCIONES, MATERIAS_PRIMAS, PRODUCTOS_MANUFACTURADOS,
   TRPC_BASE, WARERA_API_KEY,
+  TRACK_NOTIFY_CHAT, TRACK_NOTIFY_THREAD,
   DINERO_ENVIAR_EN_CHAT, DINERO_CHUNK_DELAY_MS,
   DANYO_CHUNK_SIZE, JUGADORES_CHUNK_SIZE,
 };
