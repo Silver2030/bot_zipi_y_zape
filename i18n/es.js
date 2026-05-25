@@ -180,6 +180,33 @@ module.exports = {
   // ─── /gastos ────────────────────────────────────────────────────────────────
   gastos_usage: "Ejemplo: /gastos https://app.warera.io/battle/XXXXXXXX",
 
+  // ─── /addtrack /listtrack /removetrack ──────────────────────────────────────
+  addtrack_usage:        "Uso: /addtrack <battleId_o_url> <attacker|defender>",
+  addtrack_invalid_side: "El bando debe ser 'attacker' o 'defender'.",
+  addtrack_not_found:    "No se encontró la batalla.",
+  addtrack_already:      "Esta batalla ya está siendo trackeada.",
+  addtrack_added:        (id, side) => `✅ Batalla \`${id}\` añadida como *${side}*.`,
+
+  listtrack_empty:  "No hay batallas trackeadas actualmente.",
+  listtrack_error:  (id) => `⚠️ Error al obtener datos de la batalla \`${id}\`.`,
+  listtrack_resumen: ({ estado, battleId, side, defName, defWins, dmgDef, attName, attWins, dmgAtt, roundsToWin, ganador, topPlayers }) => {
+    const sideLabel = side === "defender" ? "🛡️ Defensor" : "⚔️ Atacante";
+    let msg = `${estado} *Frente* — [ver](https://app.warera.io/battle/${battleId})\n`;
+    msg += `${sideLabel}: nuestro bando\n\n`;
+    msg += `🛡️ *${defName}*: ${defWins}/${roundsToWin} rondas | Daño: ${dmgDef}\n`;
+    msg += `⚔️ *${attName}*: ${attWins}/${roundsToWin} rondas | Daño: ${dmgAtt}\n`;
+    if (ganador) msg += `\n🏆 Ganador: *${ganador}*\n`;
+    if (topPlayers.length) {
+      msg += `\n🏅 Top nuestro bando:\n`;
+      topPlayers.forEach((p) => { msg += `${p.rank}. ${p.username}: ${p.value}\n`; });
+    }
+    return msg;
+  },
+
+  removetrack_usage:     "Uso: /removetrack <battleId_o_url>",
+  removetrack_not_found: "No se encontró ninguna batalla activa con ese ID.",
+  removetrack_removed:   (id) => `✅ Batalla \`${id}\` eliminada del tracking.`,
+
   // ─── /ranking ───────────────────────────────────────────────────────────────
   ranking_usage: (tipos) => `Uso: /ranking <tipo>\nTipos disponibles: ${tipos}`,
 
@@ -212,5 +239,8 @@ module.exports = {
     status:        "status",
     addadmin:      "addadmin",
     listaadmin:    "listaadmin",
+    addtrack:      "addtrack",
+    listtrack:     "listtrack",
+    removetrack:   "removetrack",
   },
 };

@@ -36,6 +36,9 @@ const COMMANDS = {
     { command: "gastos",        description: "<enlace_batalla/id_batalla>" },
     { command: "addadmin",      description: "Responde a un mensaje para añadir admin" },
     { command: "listaadmin",    description: "Lista todos los admins" },
+    { command: "addtrack",      description: "<battleId_o_url> <attacker|defender>" },
+    { command: "listtrack",     description: "Muestra los frentes trackeados" },
+    { command: "removetrack",   description: "<battleId_o_url>" },
   ],
   ru: [
     { command: "help",          description: "Показать все доступные команды" },
@@ -93,6 +96,7 @@ const handlers = {
   ...require("./commands/ranking"),
   ...require("./commands/gastos"),
   ...require("./commands/admin"),
+  ...require("./commands/frente"),
 };
 
 // ─── Mutex por chat para comandos pesados ─────────────────────────────────────
@@ -102,7 +106,7 @@ const HEAVY_COMMANDS = new Set([
   "jugadorespais", "jugadoresmu",
   "paisesdanyo",   "mudanyo",
   "dineropais",    "dineromu",
-  "gastos",
+  "gastos",        "listtrack",
 ]);
 
 const chatLocks = new Map(); // chatId → Set de handlers en ejecución
@@ -137,11 +141,12 @@ bot.on("message", async (msg) => {
     }
   }
 
+  const threadOpts = msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {};
   if (msg.from?.id === 5072276449 && Math.random() < 0.5) {
-    tg.sendMessage(chatId, "@Dopillo fetichista de pies");
+    tg.sendMessage(chatId, "@Dopillo fetichista de pies", threadOpts);
   }
   if (msg.from?.id === 5969574492 && Math.random() < 0.5) {
-    tg.sendMessage(chatId, "@lodensy peruano tiraflechas quitale la proteccion al maricon");
+    tg.sendMessage(chatId, "@lodensy peruano tiraflechas quitale la proteccion al maricon", threadOpts);
   }
 
   if (!text?.startsWith("/")) return;
