@@ -16,8 +16,12 @@ const NOTIFY_OPTS = {
 const HEAVY_WEAPONS = new Set(["tank", "jet"]);
 
 // Estado en memoria por batalla — se resetea cuando cambia la ronda activa
-// { battleId -> { roundId, winningSide, notifiedHitIds: Set } }
+// { battleId -> { roundId, winningSide, lastHeavyHitAt: Map } }
 const roundState = new Map();
+
+// Cooldown para llamadas autónomas a /hambre por batalla
+const HAMBRE_COOLDOWN_MS = 5 * 60 * 1000;
+const hambreLastAt = new Map(); // battleId -> timestamp
 
 function getOrInitRoundState(battleId, roundId) {
   const existing = roundState.get(battleId);
@@ -62,13 +66,18 @@ async function handleActiveRound(battle, row) {
     msg += `🛡️ ${defName}: ${defPts} pts  |  ⚔️ ${attName}: ${attPts} pts`;
     await tg.sendMessage(TRACK_NOTIFY_CHAT, msg, NOTIFY_OPTS);
 
-    // Si nuestro bando está perdiendo, ejecutar /hambre de forma autónoma
+    // Si nuestro bando está perdiendo, ejecutar /hambre de forma autónoma (con cooldown)
     if (currentWinner !== side) {
-      tg.setThreadContext(TRACK_NOTIFY_CHAT, TRACK_NOTIFY_THREAD);
-      await hambre(TRACK_NOTIFY_CHAT, [
-        `https://app.warera.io/battle/${battleId}`,
-        `⚠️ NOS ESTÁN DANDO VUELTA, NECESITAMOS PEGAR`,
-      ]);
+      const lastHambre = hambreLastAt.get(battleId) ?? 0;
+      if (Date.now() - lastHambre >= HAMBRE_COOLDOWN_MS) {
+        hambreLastAt.set(battleId, Date.now());
+        setTimeout(() => hambreLastAt.delete(battleId), HAMBRE_COOLDOWN_MS);
+        tg.setThreadContext(TRACK_NOTIFY_CHAT, TRACK_NOTIFY_THREAD);
+        await hambre(TRACK_NOTIFY_CHAT, [
+          `https://app.warera.io/battle/${battleId}`,
+          `⚠️ NOS ESTÁN DANDO VUELTA, NECESITAMOS PEGAR`,
+        ]);
+      }
     }
   }
 
