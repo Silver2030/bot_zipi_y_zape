@@ -103,7 +103,7 @@ async function handleActiveRound(battle, row) {
 
     await tg.sendMessage(
       TRACK_NOTIFY_CHAT,
-      `⚠️ [${username}](https://app.warera.io/user/${hit.user}) está atacando con *${hit.weapon.code}*!`,
+      `*${attName} vs ${defName}*\n⚠️ [${username}](https://app.warera.io/user/${hit.user}) está atacando con *${hit.weapon.code}*! — [ver batalla](https://app.warera.io/battle/${battleId})`,
       NOTIFY_OPTS
     );
   }
