@@ -100,7 +100,8 @@ async function handleActiveRound(battle, row) {
 
   for (const [key, hit] of latestByKey) {
     const lastAt = state.lastHeavyHitAt.get(key) ?? 0;
-    if (hit.hitAt <= lastAt) continue;
+    if (lastAt !== 0) continue; // cooldown activo, ya fue notificado en los últimos 5 min
+    if (hit.hitAt <= lastAt) continue; // hit viejo
 
     state.lastHeavyHitAt.set(key, hit.hitAt);
     setTimeout(() => state.lastHeavyHitAt.delete(key), HEAVY_COOLDOWN_MS);
