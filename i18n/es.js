@@ -29,7 +29,10 @@ module.exports = {
 /eventos - Últimos eventos del juego
 /ranking <danyo/wealth/nivel/pais> - Rankings globales
 /all - Menciona al grupo
-/produccion - Ranking productivo`,
+/produccion - Ranking productivo
+/addtrack <BATTLE_ID_O_URL> <attacker|defender> - Trackea un frente
+/listtrack - Muestra los frentes trackeados
+/removetrack <BATTLE_ID_O_URL> - Deja de trackear un frente`,
 
   // ─── /buscar ────────────────────────────────────────────────────────────────
   buscar_usage:         "Ejemplo: /buscar Silver",

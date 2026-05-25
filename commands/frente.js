@@ -32,17 +32,17 @@ async function addtrack(chatId, args) {
       return;
     }
 
-    const { rows } = await query('SELECT id, activo FROM frente WHERE "battleId" = $1', [battleId]);
+    const { rows } = await query('SELECT id, activo FROM frente WHERE battleid = $1', [battleId]);
 
     if (rows.length > 0) {
       if (rows[0].activo) {
         await tg.sendMessage(chatId, t(chatId, "addtrack_already"));
         return;
       }
-      await query('UPDATE frente SET activo = true, side = $2 WHERE "battleId" = $1', [battleId, side]);
+      await query('UPDATE frente SET activo = true, side = $2 WHERE battleid = $1', [battleId, side]);
     } else {
       await query(
-        `INSERT INTO frente (id, "battleId", side, activo) VALUES (gen_random_uuid()::text, $1, $2, true)`,
+        'INSERT INTO frente (id, battleid, side, activo) VALUES (gen_random_uuid()::text, $1, $2, true)',
         [battleId, side]
       );
     }
@@ -56,7 +56,7 @@ async function addtrack(chatId, args) {
 
 async function listtrack(chatId) {
   try {
-    const { rows } = await query('SELECT * FROM frente WHERE activo = true');
+    const { rows } = await query("SELECT id, battleid AS \"battleId\", side, activo FROM frente WHERE activo = true");
 
     if (!rows.length) {
       await tg.sendMessage(chatId, t(chatId, "listtrack_empty"));
@@ -136,7 +136,7 @@ async function removetrack(chatId, args) {
 
   try {
     const { rowCount } = await query(
-      'UPDATE frente SET activo = false WHERE "battleId" = $1 AND activo = true',
+      'UPDATE frente SET activo = false WHERE battleid = $1 AND activo = true',
       [battleId]
     );
 
