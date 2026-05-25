@@ -11,7 +11,16 @@ function extractBattleId(arg) {
   return arg.split("/").pop();
 }
 
-async function addtrack(chatId, args) {
+async function isAdmin(telegramId) {
+  const res = await query("SELECT 1 FROM users WHERE telegram_id = $1 AND rol = 'ADMIN'", [String(telegramId)]);
+  return res.rowCount > 0;
+}
+
+async function addtrack(chatId, args, msg) {
+  if (!await isAdmin(msg.from.id)) {
+    await tg.sendMessage(chatId, "No tienes permisos para ejecutar este comando.");
+    return;
+  }
   if (args.length < 2) {
     await tg.sendMessage(chatId, t(chatId, "addtrack_usage"), { disable_web_page_preview: true });
     return;
@@ -131,7 +140,11 @@ async function listtrack(chatId) {
   }
 }
 
-async function removetrack(chatId, args) {
+async function removetrack(chatId, args, msg) {
+  if (!await isAdmin(msg.from.id)) {
+    await tg.sendMessage(chatId, "No tienes permisos para ejecutar este comando.");
+    return;
+  }
   if (!args.length) {
     await tg.sendMessage(chatId, t(chatId, "removetrack_usage"), { disable_web_page_preview: true });
     return;
