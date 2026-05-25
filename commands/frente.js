@@ -1,5 +1,6 @@
 "use strict";
 
+const { randomUUID } = require("crypto");
 const tg = require("../telegram");
 const { t } = require("../i18n");
 const { apiCall, getCountryData } = require("../api");
@@ -42,8 +43,8 @@ async function addtrack(chatId, args) {
       await query('UPDATE frente SET activo = true, side = $2 WHERE battleid = $1', [battleId, side]);
     } else {
       await query(
-        'INSERT INTO frente (id, battleid, side, activo) VALUES (gen_random_uuid()::text, $1, $2, true)',
-        [battleId, side]
+        'INSERT INTO frente (id, battleid, side, activo) VALUES ($1, $2, $3, true)',
+        [randomUUID(), battleId, side]
       );
     }
 
