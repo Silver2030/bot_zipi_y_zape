@@ -5,7 +5,7 @@ const { t } = require("../i18n");
 const { apiCall, getCountryData } = require("../api");
 const { fetchUsersLite } = require("../fetchers");
 const { query } = require("../db");
-const { formatNumber } = require("../utils");
+const { formatNumber, escapeMdV1 } = require("../utils");
 
 function extractBattleId(arg) {
   return arg.split("/").pop();
@@ -108,7 +108,7 @@ async function listtrack(chatId) {
         const usersData = userIds.length ? await fetchUsersLite(userIds) : [];
         const topPlayers = topRaw.map((r, i) => ({
           rank:     r.rank,
-          username: usersData[i]?.username ?? r.user,
+          username: escapeMdV1(usersData[i]?.username ?? r.user),
           value:    formatNumber(r.value),
         }));
 

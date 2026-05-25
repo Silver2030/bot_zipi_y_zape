@@ -7,6 +7,11 @@ function escapeMarkdownV2(text) {
   return text.replace(/([_*[\]()~`>#+\-=|{}.!])/g, "\\$1");
 }
 
+function escapeMdV1(text) {
+  if (typeof text !== "string") text = String(text);
+  return text.replace(/[_*`[]/g, "\\$&");
+}
+
 function formatNumber(num) {
   return Number(num).toLocaleString("es-ES");
 }
@@ -63,6 +68,7 @@ function generarExcelBuffer(resultados, nombreGrupo) {
 
 module.exports = {
   escapeMarkdownV2,
+  escapeMdV1,
   formatNumber,
   formatNumberMarkdown,
   delay,

@@ -3,7 +3,7 @@
 const tg = require("./telegram");
 const { apiCall, getCountryData, getUserData } = require("./api");
 const { query } = require("./db");
-const { formatNumber } = require("./utils");
+const { formatNumber, escapeMdV1 } = require("./utils");
 const { TRACK_NOTIFY_CHAT, TRACK_NOTIFY_THREAD } = require("./config");
 const { hambre } = require("./commands/misc");
 
@@ -108,7 +108,7 @@ async function handleActiveRound(battle, row) {
     setTimeout(() => state.lastHeavyHitAt.delete(key), HEAVY_COOLDOWN_MS);
 
     const userData = await getUserData(hit.user).catch(() => null);
-    const username  = userData?.username ?? hit.user;
+    const username  = escapeMdV1(userData?.username ?? hit.user);
     const hasBuff   = userData?.buffs?.buffCodes?.includes("cocain") &&
                       new Date(userData.buffs.buffEndAt) > new Date();
     const label     = hasBuff ? `${username} 💊` : username;
