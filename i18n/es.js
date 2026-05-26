@@ -32,7 +32,8 @@ module.exports = {
 /produccion - Ranking productivo
 /addtrack <BATTLE_ID_O_URL> <attacker|defender> - Trackea un frente
 /listtrack - Muestra los frentes trackeados
-/removetrack <BATTLE_ID_O_URL> - Deja de trackear un frente`,
+/removetrack <BATTLE_ID_O_URL> - Deja de trackear un frente
+/buildpvp <URL_USUARIO> [sp_pvp] [green|blue|purple] - Top 5 builds por daño`,
 
   // ─── /buscar ────────────────────────────────────────────────────────────────
   buscar_usage:         "Ejemplo: /buscar Silver",
@@ -245,5 +246,6 @@ module.exports = {
     addtrack:      "addtrack",
     listtrack:     "listtrack",
     removetrack:   "removetrack",
+    buildpvp:      "buildpvp",
   },
 };

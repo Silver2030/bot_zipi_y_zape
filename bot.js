@@ -37,9 +37,10 @@ const COMMANDS = {
     { command: "gastos",        description: "<enlace_batalla/id_batalla>" },
     { command: "addadmin",      description: "Responde a un mensaje para añadir admin" },
     { command: "listaadmin",    description: "Lista todos los admins" },
-    { command: "addtrack",      description: "<battleId_o_url> <attacker|defender>" }, 
+    { command: "addtrack",      description: "<battleId_o_url> <attacker|defender>" },
     { command: "listtrack",     description: "Muestra los frentes trackeados" },
     { command: "removetrack",   description: "<battleId_o_url>" },
+    { command: "buildpvp",      description: "<url_o_sp> [sp] [bala] [arma g1 g2 g3 g4 g5]" },
   ],
   ru: [
     { command: "help",          description: "Показать все доступные команды" },
@@ -98,6 +99,7 @@ const handlers = {
   ...require("./commands/gastos"),
   ...require("./commands/admin"),
   ...require("./commands/frente"),
+  ...require("./commands/build"),
 };
 
 // ─── Mutex por chat para comandos pesados ─────────────────────────────────────
@@ -107,7 +109,7 @@ const HEAVY_COMMANDS = new Set([
   "jugadorespais", "jugadoresmu",
   "paisesdanyo",   "mudanyo",
   "dineropais",    "dineromu",
-  "gastos",        "listtrack",
+  "gastos",        "listtrack",   "buildpvp",
 ]);
 
 const chatLocks = new Map(); // chatId → Set de handlers en ejecución
