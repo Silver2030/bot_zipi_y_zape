@@ -44,9 +44,9 @@ async function buildeco(chatId, args) {
       "Uso:\n" +
       "• Con perfil: `/buildeco <url_o_id> <company_level> <gps> [empresas]`\n" +
       "• Sin perfil: `/buildeco <sp> <company_level> <gps> [empresas]`\n\n" +
-      "_company\\_level_: nivel de fábrica (1-7)\n" +
-      "_gps_: oro por unidad de producción al trabajar en fab. ajena\n" +
-      "_empresas_: filtro opcional, número exacto de fábricas (2-12)",
+      "`company_level`: nivel de fábrica (1-7)\n" +
+      "`gps`: oro por unidad de producción al trabajar en fab. ajena\n" +
+      "`empresas`: filtro opcional, número exacto de fábricas (2-12)",
       { parse_mode: "Markdown" }
     );
     return;
