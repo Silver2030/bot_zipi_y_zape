@@ -33,7 +33,7 @@ function makeEcoRecurse(sp, empresasFilter, onLeaf) {
   const idx = new Int8Array(4);
   function recurse(stat, remaining) {
     if (stat === 4) {
-      if (remaining === 0) onLeaf(idx);
+      if (remaining <= 4) onLeaf(idx);
       return;
     }
     const maxFuture = (3 - stat) * 55;

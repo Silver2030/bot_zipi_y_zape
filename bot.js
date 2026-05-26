@@ -142,22 +142,22 @@ bot.on("message", async (msg) => {
   if (text) {
     const palabras = text.toLowerCase().split(/\s+/);
     if (["otto", "oto", "oton", "otón"].some((v) => palabras.includes(v))) {
-      tg.sendMessage(chatId, "Putero");
+      tg.sendMessage(chatId, "Putero").catch(() => {});
     }
   }
 
   const threadOpts = msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {};
   if (msg.from?.id === 5072276449 && Math.random() < 0.5) {
-    tg.sendMessage(chatId, "@Dopillo fetichista de pies", threadOpts);
+    tg.sendMessage(chatId, "@Dopillo fetichista de pies", threadOpts).catch(() => {});
   }
   if (msg.from?.id === 5969574492 && Math.random() < 0.5) {
-    tg.sendMessage(chatId, "@lodensy peruano tiraflechas quitale la proteccion al maricon", threadOpts);
+    tg.sendMessage(chatId, "@lodensy peruano tiraflechas quitale la proteccion al maricon", threadOpts).catch(() => {});
   }
 
   if (!text?.startsWith("/")) return;
 
   if (!getChatConfig(chatId)) {
-    tg.sendMessage(chatId, t(chatId, "bot_not_authorized"));
+    tg.sendMessage(chatId, t(chatId, "bot_not_authorized")).catch(() => {});
     return;
   }
 
@@ -167,22 +167,25 @@ bot.on("message", async (msg) => {
 
   if (!handlerName || !handlers[handlerName]) return;
 
-  // Mutex para comandos pesados
   tg.setThreadContext(chatId, msg.message_thread_id);
 
-  if (HEAVY_COMMANDS.has(handlerName)) {
-    if (isLocked(chatId, handlerName)) {
-      await tg.sendMessage(chatId, t(chatId, "cmd_already_running"));
-      return;
-    }
-    lock(chatId, handlerName);
-    try {
+  try {
+    if (HEAVY_COMMANDS.has(handlerName)) {
+      if (isLocked(chatId, handlerName)) {
+        await tg.sendMessage(chatId, t(chatId, "cmd_already_running"));
+        return;
+      }
+      lock(chatId, handlerName);
+      try {
+        await handlers[handlerName](chatId, args, msg);
+      } finally {
+        unlock(chatId, handlerName);
+      }
+    } else {
       await handlers[handlerName](chatId, args, msg);
-    } finally {
-      unlock(chatId, handlerName);
     }
-  } else {
-    await handlers[handlerName](chatId, args, msg);
+  } catch (err) {
+    console.error(`[ERROR] /${handlerName} en chat ${chatId}:`, err?.message ?? err);
   }
 });
 
