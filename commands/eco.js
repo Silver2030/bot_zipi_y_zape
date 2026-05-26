@@ -82,7 +82,7 @@ async function buildeco(chatId, args) {
   if (noIdMode) {
     // nums: company_level  gps  [empresas]
     if (nums.length < 2) {
-      await tg.sendMessage(chatId, "Indica company_level y gps. Ej: `/buildeco 172 6 0.128`", { parse_mode: "Markdown" });
+      await tg.sendMessage(chatId, "Indica `company_level` y gps. Ej: `/buildeco 172 6 0.128`", { parse_mode: "Markdown" });
       return;
     }
     companyLevel = Math.round(nums[0]);
@@ -92,7 +92,7 @@ async function buildeco(chatId, args) {
     // ID mode: if first number > 7, treat as SP override → sp company_level gps [empresas]
     //          otherwise → company_level gps [empresas]
     if (nums.length < 2) {
-      await tg.sendMessage(chatId, "Indica company_level y gps. Ej: `/buildeco <url> 6 0.128`", { parse_mode: "Markdown" });
+      await tg.sendMessage(chatId, "Indica `company_level` y gps. Ej: `/buildeco <url> 6 0.128`", { parse_mode: "Markdown" });
       return;
     }
     if (nums[0] > 7) {

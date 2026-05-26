@@ -41,7 +41,7 @@ function makeEcoRecurse(sp, empresasFilter, onLeaf) {
       const cost = SKILL_COSTS[i];
       if (cost > remaining) break;
       const left = remaining - cost;
-      if (left > maxFuture) continue;
+      if (left > maxFuture + 4) continue;
       if (stat === 1 && empresasFilter !== null && ECO_TABLES[1][i] !== empresasFilter) continue;
       idx[stat] = i;
       recurse(stat + 1, left);
