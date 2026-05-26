@@ -51,7 +51,7 @@ async function buildpvp(chatId, args) {
   }
 
   // ── Parsear args restantes ─────────────────────────────────────────────────
-  let bulletKey  = null;
+  let bulletKey  = "green";
   let weaponCost = 0;
   let gearCosts  = [0, 0, 0, 0, 0];
   const nums = [];
@@ -116,7 +116,7 @@ async function buildpvp(chatId, args) {
 
   const ammoItem      = bulletKey ? BULLET_TO_ITEM[bulletKey] : null;
   const ammoPrice     = ammoItem ? (prices[ammoItem] ?? 0) : 0;
-  const fishPrice     = prices["fish"] ?? 0;
+  const fishPrice     = prices["cookedFish"] ?? 0;
   const totalGearCost = gearCosts.reduce((a, b) => a + b, 0);
 
   const cfg = {
