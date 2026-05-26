@@ -30,10 +30,14 @@ module.exports = {
 /ranking <danyo/wealth/nivel/pais> - Rankings globales
 /all - Menciona al grupo
 /produccion - Ranking productivo
+/gastos <ENLACE_BATALLA> - Costes de equipo/armas de la batalla
+/addadmin - (responde a un mensaje) Añade admin
+/listaadmin - Lista todos los admins
 /addtrack <BATTLE_ID_O_URL> <attacker|defender> - Trackea un frente
 /listtrack - Muestra los frentes trackeados
 /removetrack <BATTLE_ID_O_URL> - Deja de trackear un frente
-/buildpvp <URL_USUARIO> [sp_pvp] [green|blue|purple] - Top 5 builds por daño`,
+/buildpvp <url_o_sp> [sp] [green|blue|purple] [arma g1 g2 g3 g4 g5] - Top 5 por daño + top 5 más baratas (umbral 95%)
+/buildeco <url_o_sp> <nivel_fab> <gps> [empresas] - Top 5 builds eco por oro/día`,
 
   // ─── /buscar ────────────────────────────────────────────────────────────────
   buscar_usage:         "Ejemplo: /buscar Silver",
@@ -247,5 +251,6 @@ module.exports = {
     listtrack:     "listtrack",
     removetrack:   "removetrack",
     buildpvp:      "buildpvp",
+    buildeco:      "buildeco",
   },
 };
