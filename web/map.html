@@ -104,43 +104,23 @@
   // Capa política: no tenemos los polígonos exactos de cada región (la API
   // solo da un punto lat/lng), así que aproximamos su "territorio" con un
   // diagrama de Voronoi a partir de esos puntos, coloreado por el país que
-  // controla cada región en el juego. Se recorta a la silueta de tierra real
-  // (mismo "countries" de world-atlas) para que el color no se salga al mar.
-  // Voronoi y silueta comparten el mismo pane (mismo renderer/SVG) para que
-  // sus coordenadas siempre coincidan exactamente al recortar.
-  map.createPane("politicalPane");
-  map.getPane("politicalPane").style.zIndex = 350;
-
-  let landLayer = null;
-  const clipSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  clipSvg.setAttribute("width", "0");
-  clipSvg.setAttribute("height", "0");
-  clipSvg.style.position = "absolute";
-  clipSvg.innerHTML = '<defs><clipPath id="landClip"></clipPath></defs>';
-  document.body.appendChild(clipSvg);
-  const clipPathEl = clipSvg.querySelector("#landClip");
-
-  function syncLandClip() {
-    if (!landLayer) return;
-    clipPathEl.innerHTML = "";
-    landLayer.eachLayer((l) => {
-      const d = l._path && l._path.getAttribute("d");
-      if (!d) return;
-      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      p.setAttribute("d", d);
-      clipPathEl.appendChild(p);
-    });
-    // Se aplica como atributo del <svg> interno del pane (no del div del
-    // pane): así el recorte usa exactamente el mismo espacio de coordenadas
-    // que los propios trazados (el svg de Leaflet va desplazado respecto al
-    // div contenedor, y aplicarlo en el div desalineaba el recorte).
-    const svg = map.getPane("politicalPane")?.querySelector("svg");
-    if (svg) svg.setAttribute("clip-path", "url(#landClip)");
+  // controla cada región en el juego.
+  //
+  // Para que el color no se salga al mar, en vez de "recortar" el Voronoi
+  // (probado con clip-path sincronizado a mano: se desalineaba en cada
+  // zoom, nada fiable) se pinta el océano ENCIMA como una capa normal de
+  // Leaflet -- un polígono del tamaño del mundo con un "agujero" por cada
+  // país (mismo truco que un mapa con lagos: el hueco no se rellena). Al
+  // ser una capa Leaflet normal, se reposiciona sola en cada zoom/pan igual
+  // que ya hacen los marcadores, sin sincronizar nada a mano.
+  let voronoiLayer = null;
+  let oceanLayer = null;
+  let landStrokeLayer = null;
+  function reorderPoliticalLayers() {
+    voronoiLayer?.bringToBack();
+    oceanLayer?.bringToFront();
+    landStrokeLayer?.bringToFront();
   }
-  // rAF: esperar a que Leaflet termine de recalcular los trazados del propio
-  // evento (sus listeners internos corren en el mismo ciclo) antes de leer
-  // su "d" -- si no, se copia la posición vieja y todo queda desalineado.
-  map.on("zoomend moveend", () => requestAnimationFrame(syncLandClip));
 
   // Un anillo cuya longitud salta de golpe (p.ej. de 179° a -179°) cruza el
   // antimeridiano sin estar partido en el dataset; tal cual, Leaflet lo
@@ -174,17 +154,21 @@
   // por nombre; si llega un scheme que no reconocemos, se cae a un color
   // derivado del id (mejor eso que sin color).
   const SCHEME_COLORS = {
-    red: "#e5484d", tomato: "#e54d2e", ruby: "#e54666", crimson: "#e93d82",
-    orange: "#f76b15", amber: "#ffb224", gold: "#c8a355", yellow: "#f5d90a",
+    red: "#e5484d", deepred: "#c53030", lightred: "#f5a3a6",
+    tomato: "#e54d2e", ruby: "#e54666", crimson: "#e93d82", deeppink: "#d6248f",
+    orange: "#f76b15", lightorange: "#ffa057", deeporange: "#c2530a",
+    amber: "#ffb224", gold: "#c8a355", yellow: "#f5d90a", lightyellow: "#f9e56b",
     lime: "#bdee63", grass: "#65ba74", green: "#30a46c", lightgreen: "#5bb98c",
-    darkgreen: "#1f6f4a", jade: "#29a383", mint: "#4ccbc9", teal: "#12a594",
+    darkgreen: "#1f6f4a", deepgreen: "#166a44", emerald: "#0fa968",
+    jade: "#29a383", mint: "#4ccbc9", teal: "#12a594",
     cyan: "#00a2c7", sky: "#5eb1ef", lightblue: "#5eb1ef", blue: "#0090ff",
-    darkblue: "#1c4e91", indigo: "#3e63dd", iris: "#5b5bd6", violet: "#8e4ec6",
+    darkblue: "#1c4e91", deepblue: "#1a3e73", indigo: "#3e63dd", iris: "#5b5bd6",
+    violet: "#8e4ec6", lightpurple: "#b98ee0", deeppurple: "#6a3496",
     purple: "#8e4ec6", plum: "#ab4aba", pink: "#d6409f", magenta: "#d6409f",
-    brown: "#ad7f58", bronze: "#a18072", sand: "#8d8d86", gray: "#8b8d98",
-    grey: "#8b8d98", slate: "#697177", mauve: "#8e8c99", olive: "#8f9779",
-    black: "#2b2b2b", white: "#e8e8e8", navy: "#2a4a7c", maroon: "#8c3a3a",
-    turquoise: "#0cc0df",
+    lightpink: "#eb9fd0", brown: "#ad7f58", bronze: "#a18072", sand: "#8d8d86",
+    gray: "#8b8d98", grey: "#8b8d98", slate: "#697177", mauve: "#8e8c99",
+    olive: "#8f9779", black: "#2b2b2b", white: "#e8e8e8", navy: "#2a4a7c",
+    maroon: "#8c3a3a", turquoise: "#0cc0df", sapphire: "#2f6fb0",
   };
   function colorForScheme(scheme, fallbackId) {
     const key = String(scheme || "").toLowerCase().replace(/[^a-z]/g, "");
@@ -212,11 +196,10 @@
       });
     });
 
-    L.geoJSON(
+    voronoiLayer = L.geoJSON(
       { type: "FeatureCollection", features },
       {
         style: (f) => ({
-          pane: "politicalPane",
           stroke: false,
           fillColor: colorForScheme(f.properties.scheme, f.properties.country),
           fillOpacity: 0.55,
@@ -224,17 +207,42 @@
         interactive: false,
       }
     ).addTo(map);
+    reorderPoliticalLayers();
+  }
+
+  // Anillo → [[lat,lng], ...] para L.polygon (GeoJSON va en [lng,lat]).
+  function ringToLatLngs(ring) {
+    return ring.map(([lng, lat]) => [lat, lng]);
   }
 
   fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json")
     .then((r) => r.json())
     .then((topology) => {
       const countries = dropAntimeridianRings(topojson.feature(topology, topology.objects.countries));
-      landLayer = L.geoJSON(countries, {
-        style: { pane: "politicalPane", color: "#0f1115", weight: 0.6, fillOpacity: 0 },
+
+      // Agujeros = el exterior de cada país (se ignoran los lagos internos:
+      // a esta resolución no merece la pena complicarlo por un puñado de
+      // píxeles de lago).
+      const holes = [];
+      for (const f of countries.features) {
+        const g = f.geometry;
+        if (g.type === "Polygon") holes.push(ringToLatLngs(g.coordinates[0]));
+        else if (g.type === "MultiPolygon") g.coordinates.forEach((poly) => holes.push(ringToLatLngs(poly[0])));
+      }
+      const worldRing = [[-85, -180], [-85, 180], [85, 180], [85, -180], [-85, -180]];
+      oceanLayer = L.polygon([worldRing, ...holes], {
+        stroke: false,
+        fillColor: "#dcdcdc",
+        fillOpacity: 1,
         interactive: false,
       }).addTo(map);
-      syncLandClip();
+
+      landStrokeLayer = L.geoJSON(countries, {
+        style: { color: "#0f1115", weight: 0.6, fill: false },
+        interactive: false,
+      }).addTo(map);
+
+      reorderPoliticalLayers();
     })
     .catch(() => {});
 
