@@ -89,6 +89,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://unpkg.com/d3-delaunay@6/dist/d3-delaunay.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -100,21 +101,92 @@
 
   const map = L.map("map", { worldCopyJump: true, minZoom: 2, maxZoom: 12, zoomSnap: 0.5 }).setView([30, 10], 3);
 
-  // Sin mapa base "real": el juego dibuja sus propias fronteras políticas
-  // (que no coinciden con los países del mundo real), así que solo pintamos
-  // la silueta de tierra/mar, sin fronteras ni nombres, y el color político
-  // lo ponemos nosotros con los datos del propio juego.
-  // Usamos "countries" (no "land"): ese objeto ya viene con los polígonos que
-  // cruzan el antimeridiano (Rusia, Antártida...) correctamente cortados; el
-  // "land" fusionado dibujaba una raya recta atravesando todo el mapa en esos casos.
+  // Capa política: no tenemos los polígonos exactos de cada región (la API
+  // solo da un punto lat/lng), así que aproximamos su "territorio" con un
+  // diagrama de Voronoi a partir de esos puntos, coloreado por el país que
+  // controla cada región en el juego. Se recorta a la silueta de tierra real
+  // (mismo "countries" de world-atlas) para que el color no se salga al mar.
+  // Voronoi y silueta comparten el mismo pane (mismo renderer/SVG) para que
+  // sus coordenadas siempre coincidan exactamente al recortar.
+  map.createPane("politicalPane");
+  map.getPane("politicalPane").style.zIndex = 350;
+
+  let landLayer = null;
+  const clipSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  clipSvg.setAttribute("width", "0");
+  clipSvg.setAttribute("height", "0");
+  clipSvg.style.position = "absolute";
+  clipSvg.innerHTML = '<defs><clipPath id="landClip"></clipPath></defs>';
+  document.body.appendChild(clipSvg);
+  const clipPathEl = clipSvg.querySelector("#landClip");
+
+  function syncLandClip() {
+    if (!landLayer) return;
+    clipPathEl.innerHTML = "";
+    landLayer.eachLayer((l) => {
+      const d = l._path && l._path.getAttribute("d");
+      if (!d) return;
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", d);
+      clipPathEl.appendChild(p);
+    });
+    // Se aplica como atributo del <svg> interno del pane (no del div del
+    // pane): así el recorte usa exactamente el mismo espacio de coordenadas
+    // que los propios trazados (el svg de Leaflet va desplazado respecto al
+    // div contenedor, y aplicarlo en el div desalineaba el recorte).
+    const svg = map.getPane("politicalPane")?.querySelector("svg");
+    if (svg) svg.setAttribute("clip-path", "url(#landClip)");
+  }
+  map.on("zoomend moveend", syncLandClip);
+
+  function colorForCountry(countryId) {
+    if (!countryId) return "#888";
+    let hash = 0;
+    for (let i = 0; i < countryId.length; i++) hash = (hash * 31 + countryId.charCodeAt(i)) >>> 0;
+    const hue = hash % 360;
+    return `hsl(${hue}, 65%, 55%)`;
+  }
+
+  function buildVoronoiLayer() {
+    const regionsArr = [...regionsById.values()].filter((r) => Array.isArray(r.position));
+    const points = regionsArr.map((r) => r.position); // [lng, lat]
+    const delaunay = d3.Delaunay.from(points);
+    const voronoi = delaunay.voronoi([-180, -75, 180, 84]);
+
+    const features = [];
+    regionsArr.forEach((r, i) => {
+      const cell = voronoi.cellPolygon(i);
+      if (!cell) return;
+      features.push({
+        type: "Feature",
+        properties: { country: r.country },
+        geometry: { type: "Polygon", coordinates: [cell] },
+      });
+    });
+
+    L.geoJSON(
+      { type: "FeatureCollection", features },
+      {
+        style: (f) => ({
+          pane: "politicalPane",
+          stroke: false,
+          fillColor: colorForCountry(f.properties.country),
+          fillOpacity: 0.55,
+        }),
+        interactive: false,
+      }
+    ).addTo(map);
+  }
+
   fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json")
     .then((r) => r.json())
     .then((topology) => {
       const countries = topojson.feature(topology, topology.objects.countries);
-      L.geoJSON(countries, {
-        style: { color: "#20232c", weight: 0.5, fillColor: "#20232c", fillOpacity: 1 },
+      landLayer = L.geoJSON(countries, {
+        style: { pane: "politicalPane", color: "#0f1115", weight: 0.6, fillOpacity: 0 },
         interactive: false,
       }).addTo(map);
+      syncLandClip();
     })
     .catch(() => {});
 
@@ -122,10 +194,22 @@
   let trackedByRegion = new Map(); // regionId -> [{userId, username, isHome}]
   let trackedTotal = 0;
   let mode = "residentes";
+
+  function clusterIconFor(cluster) {
+    const sum = cluster.getAllChildMarkers().reduce((acc, m) => acc + (m.regionValue || 0), 0);
+    const size = Math.max(30, Math.min(70, 22 + 9 * Math.sqrt(sum)));
+    return L.divIcon({
+      html: `<div>${sum.toLocaleString("es-ES")}</div>`,
+      className: "marker-cluster",
+      iconSize: L.point(size, size),
+    });
+  }
+
   let layerGroup = L.markerClusterGroup({
     maxClusterRadius: 45,
     disableClusteringAtZoom: 7,
     spiderfyOnMaxZoom: true,
+    iconCreateFunction: clusterIconFor,
   }).addTo(map);
 
   const warningEl = document.getElementById("warning");
@@ -139,14 +223,6 @@
   window.addEventListener("error", (e) => showWarning("Error: " + (e.error?.message || e.message)));
   window.addEventListener("unhandledrejection", (e) => showWarning("Error: " + (e.reason?.message || e.reason)));
 
-  function colorForCountry(countryId) {
-    if (!countryId) return "#888";
-    let hash = 0;
-    for (let i = 0; i < countryId.length; i++) hash = (hash * 31 + countryId.charCodeAt(i)) >>> 0;
-    const hue = hash % 360;
-    return `hsl(${hue}, 65%, 55%)`;
-  }
-
   async function loadRegions() {
     setLoading("Cargando regiones…");
     const res = await fetch("/api/map/regions");
@@ -154,6 +230,7 @@
     const { regions } = await res.json();
     regions.forEach((r) => regionsById.set(r.id, r));
     document.getElementById("statRegions").textContent = regions.length;
+    buildVoronoiLayer();
     setLoading("");
   }
 
@@ -197,11 +274,12 @@
       const radius = 4 + 13 * Math.sqrt(val / maxVal);
       const marker = L.circleMarker([r.position[1], r.position[0]], {
         radius,
-        color: r.isCapital ? "#fff" : "#0f1115",
-        fillColor: colorForCountry(r.country),
-        fillOpacity: 0.85,
+        color: r.isCapital ? "#ffd75e" : "#111319",
+        fillColor: "#f2f2f2",
+        fillOpacity: 0.9,
         weight: r.isCapital ? 2 : 1,
       });
+      marker.regionValue = val;
       marker.bindTooltip(`${escapeHtml(r.name)} — ${val}`, { direction: "top", className: "region-tooltip" });
       marker.bindPopup(
         `<div class="popup-title">${escapeHtml(r.name)}${r.isCapital ? " 👑" : ""}</div>` +
@@ -227,10 +305,11 @@
       const marker = L.circleMarker([r.position[1], r.position[0]], {
         radius,
         color: anyAway ? "#ffb454" : "#6ee7b7",
-        fillColor: colorForCountry(r.country),
-        fillOpacity: 0.85,
+        fillColor: "#f2f2f2",
+        fillOpacity: 0.9,
         weight: 3,
       });
+      marker.regionValue = players.length;
       marker.bindTooltip(`${escapeHtml(r.name)} — ${players.length} rastreado(s)`, { direction: "top", className: "region-tooltip" });
 
       const rows = players
