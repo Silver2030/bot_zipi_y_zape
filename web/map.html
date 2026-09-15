@@ -69,7 +69,8 @@
   <div id="panel">
     <h1>🗺️ Mapa WarEra</h1>
     <div class="tabs">
-      <div class="tab active" data-mode="poblacion">Población</div>
+      <div class="tab active" data-mode="residentes">Residentes</div>
+      <div class="tab" data-mode="poblacion">Población</div>
       <div class="tab" data-mode="rastreados">Rastreados</div>
     </div>
     <div class="stat-row"><span>Regiones</span><b id="statRegions">–</b></div>
@@ -100,14 +101,17 @@
 
   // Sin mapa base "real": el juego dibuja sus propias fronteras políticas
   // (que no coinciden con los países del mundo real), así que solo pintamos
-  // la silueta de los continentes -- tierra/mar, sin fronteras ni nombres --
-  // y el color político lo ponemos nosotros con los datos del propio juego.
-  fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json")
+  // la silueta de tierra/mar, sin fronteras ni nombres, y el color político
+  // lo ponemos nosotros con los datos del propio juego.
+  // Usamos "countries" (no "land"): ese objeto ya viene con los polígonos que
+  // cruzan el antimeridiano (Rusia, Antártida...) correctamente cortados; el
+  // "land" fusionado dibujaba una raya recta atravesando todo el mapa en esos casos.
+  fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json")
     .then((r) => r.json())
     .then((topology) => {
-      const land = topojson.feature(topology, topology.objects.land);
-      L.geoJSON(land, {
-        style: { color: "#2a2e38", weight: 1, fillColor: "#20232c", fillOpacity: 1 },
+      const countries = topojson.feature(topology, topology.objects.countries);
+      L.geoJSON(countries, {
+        style: { color: "#20232c", weight: 0.5, fillColor: "#20232c", fillOpacity: 1 },
         interactive: false,
       }).addTo(map);
     })
@@ -116,7 +120,7 @@
   let regionsById = new Map();
   let trackedByRegion = new Map(); // regionId -> [{userId, username, isHome}]
   let trackedTotal = 0;
-  let mode = "poblacion";
+  let mode = "residentes";
   let layerGroup = L.markerClusterGroup({
     maxClusterRadius: 45,
     disableClusteringAtZoom: 7,
@@ -177,14 +181,14 @@
     setLoading("");
   }
 
-  function renderPoblacion() {
+  function renderByField(field, label) {
     layerGroup.clearLayers();
-    const maxPop = Math.max(1, ...[...regionsById.values()].map((r) => r.currentPopulation || r.residents || 0));
+    const maxVal = Math.max(1, ...[...regionsById.values()].map((r) => r[field] || 0));
 
     regionsById.forEach((r) => {
       if (!r.position) return;
-      const pop = r.currentPopulation || r.residents || 0;
-      const radius = 4 + 13 * Math.sqrt(pop / maxPop);
+      const val = r[field] || 0;
+      const radius = 4 + 13 * Math.sqrt(val / maxVal);
       const marker = L.circleMarker([r.position[1], r.position[0]], {
         radius,
         color: r.isCapital ? "#fff" : "#0f1115",
@@ -192,11 +196,11 @@
         fillOpacity: 0.85,
         weight: r.isCapital ? 2 : 1,
       });
-      marker.bindTooltip(`${escapeHtml(r.name)} — ${pop}`, { direction: "top", className: "region-tooltip" });
+      marker.bindTooltip(`${escapeHtml(r.name)} — ${val}`, { direction: "top", className: "region-tooltip" });
       marker.bindPopup(
         `<div class="popup-title">${escapeHtml(r.name)}${r.isCapital ? " 👑" : ""}</div>` +
         `<div class="popup-sub">${escapeHtml(r.countryName || "")} · ${escapeHtml(r.mainCity || "")}</div>` +
-        `<div>Población: <b>${pop}</b></div>`
+        `<div>${label}: <b>${val}</b></div>`
       );
       layerGroup.addLayer(marker);
     });
@@ -242,7 +246,8 @@
   }
 
   function render() {
-    if (mode === "poblacion") renderPoblacion();
+    if (mode === "residentes") renderByField("residents", "Residentes");
+    else if (mode === "poblacion") renderByField("population", "Población");
     else renderRastreados();
   }
 

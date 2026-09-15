@@ -33,7 +33,6 @@ function registerWebRoutes(app) {
         position: r.position, // [lng, lat]
         isCapital: !!r.isCapital,
         population: r.population ?? 0,
-        currentPopulation: r.currentPopulation ?? 0,
         residents: r.residents ?? 0,
       }));
 
