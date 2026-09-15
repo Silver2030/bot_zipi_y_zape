@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mapa WarEra — Zipi y Zape</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -97,7 +98,7 @@
   const token   = params.get("token");
   const hasAuth = !!(chatId && token);
 
-  const map = L.map("map", { worldCopyJump: true, minZoom: 2, zoomSnap: 0.5 }).setView([30, 10], 3);
+  const map = L.map("map", { worldCopyJump: true, minZoom: 2, maxZoom: 12, zoomSnap: 0.5 }).setView([30, 10], 3);
 
   // Sin mapa base "real": el juego dibuja sus propias fronteras políticas
   // (que no coinciden con los países del mundo real), así que solo pintamos
@@ -132,6 +133,11 @@
 
   function setLoading(text) { loadingEl.textContent = text || ""; }
   function showWarning(text) { warningEl.style.display = "block"; warningEl.textContent = text; }
+
+  // Si algo revienta (aquí o en cualquier script cargado), que se vea en la
+  // página en vez de quedar en blanco sin pistas.
+  window.addEventListener("error", (e) => showWarning("Error: " + (e.error?.message || e.message)));
+  window.addEventListener("unhandledrejection", (e) => showWarning("Error: " + (e.reason?.message || e.reason)));
 
   function colorForCountry(countryId) {
     if (!countryId) return "#888";
