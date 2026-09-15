@@ -96,6 +96,15 @@ async function getUserData(userId) {
   return data;
 }
 
+async function getUserFull(userId) {
+  const key = `userFull:${userId}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const data = await apiCall("user.getUserById", { userId });
+  if (data) cache.set(key, data, 20_000);
+  return data;
+}
+
 async function getMUData(muId) {
   const key = `mu:${muId}`;
   const hit = cache.get(key);
@@ -167,7 +176,7 @@ function getCacheSize() { return cache.size; }
 
 module.exports = {
   apiCall, apiBatchCall, fetchInBatches, mapLimit,
-  getUserData, getMUData, getCountryData,
+  getUserData, getUserFull, getMUData, getCountryData,
   getUserCompanies, getCompanyData,
   getAllCountries, getRegionsObject, getPrices,
   getCacheSize,

@@ -6,7 +6,7 @@ const CHATS = {
     lang: "es",
     usuarios: [
       { userId: "686f9befee16d37c418cd087", mention: "@SilverFRE" },
-           { userId: "686eefe3ee16d37c417a0e59", mention: "@lodensy" },
+      { userId: "686eefe3ee16d37c417a0e59", mention: "@lodensy" },
       { userId: "68386302a484755f062b16a8", mention: "@GaryRr" },
       { userId: "68703ddf37ff51dd0dc590d0", mention: "@TowDl" },
       { userId: "68f8f5ad5dc34ed689e1784c", mention: "@maromaromero" },
@@ -104,6 +104,12 @@ const PRODUCTOS_MANUFACTURADOS = {
 const TRPC_BASE      = "https://api2.warera.io/trpc";
 const WARERA_API_KEY = process.env.WARERA_TOKEN;
 
+// ─── Web / Mapa ────────────────────────────────────────────────────────────
+// URL pública donde se sirve el bot (para construir el enlace de /mapa).
+const PUBLIC_BASE_URL  = process.env.PUBLIC_BASE_URL || null;
+// Secreto para firmar el token de acceso al mapa de cada chat.
+const MAP_TOKEN_SECRET = process.env.MAP_TOKEN_SECRET || WARERA_API_KEY || "dev-secret-change-me";
+
 // ─── Notificaciones de frentes ────────────────────────────────────────────────
 const TRACK_NOTIFY_CHAT   = -1003341630162;
 const TRACK_NOTIFY_THREAD = 47890;
@@ -121,6 +127,7 @@ module.exports = {
   HEAL_FOOD_MAP, SKILL_COSTS, PVP_SKILLS, ECO_SKILLS,
   CONTROL_ITEMS, TRADUCCIONES, MATERIAS_PRIMAS, PRODUCTOS_MANUFACTURADOS,
   TRPC_BASE, WARERA_API_KEY,
+  PUBLIC_BASE_URL, MAP_TOKEN_SECRET,
   TRACK_NOTIFY_CHAT, TRACK_NOTIFY_THREAD,
   DINERO_ENVIAR_EN_CHAT, DINERO_CHUNK_DELAY_MS,
   DANYO_CHUNK_SIZE, JUGADORES_CHUNK_SIZE,

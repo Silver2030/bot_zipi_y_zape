@@ -218,6 +218,32 @@ module.exports = {
   // ─── /ranking ───────────────────────────────────────────────────────────────
   ranking_usage: (tipos) => `Uso: /ranking <tipo>\nTipos disponibles: ${tipos}`,
 
+  // ─── Rastreo (/rastrear /rastrearMu /rastrearPais /quitarRastreo... /rastreados /mapa) ─
+  no_permisos: "No tienes permisos para ejecutar este comando.",
+
+  rastrear_usage:       "Uso: /rastrear <userId_o_url>",
+  rastrearmu_usage:     "Uso: /rastrearMu <mu_id_o_url>",
+  rastrearpais_usage:   "Uso: /rastrearPais <pais_id_o_url>",
+  rastreo_user_not_found: "No se encontró ese jugador.",
+  rastrear_added:       (username) => `✅ *${username}* añadido al rastreo.`,
+  rastrear_grupo_added: ({ tipo, nombre, total, nuevos }) =>
+    `✅ *${nombre}* (${tipo === "mu" ? "MU" : "país"}): ${total} jugador(es) procesados, ${nuevos} nuevo(s) en el rastreo.`,
+
+  quitarrastreo_usage:       "Uso: /quitarRastreo <userId_o_url>",
+  quitarrastreomu_usage:     "Uso: /quitarRastreoMu <mu_id_o_url>",
+  quitarrastreopais_usage:   "Uso: /quitarRastreoPais <pais_id_o_url>",
+  quitarrastreo_not_found:   "Ese jugador/grupo no estaba rastreado.",
+  quitarrastreo_removed:             (id) => `✅ Jugador \`${id}\` quitado del rastreo.`,
+  quitarrastreo_removed_pero_sigue:  (id) => `✅ Quitado de ese origen, pero \`${id}\` sigue rastreado por otro grupo.`,
+  quitarrastreo_grupo_removed: ({ tipo, sourcesRemoved, playersRemoved }) =>
+    `✅ Rastreo por ${tipo === "mu" ? "MU" : "país"} eliminado: ${sourcesRemoved} jugador(es) desvinculados, ${playersRemoved} salieron del rastreo por completo.`,
+
+  rastreados_empty:   "No hay ningún jugador rastreado en este chat todavía.",
+  rastreados_resumen: (total) => `👀 *Rastreados* (${total}):`,
+
+  mapa_no_public_url: "El bot no tiene configurada una URL pública (PUBLIC_BASE_URL). Pide a un admin que la configure.",
+  mapa_link: (url) => `🗺️ Aquí tienes el mapa de tu chat:\n${url}`,
+
   // ─── Aliases de comandos ────────────────────────────────────────────────────
   // Mapa de: texto que escribe el usuario → nombre interno del handler
   // Incluye tanto los comandos en español como los rusos para que funcionen
@@ -252,5 +278,13 @@ module.exports = {
     removetrack:   "removetrack",
     buildpvp:      "buildpvp",
     buildeco:      "buildeco",
+    rastrear:          "rastrear",
+    rastrearmu:        "rastrearmu",
+    rastrearpais:      "rastrearpais",
+    quitarrastreo:     "quitarrastreo",
+    quitarrastreomu:   "quitarrastreomu",
+    quitarrastreopais: "quitarrastreopais",
+    rastreados:        "rastreados",
+    mapa:              "mapa",
   },
 };

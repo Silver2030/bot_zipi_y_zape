@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa WarEra — Zipi y Zape</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: #0f1115; color: #e7e9ee; }
+  #map { position: absolute; inset: 0; z-index: 0; }
+
+  #panel {
+    position: absolute; top: 12px; left: 12px; z-index: 1000;
+    background: rgba(20,22,28,0.92); border: 1px solid #2a2e38; border-radius: 10px;
+    padding: 12px 14px; max-width: 320px; backdrop-filter: blur(4px);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+  }
+  #panel h1 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tab {
+    flex: 1; text-align: center; padding: 6px 8px; border-radius: 7px; cursor: pointer;
+    background: #1c1f27; border: 1px solid #2a2e38; font-size: 13px; user-select: none;
+  }
+  .tab.active { background: #3b6fd6; border-color: #3b6fd6; color: #fff; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 12.5px; color: #aab0bd; padding: 2px 0; }
+  .stat-row b { color: #e7e9ee; }
+  #warning {
+    font-size: 12px; line-height: 1.4; background: #3a2a12; border: 1px solid #6b4d1a;
+    color: #ffd899; padding: 8px 10px; border-radius: 7px; margin-top: 8px; display: none;
+  }
+  #loading { font-size: 12px; color: #8890a0; margin-top: 6px; }
+
+  .leaflet-popup-content-wrapper { background: #181b22; color: #e7e9ee; border-radius: 8px; }
+  .leaflet-popup-tip { background: #181b22; }
+  .popup-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .popup-sub { font-size: 12px; color: #9aa1b1; margin-bottom: 6px; }
+  .popup-players { max-height: 180px; overflow-y: auto; font-size: 12.5px; }
+  .popup-players div { padding: 2px 0; border-bottom: 1px solid #262a33; }
+  .popup-players div:last-child { border-bottom: none; }
+  .away { color: #ffb454; }
+  .home { color: #6ee7b7; }
+
+  #legend {
+    position: absolute; bottom: 12px; left: 12px; z-index: 1000;
+    background: rgba(20,22,28,0.92); border: 1px solid #2a2e38; border-radius: 10px;
+    padding: 8px 12px; font-size: 12px; color: #aab0bd; max-width: 260px;
+  }
+</style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="panel">
+    <h1>🗺️ Mapa WarEra</h1>
+    <div class="tabs">
+      <div class="tab active" data-mode="poblacion">Población</div>
+      <div class="tab" data-mode="rastreados">Rastreados</div>
+    </div>
+    <div class="stat-row"><span>Regiones</span><b id="statRegions">–</b></div>
+    <div class="stat-row"><span>Jugadores rastreados</span><b id="statTracked">–</b></div>
+    <div class="stat-row"><span>Regiones con rastreados</span><b id="statTrackedRegions">–</b></div>
+    <div id="loading"></div>
+    <div id="warning"></div>
+  </div>
+
+  <div id="legend">
+    <div><span style="color:#6ee7b7">●</span> En su región de residencia</div>
+    <div><span style="color:#ffb454">●</span> Fuera de su región de residencia</div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const params  = new URLSearchParams(location.search);
+  const chatId  = params.get("chatId");
+  const token   = params.get("token");
+  const hasAuth = !!(chatId && token);
+
+  const map = L.map("map", { worldCopyJump: true, minZoom: 2 }).setView([30, 10], 3);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: "&copy; OpenStreetMap &copy; CARTO",
+    maxZoom: 12,
+  }).addTo(map);
+
+  let regionsById = new Map();
+  let trackedByRegion = new Map(); // regionId -> [{userId, username, isHome}]
+  let trackedTotal = 0;
+  let mode = "poblacion";
+  let layerGroup = L.layerGroup().addTo(map);
+
+  const warningEl = document.getElementById("warning");
+  const loadingEl = document.getElementById("loading");
+
+  function setLoading(text) { loadingEl.textContent = text || ""; }
+  function showWarning(text) { warningEl.style.display = "block"; warningEl.textContent = text; }
+
+  function colorForCountry(countryId) {
+    if (!countryId) return "#888";
+    let hash = 0;
+    for (let i = 0; i < countryId.length; i++) hash = (hash * 31 + countryId.charCodeAt(i)) >>> 0;
+    const hue = hash % 360;
+    return `hsl(${hue}, 65%, 55%)`;
+  }
+
+  async function loadRegions() {
+    setLoading("Cargando regiones…");
+    const res = await fetch("/api/map/regions");
+    if (!res.ok) throw new Error("No se pudieron cargar las regiones");
+    const { regions } = await res.json();
+    regions.forEach((r) => regionsById.set(r.id, r));
+    document.getElementById("statRegions").textContent = regions.length;
+    setLoading("");
+  }
+
+  async function loadTracked() {
+    if (!hasAuth) {
+      showWarning("Este enlace no incluye tu chat. Usa /mapa en tu chat de Telegram para obtener tu enlace personalizado y ver a tus rastreados.");
+      return;
+    }
+    setLoading("Cargando rastreados…");
+    const res = await fetch(`/api/map/tracked?chatId=${encodeURIComponent(chatId)}&token=${encodeURIComponent(token)}`);
+    if (res.status === 403) { showWarning("El enlace no es válido para este chat. Pide uno nuevo con /mapa."); setLoading(""); return; }
+    if (!res.ok) { showWarning("Error al cargar los jugadores rastreados."); setLoading(""); return; }
+
+    const { players } = await res.json();
+    trackedByRegion = new Map();
+    trackedTotal = players.length;
+
+    players.forEach((p) => {
+      const regionId = p.locationRegionId;
+      if (!regionId) return;
+      if (!trackedByRegion.has(regionId)) trackedByRegion.set(regionId, []);
+      trackedByRegion.get(regionId).push({
+        userId: p.userId,
+        username: p.username,
+        isHome: p.homeRegionId === p.locationRegionId,
+      });
+    });
+
+    document.getElementById("statTracked").textContent = trackedTotal;
+    document.getElementById("statTrackedRegions").textContent = trackedByRegion.size;
+    setLoading("");
+  }
+
+  function renderPoblacion() {
+    layerGroup.clearLayers();
+    const maxPop = Math.max(1, ...[...regionsById.values()].map((r) => r.currentPopulation || r.residents || 0));
+
+    regionsById.forEach((r) => {
+      if (!r.position) return;
+      const pop = r.currentPopulation || r.residents || 0;
+      const radius = 3 + 14 * Math.sqrt(pop / maxPop);
+      const marker = L.circleMarker([r.position[1], r.position[0]], {
+        radius,
+        color: colorForCountry(r.country),
+        fillColor: colorForCountry(r.country),
+        fillOpacity: 0.55,
+        weight: r.isCapital ? 2 : 1,
+      });
+      marker.bindPopup(
+        `<div class="popup-title">${escapeHtml(r.name)}${r.isCapital ? " 👑" : ""}</div>` +
+        `<div class="popup-sub">${escapeHtml(r.countryName || "")} · ${escapeHtml(r.mainCity || "")}</div>` +
+        `<div>Población: <b>${pop}</b></div>`
+      );
+      layerGroup.addLayer(marker);
+    });
+  }
+
+  function renderRastreados() {
+    layerGroup.clearLayers();
+    if (!trackedByRegion.size) return;
+
+    const maxCount = Math.max(1, ...[...trackedByRegion.values()].map((arr) => arr.length));
+
+    trackedByRegion.forEach((players, regionId) => {
+      const r = regionsById.get(regionId);
+      if (!r || !r.position) return;
+      const radius = 6 + 14 * Math.sqrt(players.length / maxCount);
+      const anyAway = players.some((p) => !p.isHome);
+
+      const marker = L.circleMarker([r.position[1], r.position[0]], {
+        radius,
+        color: anyAway ? "#ffb454" : "#6ee7b7",
+        fillColor: colorForCountry(r.country),
+        fillOpacity: 0.75,
+        weight: 2,
+      });
+
+      const rows = players
+        .sort((a, b) => a.username.localeCompare(b.username))
+        .map((p) => `<div class="${p.isHome ? "home" : "away"}">${p.isHome ? "🏠" : "➡️"} <a href="https://app.warera.io/user/${p.userId}" target="_blank" rel="noopener" style="color:inherit">${escapeHtml(p.username)}</a></div>`)
+        .join("");
+
+      marker.bindPopup(
+        `<div class="popup-title">${escapeHtml(r.name)}</div>` +
+        `<div class="popup-sub">${escapeHtml(r.countryName || "")} · ${players.length} rastreado(s)</div>` +
+        `<div class="popup-players">${rows}</div>`
+      );
+      layerGroup.addLayer(marker);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function render() {
+    if (mode === "poblacion") renderPoblacion();
+    else renderRastreados();
+  }
+
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      mode = tab.dataset.mode;
+      render();
+    });
+  });
+
+  (async function init() {
+    try {
+      await loadRegions();
+      await loadTracked();
+      render();
+      if (hasAuth) {
+        setInterval(async () => { await loadTracked(); if (mode === "rastreados") render(); }, 60_000);
+      }
+    } catch (err) {
+      showWarning("Error: " + err.message);
+    }
+  })();
+})();
+</script>
+</body>
+</html>

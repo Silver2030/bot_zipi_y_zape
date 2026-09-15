@@ -42,6 +42,14 @@ const COMMANDS = {
     { command: "removetrack",   description: "<battleId_o_url>" },
     { command: "buildpvp",      description: "<url_o_sp> [sp] [bala] [arma g1 g2 g3 g4 g5]" },
     { command: "buildeco",      description: "<url_o_sp> <fab_nivel> <gps> [empresas]" },
+    { command: "rastrear",          description: "<url_o_id_usuario>" },
+    { command: "rastrearmu",        description: "<url_o_id_mu>" },
+    { command: "rastrearpais",      description: "<url_o_id_pais>" },
+    { command: "quitarrastreo",     description: "<url_o_id_usuario>" },
+    { command: "quitarrastreomu",   description: "<url_o_id_mu>" },
+    { command: "quitarrastreopais", description: "<url_o_id_pais>" },
+    { command: "rastreados",        description: "Lista los jugadores rastreados" },
+    { command: "mapa",              description: "Enlace al mapa de rastreados" },
   ],
   ru: [
     { command: "help",          description: "Показать все доступные команды" },
@@ -102,6 +110,7 @@ const handlers = {
   ...require("./commands/frente"),
   ...require("./commands/build"),
   ...require("./commands/eco"),
+  ...require("./commands/rastreo"),
 };
 
 // ─── Mutex por chat para comandos pesados ─────────────────────────────────────
@@ -112,6 +121,8 @@ const HEAVY_COMMANDS = new Set([
   "paisesdanyo",   "mudanyo",
   "dineropais",    "dineromu",
   "gastos",        "listtrack",   "buildpvp",   "buildeco",
+  "rastrearmu",    "rastrearpais",
+  "quitarrastreomu", "quitarrastreopais",
 ]);
 
 const chatLocks = new Map(); // chatId → Set de handlers en ejecución
@@ -189,5 +200,6 @@ bot.on("message", async (msg) => {
 // ─── Express ──────────────────────────────────────────────────────────────────
 const app  = express();
 app.get("/", (_, res) => res.send("Bot activo"));
+require("./web").registerWebRoutes(app);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));

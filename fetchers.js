@@ -1,6 +1,6 @@
 "use strict";
 
-const { fetchInBatches, getUserData, getUserCompanies, getCompanyData, apiCall } = require("./api");
+const { fetchInBatches, getUserData, getUserFull, getUserCompanies, getCompanyData, apiCall } = require("./api");
 const { delay } = require("./utils");
 
 async function fetchUsersLite(userIds, { batchSize = 30 } = {}) {
@@ -10,6 +10,19 @@ async function fetchUsersLite(userIds, { batchSize = 30 } = {}) {
     pauseMs: 120,
     batchRequestBuilder: (userId) => ({ endpoint: "user.getUserLite", params: { userId } }),
     fallbackFn: (userId) => getUserData(userId),
+    fallbackConcurrency: 10,
+  });
+}
+
+// Igual que fetchUsersLite pero con user.getUserById: incluye "location" (región
+// donde está el personaje ahora mismo) y "region" (región de residencia/casa).
+async function fetchUsersFull(userIds, { batchSize = 30 } = {}) {
+  return fetchInBatches({
+    items: userIds,
+    batchSize,
+    pauseMs: 120,
+    batchRequestBuilder: (userId) => ({ endpoint: "user.getUserById", params: { userId } }),
+    fallbackFn: (userId) => getUserFull(userId),
     fallbackConcurrency: 10,
   });
 }
@@ -76,4 +89,4 @@ async function getCountryUsers(countryId) {
   return { items: allItems };
 }
 
-module.exports = { fetchUsersLite, fetchCompaniesByUser, fetchCompaniesById, getCountryUsers };
+module.exports = { fetchUsersLite, fetchUsersFull, fetchCompaniesByUser, fetchCompaniesById, getCountryUsers };
