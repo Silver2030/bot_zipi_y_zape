@@ -21,14 +21,18 @@ function registerWebRoutes(app) {
     try {
       const [regions, countries] = await Promise.all([getRegionsObject(), getAllCountries()]);
       const countryMap = {};
-      (countries || []).forEach((c) => { countryMap[c._id] = c.name; });
+      (countries || []).forEach((c) => {
+        countryMap[c._id] = { name: c.name, scheme: c.scheme || null, mapAccent: c.mapAccent || null };
+      });
 
       const out = Object.values(regions || {}).map((r) => ({
         id: r._id,
         name: r.name,
         mainCity: r.mainCity,
         country: r.country,
-        countryName: countryMap[r.country] || null,
+        countryName: countryMap[r.country]?.name || null,
+        countryScheme: countryMap[r.country]?.scheme || null,
+        countryMapAccent: countryMap[r.country]?.mapAccent || null,
         countryCode: r.countryCode,
         position: r.position, // [lng, lat]
         isCapital: !!r.isCapital,

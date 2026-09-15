@@ -137,14 +137,62 @@
     const svg = map.getPane("politicalPane")?.querySelector("svg");
     if (svg) svg.setAttribute("clip-path", "url(#landClip)");
   }
-  map.on("zoomend moveend", syncLandClip);
+  // rAF: esperar a que Leaflet termine de recalcular los trazados del propio
+  // evento (sus listeners internos corren en el mismo ciclo) antes de leer
+  // su "d" -- si no, se copia la posición vieja y todo queda desalineado.
+  map.on("zoomend moveend", () => requestAnimationFrame(syncLandClip));
 
-  function colorForCountry(countryId) {
-    if (!countryId) return "#888";
+  // Un anillo cuya longitud salta de golpe (p.ej. de 179° a -179°) cruza el
+  // antimeridiano sin estar partido en el dataset; tal cual, Leaflet lo
+  // dibuja como una raya recta atravesando todo el mapa. Se descarta ese
+  // anillo/subpolígono en vez de arriesgarse a pintarlo mal.
+  function crossesAntimeridian(ring) {
+    for (let i = 1; i < ring.length; i++) {
+      if (Math.abs(ring[i][0] - ring[i - 1][0]) > 180) return true;
+    }
+    return false;
+  }
+  function dropAntimeridianRings(fc) {
+    const features = [];
+    for (const f of fc.features) {
+      const g = f.geometry;
+      if (!g) continue;
+      if (g.type === "Polygon") {
+        if (!crossesAntimeridian(g.coordinates[0])) features.push(f);
+      } else if (g.type === "MultiPolygon") {
+        const polys = g.coordinates.filter((poly) => !crossesAntimeridian(poly[0]));
+        if (polys.length) features.push({ ...f, geometry: { type: "MultiPolygon", coordinates: polys } });
+      } else {
+        features.push(f);
+      }
+    }
+    return { type: "FeatureCollection", features };
+  }
+
+  // Colores por "scheme" (color real del país en el juego, no inventado).
+  // No conocemos la paleta exacta del juego, así que usamos una equivalente
+  // por nombre; si llega un scheme que no reconocemos, se cae a un color
+  // derivado del id (mejor eso que sin color).
+  const SCHEME_COLORS = {
+    red: "#e5484d", tomato: "#e54d2e", ruby: "#e54666", crimson: "#e93d82",
+    orange: "#f76b15", amber: "#ffb224", gold: "#c8a355", yellow: "#f5d90a",
+    lime: "#bdee63", grass: "#65ba74", green: "#30a46c", lightgreen: "#5bb98c",
+    darkgreen: "#1f6f4a", jade: "#29a383", mint: "#4ccbc9", teal: "#12a594",
+    cyan: "#00a2c7", sky: "#5eb1ef", lightblue: "#5eb1ef", blue: "#0090ff",
+    darkblue: "#1c4e91", indigo: "#3e63dd", iris: "#5b5bd6", violet: "#8e4ec6",
+    purple: "#8e4ec6", plum: "#ab4aba", pink: "#d6409f", magenta: "#d6409f",
+    brown: "#ad7f58", bronze: "#a18072", sand: "#8d8d86", gray: "#8b8d98",
+    grey: "#8b8d98", slate: "#697177", mauve: "#8e8c99", olive: "#8f9779",
+    black: "#2b2b2b", white: "#e8e8e8", navy: "#2a4a7c", maroon: "#8c3a3a",
+    turquoise: "#0cc0df",
+  };
+  function colorForScheme(scheme, fallbackId) {
+    const key = String(scheme || "").toLowerCase().replace(/[^a-z]/g, "");
+    if (SCHEME_COLORS[key]) return SCHEME_COLORS[key];
     let hash = 0;
-    for (let i = 0; i < countryId.length; i++) hash = (hash * 31 + countryId.charCodeAt(i)) >>> 0;
-    const hue = hash % 360;
-    return `hsl(${hue}, 65%, 55%)`;
+    const s = String(fallbackId || scheme || "");
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+    return `hsl(${hash % 360}, 65%, 55%)`;
   }
 
   function buildVoronoiLayer() {
@@ -156,10 +204,10 @@
     const features = [];
     regionsArr.forEach((r, i) => {
       const cell = voronoi.cellPolygon(i);
-      if (!cell) return;
+      if (!cell || crossesAntimeridian(cell)) return;
       features.push({
         type: "Feature",
-        properties: { country: r.country },
+        properties: { country: r.country, scheme: r.countryScheme },
         geometry: { type: "Polygon", coordinates: [cell] },
       });
     });
@@ -170,7 +218,7 @@
         style: (f) => ({
           pane: "politicalPane",
           stroke: false,
-          fillColor: colorForCountry(f.properties.country),
+          fillColor: colorForScheme(f.properties.scheme, f.properties.country),
           fillOpacity: 0.55,
         }),
         interactive: false,
@@ -181,7 +229,7 @@
   fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json")
     .then((r) => r.json())
     .then((topology) => {
-      const countries = topojson.feature(topology, topology.objects.countries);
+      const countries = dropAntimeridianRings(topojson.feature(topology, topology.objects.countries));
       landLayer = L.geoJSON(countries, {
         style: { pane: "politicalPane", color: "#0f1115", weight: 0.6, fillOpacity: 0 },
         interactive: false,
