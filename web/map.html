@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mapa WarEra — Zipi y Zape</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
@@ -42,6 +44,18 @@
   .away { color: #ffb454; }
   .home { color: #6ee7b7; }
 
+  .marker-cluster { background-clip: padding-box; }
+  .marker-cluster div {
+    background: rgba(59,111,214,0.85); color: #fff; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; width: 100%; height: 100%;
+  }
+  .region-tooltip {
+    background: #181b22; color: #e7e9ee; border: 1px solid #2a2e38;
+    font-size: 12px; padding: 3px 7px;
+  }
+  .region-tooltip::before { display: none; }
+
   #legend {
     position: absolute; bottom: 12px; left: 12px; z-index: 1000;
     background: rgba(20,22,28,0.92); border: 1px solid #2a2e38; border-radius: 10px;
@@ -71,6 +85,8 @@
   </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -80,17 +96,32 @@
   const token   = params.get("token");
   const hasAuth = !!(chatId && token);
 
-  const map = L.map("map", { worldCopyJump: true, minZoom: 2 }).setView([30, 10], 3);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    attribution: "&copy; OpenStreetMap &copy; CARTO",
-    maxZoom: 12,
-  }).addTo(map);
+  const map = L.map("map", { worldCopyJump: true, minZoom: 2, zoomSnap: 0.5 }).setView([30, 10], 3);
+
+  // Sin mapa base "real": el juego dibuja sus propias fronteras políticas
+  // (que no coinciden con los países del mundo real), así que solo pintamos
+  // la silueta de los continentes -- tierra/mar, sin fronteras ni nombres --
+  // y el color político lo ponemos nosotros con los datos del propio juego.
+  fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json")
+    .then((r) => r.json())
+    .then((topology) => {
+      const land = topojson.feature(topology, topology.objects.land);
+      L.geoJSON(land, {
+        style: { color: "#2a2e38", weight: 1, fillColor: "#20232c", fillOpacity: 1 },
+        interactive: false,
+      }).addTo(map);
+    })
+    .catch(() => {});
 
   let regionsById = new Map();
   let trackedByRegion = new Map(); // regionId -> [{userId, username, isHome}]
   let trackedTotal = 0;
   let mode = "poblacion";
-  let layerGroup = L.layerGroup().addTo(map);
+  let layerGroup = L.markerClusterGroup({
+    maxClusterRadius: 45,
+    disableClusteringAtZoom: 7,
+    spiderfyOnMaxZoom: true,
+  }).addTo(map);
 
   const warningEl = document.getElementById("warning");
   const loadingEl = document.getElementById("loading");
@@ -153,14 +184,15 @@
     regionsById.forEach((r) => {
       if (!r.position) return;
       const pop = r.currentPopulation || r.residents || 0;
-      const radius = 3 + 14 * Math.sqrt(pop / maxPop);
+      const radius = 4 + 13 * Math.sqrt(pop / maxPop);
       const marker = L.circleMarker([r.position[1], r.position[0]], {
         radius,
-        color: colorForCountry(r.country),
+        color: r.isCapital ? "#fff" : "#0f1115",
         fillColor: colorForCountry(r.country),
-        fillOpacity: 0.55,
+        fillOpacity: 0.85,
         weight: r.isCapital ? 2 : 1,
       });
+      marker.bindTooltip(`${escapeHtml(r.name)} — ${pop}`, { direction: "top", className: "region-tooltip" });
       marker.bindPopup(
         `<div class="popup-title">${escapeHtml(r.name)}${r.isCapital ? " 👑" : ""}</div>` +
         `<div class="popup-sub">${escapeHtml(r.countryName || "")} · ${escapeHtml(r.mainCity || "")}</div>` +
@@ -186,9 +218,10 @@
         radius,
         color: anyAway ? "#ffb454" : "#6ee7b7",
         fillColor: colorForCountry(r.country),
-        fillOpacity: 0.75,
-        weight: 2,
+        fillOpacity: 0.85,
+        weight: 3,
       });
+      marker.bindTooltip(`${escapeHtml(r.name)} — ${players.length} rastreado(s)`, { direction: "top", className: "region-tooltip" });
 
       const rows = players
         .sort((a, b) => a.username.localeCompare(b.username))
