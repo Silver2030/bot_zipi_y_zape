@@ -180,7 +180,7 @@ bot.on("message", async (msg) => {
   try {
     if (HEAVY_COMMANDS.has(handlerName)) {
       if (isLocked(chatId, handlerName)) {
-        await tg.sendMessage(chatId, t(chatId, "cmd_already_running"));
+        await tg.sendMessage(chatId, t(chatId, "cmd_already_running")); 
         return;
       }
       lock(chatId, handlerName);
